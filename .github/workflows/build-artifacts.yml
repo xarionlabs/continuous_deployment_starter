@@ -33,6 +33,12 @@ jobs:
         for i in $APPLICATION_NAMES; do
           docker build applications/${i} --file applications/${i}/Dockerfile --tag ${i}:${COMMIT_TAG}
         done
+    - name: Run tests on each Docker image
+      id: test-images
+      run: |
+        for i in $APPLICATION_NAMES; do
+          docker run --entrypoint=/app/test.sh ${i}:${COMMIT_TAG}
+        done
     - name: list the images
       id: list-images
       run: |
