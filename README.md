@@ -20,6 +20,7 @@
 - applications 
   - chatbot
     - src
+    - dockerfile
     - docker-compose.yaml
     - config.conf # optional
     - example.env # gitignored, per environment we implement the .env file
@@ -41,7 +42,7 @@
   - ssh to build server and trigger build
     - run tests
     - create docker images
-    - upload docker images
+    - publish docker images
   - ssh to staging server 
     - download the artifact
     - deploy the version
