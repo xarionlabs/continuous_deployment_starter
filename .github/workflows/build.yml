@@ -47,12 +47,15 @@ jobs:
         docker images
     - name: Create tag
       uses: actions/github-script@v5
+      env:
+        COMMIT_TAG: ${COMMIT_TAG}
       with:
         script: |
+          const { COMMIT_TAG } = process.env
           github.rest.git.createRef({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            ref: 'refs/tags/${{COMMIT_TAG}}',
+            ref: 'refs/tags/${COMMIT_TAG}',
             sha: context.sha
           })
         
