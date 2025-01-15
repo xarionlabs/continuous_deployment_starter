@@ -6,8 +6,11 @@
  - create group thempods `groupadd thempods`
  - add live `useradd -m -g thempods live`
  - add staging `useradd -m -g thempods staging`
+ - add global_services `useradd -m -g thempods global_services`
  - check uid ranges for these users and groups to make sure that they are not overlapping. `grep live /etc/subuid /etc/subgid` `grep staging /etc/subuid /etc/subgid`. If they are overlapping, use https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md#etcsubuid-and-etcsubgid-configuration
- - 
+ - sudo chsh -s /bin/bash global_services
+ - sudo chsh -s /bin/bash live
+ - sudo chsh -s /bin/bash staging
 
 
 ## Example folder structure
