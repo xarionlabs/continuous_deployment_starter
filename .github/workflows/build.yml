@@ -16,11 +16,7 @@ jobs:
     - name: create commit tag name
       id: create-commit-tag-name
       run: |
-        {
-          echo 'COMMIT_TAG<<EOF'
-          date +"%Y%m%d-%H%M%S"
-          echo EOF
-        } >> "$GITHUB_ENV"
+        echo "COMMIT_TAG=$(date +'%Y%m%d-%H:%M:%S')" >> "$GITHUB_ENV"
     - name: Finding applications that have dockerfiles in them
       id: finding-buildable-applications
       run: |
@@ -47,15 +43,13 @@ jobs:
         docker images
     - name: Create tag
       uses: actions/github-script@v5
-      env:
-        COMMIT_TAG: ${COMMIT_TAG}
       with:
         script: |
-          const { COMMIT_TAG } = process.env
+          const commit_tag = process.env.COMMIT_TAG
           github.rest.git.createRef({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            ref: 'refs/tags/${{COMMIT_TAG}}',
+            ref: `refs/tags/${commit_tag}`,
             sha: context.sha
           })
         
