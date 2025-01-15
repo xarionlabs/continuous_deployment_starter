@@ -21,22 +21,25 @@
   - chatbot
     - src
     - dockerfile
+  - docker-compose.yaml # defines all applications for local development
+- deployments
+  - chatbot
     - docker-compose.yaml
-    - config.conf # optional
     - example.env # gitignored, per environment we implement the .env file
   - tradingbot, webapp, etc.
-- services
   - postgres
     - docker-compose.yaml
     - example.env # gitignored, per environment we implement the .env file
     - config.conf
   - mongodb, redis, litellm, chromadb, nginx, etc.
+- workers # to be figured out
 - README
 - .gitignore
 - etc
 
 ### Todo
 - How to handle environment specific configurations for networking. 
+- install a log aggregator such as fluentbit.io
 
 ## Continuous Deployment Process
   - ssh to build server and trigger build

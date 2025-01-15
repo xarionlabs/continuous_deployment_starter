@@ -13,4 +13,4 @@ COPY test.sh /app
 
 RUN chmod +x test.sh
 
-ENTRYPOINT ["python", "-m", "streamlit", "run", "src/application.py"]
+ENTRYPOINT ["entrypoint.sh"]
