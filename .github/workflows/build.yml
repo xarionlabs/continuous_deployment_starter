@@ -30,7 +30,7 @@ jobs:
       run: |
         for i in $APPLICATION_NAMES; do
           echo "::group::${i}"
-          docker build applications/${i} --file applications/${i}/Dockerfile --tag ghcr.io/xarionlabs/${i}:${COMMIT_TAG}
+          docker build applications/${i} --file applications/${i}/Dockerfile --tag ghcr.io/xarionlabs/continuous_deployment_starter/${i}:${COMMIT_TAG}
           echo "::endgroup::"
         done
     - name: Run tests on each Docker image
@@ -38,7 +38,7 @@ jobs:
       run: |
         for i in $APPLICATION_NAMES; do
           echo "::group::${i}"
-          docker run --entrypoint=/app/test.sh ${i}:${COMMIT_TAG}
+          docker run --entrypoint=/app/test.sh ghcr.io/xarionlabs/continuous_deployment_starter/${i}:${COMMIT_TAG}
           echo "::endgroup::"
         done
     - name: list the images
@@ -50,7 +50,7 @@ jobs:
       run: |
         for i in $APPLICATION_NAMES; do
           echo "::group::${i}"
-          docker push ghcr.io/xarionlabs/${i}:${COMMIT_TAG}
+          docker push ghcr.io/xarionlabs/continuous_deployment_starter/${i}:${COMMIT_TAG}
           echo "::endgroup::"
         done
     - name: Create tag
