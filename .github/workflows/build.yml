@@ -41,6 +41,12 @@ jobs:
       id: list-images
       run: |
         docker images
+    - name: list the images
+      id: publish-artifacts
+      run: |
+        for i in $APPLICATION_NAMES; do
+          docker push ghcr.io/xarionlabs/${i}:${COMMIT_TAG}
+        done
     - name: Create tag
       uses: actions/github-script@v5
       with:
@@ -52,4 +58,4 @@ jobs:
             ref: `refs/tags/${commit_tag}`,
             sha: context.sha
           })
-        
+    
