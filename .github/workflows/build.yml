@@ -10,7 +10,7 @@ jobs:
   define_applications:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.find_applications.outputs.applications }}
+      applications: ${{ steps.find_applications.outputs.applications }}
     steps:
       - uses: actions/checkout@v4
       - name: Finding applications that have dockerfiles in them
