@@ -40,6 +40,13 @@
 - .gitignore
 - etc
 
+### Assumptions
+* Docker containers contain the codebase under /app. (in the dockerfile, always set WORKDIR /app)
+* In /app, there is the `entrypoint.sh` and `test.sh`. 
+  * `entrypoint.sh`: shell script to run the application
+  * `test.sh`: shell script to run the tests. (should contain something like `pytest`, `mvn clean test`, `npm test`, etc.)
+
+
 ### Todo
 - How to handle environment specific configurations for networking. 
 - install a log aggregator such as fluentbit.io
