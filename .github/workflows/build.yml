@@ -88,6 +88,8 @@ jobs:
     needs: 
       - build-and-push-applications
       - define_tag
+    permissions:
+      contents: write #???
     steps:
       - name: Create tag
         uses: actions/github-script@v5
