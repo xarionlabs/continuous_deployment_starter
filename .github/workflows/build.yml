@@ -18,7 +18,7 @@ jobs:
       - name: create commit tag name
         id: create-commit-tag
         run: |
-          echo "commit_tag=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
   define_applications:
     runs-on: ubuntu-latest
     outputs:
