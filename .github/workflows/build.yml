@@ -75,7 +75,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define_tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
       
-      - name: Run tests on each Docker image
+      - name: Run tests on the Docker image
         id: test-images
         run: docker run --entrypoint=/app/test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define_tag.outputs.tag }}
 
