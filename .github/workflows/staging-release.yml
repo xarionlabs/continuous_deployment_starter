@@ -1,0 +1,21 @@
+name: Staging Release
+on:
+  workflow_run:
+    workflows: ["build"]
+    branches: [main]
+    types: 
+      - completed
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: staging
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: whoami
