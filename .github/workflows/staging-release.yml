@@ -18,4 +18,4 @@ jobs:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          script: whoami
+          script: podman pull ghcr.io/xarionlabs/continuous_deployment_starter/app_1:20250121-144338
