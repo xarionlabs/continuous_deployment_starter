@@ -146,15 +146,12 @@ jobs:
         with:
           ref: releases
           fetch-tags: true
-        env:
-          version: ${{ needs.define-tag.outputs.tag }}
       - run: |
           env
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git merge ${{env.version}}
-          echo APP_VERSION=${{env.version}} >> services/version.env
+          git merge ${{ needs.define-tag.outputs.tag }}
+          echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/version.env
           git add services/version.env
-          git commit -m "Bumping the APP_VERSION to ${{env.version}}"
+          git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
           git push
-
