@@ -135,6 +135,8 @@ jobs:
 
   update-the-release-branch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
       - define-tag
       - build-and-push-applications
