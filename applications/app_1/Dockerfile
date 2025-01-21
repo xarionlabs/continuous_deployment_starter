@@ -9,6 +9,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY src /app/src
 COPY test /app/test
+COPY entrypoint.sh /app
 COPY test.sh /app
 
 RUN chmod +x test.sh
