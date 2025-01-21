@@ -26,27 +26,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{steps.create-commit-tag.outputs.commit_tag}}
-    needs: skip-check
     steps:
       - name: create commit tag name
         id: create-commit-tag
-        if: ${{!needs.skip-check.outputs.skip}}
         run: |
           echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
   define-applications:
     runs-on: ubuntu-latest
     outputs:
       applications: ${{ steps.find_applications.outputs.applications }}
-    needs: skip-check
     steps:
       - uses: actions/checkout@v4
       - name: Finding applications that have dockerfiles in them
         id: find_applications
-        if: ${{!needs.skip-check.outputs.skip}}
         run: |
           echo "applications=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
       - name: print_output
-        if: ${{!needs.skip-check.outputs.skip}}
         run: |
           echo "${{ steps.find_applications.outputs.applications }}"
 
