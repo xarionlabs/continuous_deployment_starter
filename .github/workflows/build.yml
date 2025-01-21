@@ -149,11 +149,12 @@ jobs:
         env:
           version: ${{ needs.define-tag.outputs.tag }}
       - run: |
+          env
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git merge ${version}
-          echo APP_VERSION=${version} >> services/version.env
+          git merge ${{env.version}}
+          echo APP_VERSION=${{env.version}} >> services/version.env
           git add services/version.env
-          git commit -m "Bumping the APP_VERSION to ${version}"
+          git commit -m "Bumping the APP_VERSION to ${{env.version}}"
           git push
 
