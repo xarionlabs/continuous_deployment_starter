@@ -151,8 +151,12 @@ jobs:
           env
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git merge ${{ needs.define-tag.outputs.tag }}
+          git merge -X theirs ${{ needs.define-tag.outputs.tag }}
           echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/version.env
-          git add services/version.env
+          git add --force services/version.env
           git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
-          git push
+          # assert that the change from services/version is in here
+          test $(git diff --compact-summary main releases | grep services/version | wc -l) -eq 1
+          # assert that there is no other change
+          test $(git diff --compact-summary main releases | wc -l) -eq 2
+          git push origin releases
