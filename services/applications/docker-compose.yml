@@ -1,0 +1,9 @@
+version: '3.9'
+
+services:
+  app_1:
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
+    restart: always
+  app_2:
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_2:${APP_VERSION}"
+    restart: always

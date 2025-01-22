@@ -172,4 +172,3 @@ cython_debug/
 
 services/*/version.env
 services/*/.env
-services/version.env
