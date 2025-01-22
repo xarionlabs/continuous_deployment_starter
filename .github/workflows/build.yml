@@ -156,7 +156,7 @@ jobs:
           git add --force services/version.env
           git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
           # assert that the change from services/version is in here
-          test $(git diff --compact-summary main releases | grep services/version | wc -l) -eq 1
+          test $(git diff --compact-summary ${{ needs.define-tag.outputs.tag }} releases | grep services/version | wc -l) -eq 1
           # assert that there is no other change
-          test $(git diff --compact-summary main releases | wc -l) -eq 2
+          test $(git diff --compact-summary ${{ needs.define-tag.outputs.tag }} releases | wc -l) -eq 2
           git push origin releases
