@@ -146,6 +146,7 @@ jobs:
         with:
           ref: releases
           fetch-tags: true
+          fetch-depth: 0
       - run: |
           env
           git config user.name github-actions
