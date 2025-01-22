@@ -12,16 +12,10 @@ jobs:
     environment: staging
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: skip-workflow
-        id: skip-workflow # id used for referencing step
-        uses: saulmaldonado/skip-workflow@v1
-        with:
-          phrase: /\[.*skip-staging.*\]/i # matches with commits that contain '[skip-staging]'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: executing remote ssh commands using ssh key
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          script: whoami
+          script: podman pull ghcr.io/xarionlabs/continuous_deployment_starter/app_1:20250121-144338
