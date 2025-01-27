@@ -155,8 +155,10 @@ jobs:
           echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/applications/version.env
           git add --force services/applications/version.env
           git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
-          # assert that the change from services/applications/version.env is in here
-          test $(git diff --compact-summary ${{ needs.define-tag.outputs.tag }} releases | grep services/applications/version.env | wc -l) -eq 1
-          # assert that there is no other change
-          test $(git diff --compact-summary ${{ needs.define-tag.outputs.tag }} releases | wc -l) -eq 2
+          # generate application deployment configs
+          cd services/applications/
+          source version.env
+          APP_VERSION=$(echo $APP_VERSION) kompose convert
+          git add --force services/applications/.
+          git commit -m "Adding the new/updated deployment files ${{ needs.define-tag.outputs.tag }}"
           git push origin releases
