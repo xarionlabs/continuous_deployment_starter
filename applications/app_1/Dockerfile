@@ -12,6 +12,7 @@ COPY test /app/test
 COPY entrypoint.sh /app
 COPY test.sh /app
 
+RUN chmod +x entrypoint.sh
 RUN chmod +x test.sh
 
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
