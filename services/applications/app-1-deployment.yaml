@@ -21,6 +21,9 @@ spec:
         io.kompose.service: app-1
     spec:
       containers:
-        - image: ghcr.io/xarionlabs/continuous_deployment_starter/app_1:20250128-134441
+        - image: ghcr.io/xarionlabs/continuous_deployment_starter/app_1:20250128-135725
           name: app-1
+          ports:
+            - containerPort: 8501
+              protocol: TCP
       restartPolicy: Always
