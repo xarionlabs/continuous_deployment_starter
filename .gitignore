@@ -174,3 +174,4 @@ services/*/version.env
 services/*/.env
 
 services/*/*-deployment.y*ml
+services/*/*-service.y*ml
