@@ -21,5 +21,4 @@ jobs:
           script: |
             cd ~/runtime/continuous_deployment_starter
             git pull origin releases
-            cd services/applications
-            podman compose --env-file=version.env up
+            systemctl --user restart app-1
