@@ -159,6 +159,6 @@ jobs:
           cd services/applications/
           source version.env
           docker run --env-file=version.env -v ./:/opt/:rw ghcr.io/xarionlabs/continuous_deployment_starter/kompose:v1.34.0 --file ./docker-compose.yml convert
-          git add --force services/applications/.
+          git add --force .
           git commit -m "Adding the new/updated deployment files ${{ needs.define-tag.outputs.tag }}"
           git push origin releases
