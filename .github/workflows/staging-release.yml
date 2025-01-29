@@ -21,4 +21,13 @@ jobs:
           script: |
             cd ~/runtime/continuous_deployment_starter
             git pull origin releases
-            systemctl --user restart app-1
+            # generate application deployment configs
+            # currently static, app_1
+            cd services/app_1/
+            source version.env
+            cat docker-compose.yml | { eval "echo \"$(sed 's/"/\\"/g')\""; } | podman run -i --rm -v ~/.config/containers/systemd:/app/systemd ghcr.io/containers/podlet --file /app/systemd --overwrite compose -
+            cd services/postgres/
+            cat docker-compose.yml | { eval "echo \"$(sed 's/"/\\"/g')\""; } | podman run -i --rm -v ~/.config/containers/systemd:/app/systemd ghcr.io/containers/podlet --file /app/systemd --overwrite compose -
+            systemctl --user daemon-reload
+            systemctl --user restart app_1
+            systemctl --user restart postgres
