@@ -1,6 +1,18 @@
 services:
   app_1:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
-    restart: always
-    ports:
-      - 8501:8501
+    depends_on:
+      - db
+    environment:
+      VIRTUAL_HOST: myapp.localhost
+      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
+    networks:
+      - db_network
+      - proxy_network
+    restart: unless-stopped
+
+networks:
+  db_network:
+    external: true
+  proxy_network:
+    external: true

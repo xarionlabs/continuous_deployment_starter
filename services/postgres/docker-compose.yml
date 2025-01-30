@@ -1,9 +1,20 @@
-version: '3.9'
+version: '3.8'
 
 services:
-  postgres:
+  db:
     image: docker.io/postgres:16.6
-    restart: always
-    shm_size: 128mb
     environment:
-      POSTGRES_PASSWORD: example
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - db_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  db_network:
+    name: db_network
