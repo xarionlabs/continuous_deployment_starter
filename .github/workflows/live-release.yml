@@ -1,7 +1,7 @@
-name: staging-release
+name: live-release
 on:
   workflow_run:
-    workflows: ["build"]
+    workflows: ["staging-release"]
     branches: [main]
     types: 
       - completed
@@ -9,15 +9,22 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    environment: staging
+    environment: live
+    env:
+      secrets: ${{ secrets }}
+      vars: ${{ vars }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: executing remote ssh commands using ssh key
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          SECRETS_JSON: ${{ toJson(secrets) }}
+          VARS_JSON: ${{ toJson(vars) }}
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
+          envs: SECRETS_JSON, VARS_JSON
           script: |
             cd ~/runtime/continuous_deployment_starter
             git checkout releases
