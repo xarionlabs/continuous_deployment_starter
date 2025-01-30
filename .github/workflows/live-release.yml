@@ -26,6 +26,9 @@ jobs:
           key: ${{ secrets.KEY }}
           envs: SECRETS_JSON, VARS_JSON
           script: |
+            echo "=== env follows ==="
+            printenv
+            echo "=== end of env ==="
             cd ~/runtime/continuous_deployment_starter
             git checkout releases
             git pull origin releases
