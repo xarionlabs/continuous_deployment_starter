@@ -28,13 +28,16 @@ jobs:
           script: |
             cd ~/runtime/continuous_deployment_starter
             git checkout releases
+            git pull origin releases
             export PATH="$PATH:$(pwd)/.github/workflows/scripts"
+            echo $PATH
             source services/version.env
             generate-env-from-gh.sh
             source .env
             check-service-envs.sh
             # generate application deployment configs
             # currently static, app_1, nginx
+            cd services/
             cd app_1/
             cat docker-compose.yml | { eval "echo \"$(sed 's/"/\\"/g')\""; } | podman run -i --rm -v ~/.config/containers/systemd:/app/systemd ghcr.io/containers/podlet --file /app/systemd --overwrite compose -
             cd ../postgres/
