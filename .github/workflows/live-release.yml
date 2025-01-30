@@ -10,9 +10,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
     environment: live
-    env:
-      secrets: ${{ secrets }}
-      vars: ${{ vars }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: executing remote ssh commands using ssh key
