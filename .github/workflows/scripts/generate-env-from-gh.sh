@@ -8,7 +8,7 @@ fi
 ENV_FILE=".env"
 
 > "$ENV_FILE"
-echo "$SECRETS_JSON" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' >> "$ENV_FILE"
-echo "$VARS_JSON" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' >> "$ENV_FILE"
+echo "$SECRETS_JSON" | sed s/\[\",\ \}\{\]//g | sed s/:/=/ | grep -v '^$' >> "$ENV_FILE"
+echo "$VARS_JSON" | sed s/\[\",\ \}\{\]//g | sed s/:/=/ | grep -v '^$' >> "$ENV_FILE"
 
 echo "Generated .env file"
