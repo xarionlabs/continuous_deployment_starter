@@ -13,6 +13,6 @@ services:
 
 networks:
   db_network:
-    external: true
+    driver: bridge
   proxy_network:
-    external: true
+    driver: bridge
