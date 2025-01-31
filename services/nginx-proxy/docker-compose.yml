@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   nginx_proxy:
-    image: jwilder/nginx-proxy
+    image: docker.io/jwilder/nginx-proxy
     container_name: nginx_proxy
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
