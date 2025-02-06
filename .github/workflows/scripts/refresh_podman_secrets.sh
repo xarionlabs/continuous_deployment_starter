@@ -12,7 +12,7 @@ fi
 
 
 echo "Logging into GitHub CLI to pull in secrets..."
-podman run --rm -e GH_TOKEN="$GH_TOKEN" ghcr.io/cli/cli gh auth login --with-token <<< "$GH_TOKEN"
+gh auth login --with-token <<< "$GH_TOKEN"
 
 
 echo "Syncing secrets from GitHub repo: $REPO"
@@ -25,7 +25,7 @@ if [[ -n "$EXISTING_SECRETS" ]]; then
 fi
 
 # Fetch secrets from GitHub
-SECRETS=$(podman run --rm -v $HOME/.config/gh:/root/.config/gh ghcr.io/cli/cli gh secret list --repo "$REPO" --env "$DEPLOYMENT" | awk '{print $1}')
+SECRETS=$(gh secret list --repo "$REPO" --env "$DEPLOYMENT" | awk '{print $1}')
 
 if [[ -z "$SECRETS" ]]; then
     echo "No GitHub secrets found in $REPO."
@@ -35,12 +35,14 @@ fi
 echo "Adding secrets to Podman..."
 
 for SECRET in $SECRETS; do
-    VALUE=$(podman run --rm -v $HOME/.config/gh:/root/.config/gh ghcr.io/cli/cli gh secret get "$SECRET" --repo "$REPO" --env "$DEPLOYMENT" )
+    VALUE=$(gh secret get "$SECRET" --repo "$REPO" --env "$DEPLOYMENT" )
     SECRET_NAME=$(echo "$SECRET" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_' '_')
 
     # Create new secret
     echo -n "$VALUE" | podman secret create "$SECRET_NAME" -
     echo "Created Podman secret: $SECRET_NAME"
 done
+
+gh auth logout
 
 echo "Done!"
