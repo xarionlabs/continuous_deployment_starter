@@ -6,8 +6,6 @@ on:
     types: 
       - completed
 
-permissions: read-all
-
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -18,18 +16,19 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           VARS_JSON: ${{ toJson(vars) }}
+          SECRETS_JSON: ${{ toJson(secrets) }}
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          envs: VARS_JSON
+          envs: VARS_JSON, SECRETS_JSON
           script: |
             set -e
             cd ~/runtime/continuous_deployment_starter
             export PATH=$PATH:$(pwd)/.github/workflows/scripts/
             git checkout releases
             git pull origin releases
-            refresh_podman_secrets.sh "${{ github.repository }}" "${{ secrets.GITHUB_TOKEN }}" staging
+            refresh_podman_secrets.sh "$SECRETS_JSON"
             create_and_source_env_variables.sh
             check-service-envs.sh
             generate_quadlets.sh
