@@ -6,6 +6,8 @@ on:
     types: 
       - completed
 
+permissions: read-all
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -21,8 +23,6 @@ jobs:
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
           envs: VARS_JSON
-          permissions: |
-            secrets: read
           script: |
             set -e
             cd ~/runtime/continuous_deployment_starter
