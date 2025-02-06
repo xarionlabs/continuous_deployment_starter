@@ -23,6 +23,7 @@ jobs:
           envs: VARS_JSON
           script: |
             cd ~/runtime/continuous_deployment_starter
+            export PATH=$PATH:$(pwd)/.github/workflows/scripts/
             git checkout releases
             git pull origin releases
             refresh_podman_secrets.sh "${{ github.repository }}" "${{ secrets.GITHUB_TOKEN }}" live
