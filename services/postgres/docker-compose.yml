@@ -5,12 +5,14 @@ services:
     image: docker.io/postgres:16.6
     environment:
       POSTGRES_USER: ${PG_USER}
-      POSTGRES_PASSWORD: ${PG_PASS}
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - db_network
     restart: unless-stopped
+    secrets:
+      - pg_pass
 
 volumes:
   postgres_data:
