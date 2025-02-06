@@ -11,7 +11,7 @@ if [[ -z "$REPO" || -z "$GH_TOKEN" ]]; then
 fi
 
 
-echo "Logging into GitHub CLI..."
+echo "Logging into GitHub CLI to pull in secrets..."
 podman run --rm -e GH_TOKEN="$GH_TOKEN" ghcr.io/cli/cli gh auth login --with-token <<< "$GH_TOKEN"
 
 

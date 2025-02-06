@@ -21,7 +21,10 @@ jobs:
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
           envs: VARS_JSON
+          permissions: |
+            secrets: read
           script: |
+            set -e
             cd ~/runtime/continuous_deployment_starter
             export PATH=$PATH:$(pwd)/.github/workflows/scripts/
             git checkout releases
