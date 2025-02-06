@@ -29,7 +29,11 @@ jobs:
             git checkout releases
             git pull origin releases
             refresh_podman_secrets.sh "$SECRETS_JSON"
-            create_and_source_env_variables.sh
+            create_env_variables.sh
+            set -o allexport
+            source services/version.env
+            source .env
+            set +o allexport
             check-service-envs.sh
             generate_quadlets.sh
             start_all_services.sh
