@@ -5,7 +5,7 @@ services:
     image: docker.io/jwilder/nginx-proxy
     container_name: nginx_proxy
     volumes:
-      - /usr/lib/systemd/user/podman.socket:/tmp/docker.sock:ro
+      - /run/user/${UID}/podman/podman.sock:/tmp/docker.sock:ro
     networks:
       - proxy_network
     restart: unless-stopped
