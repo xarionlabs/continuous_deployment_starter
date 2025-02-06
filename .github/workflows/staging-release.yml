@@ -25,7 +25,6 @@ jobs:
           envs: VARS_JSON
           script: |
             set -e
-            podman login gchr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
             cd ~/runtime/continuous_deployment_starter
             export PATH=$PATH:$(pwd)/.github/workflows/scripts/
             git checkout releases
