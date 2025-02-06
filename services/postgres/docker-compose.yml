@@ -4,7 +4,7 @@ services:
   db:
     image: docker.io/postgres:16.6
     environment:
-      POSTGRES_USER: ${PG_USER}
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/pg_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data

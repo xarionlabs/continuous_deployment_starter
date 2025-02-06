@@ -1,6 +1,6 @@
 #!/bin/bash
 
-generate-env-from-gh.sh
+generate-env-from-gh-variables.sh
 
 echo UID=${UID} >> env.sh
 
