@@ -2,4 +2,4 @@
 
 generate-env-from-gh-variables.sh
 
-echo UID=${UID} >> .env
+echo RUNTIME_UID=${UID} >> .env
