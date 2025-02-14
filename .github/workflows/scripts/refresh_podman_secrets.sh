@@ -1,15 +1,16 @@
 #!/bin/bash
+echo "::group::$(basename "$0") log"
+set -e
+trap 'echo "::endgroup::"; echo "❌ $(basename "$0") failed!"' EXIT
 
-set -e  # Exit on any error
-
-SECRETS_JSON="$1"       # The JSON string of secrets to add to Podman
+SECRETS_JSON="$1"
 
 if [[ -z "SECRETS_JSON" ]]; then
     echo "Usage: $0 <repo> <github_token>"
     exit 1
 fi
 
-# Remove all existing Podman secrets
+
 EXISTING_SECRETS=$(podman secret ls --format '{{.Name}}')
 if [[ -n "$EXISTING_SECRETS" ]]; then
     echo "Removing existing Podman secrets..."
@@ -31,4 +32,5 @@ while IFS= read -r SECRET_ROW; do
      echo "Created Podman secret: $SECRET_NAME"
 done <<< "$PARSED_SECRETS"
 
+echo "::endgroup::"
 echo "Done!"

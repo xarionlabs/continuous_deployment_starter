@@ -1,5 +1,5 @@
 #!/bin/bash
-
+echo "::group::$(basename "$0") log"
 for service in $(find services -mindepth 1 -maxdepth 1 -type d | sort -r); do
   if [[ -d "$service" ]]; then
     compose_files=("$service/"*compose.y*ml)
@@ -13,3 +13,4 @@ done
 
 add_network_names.sh
 add_volume_names.sh
+echo "::endgroup::"
