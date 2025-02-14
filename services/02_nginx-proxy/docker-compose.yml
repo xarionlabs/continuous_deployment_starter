@@ -18,5 +18,5 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: ${HOST}/30
+        - subnet: ${HOST}/32
           gateway: ${GATEWAY}
