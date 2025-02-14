@@ -36,4 +36,5 @@ jobs:
             set +o allexport
             check-service-envs.sh
             generate_quadlets.sh
+            generate_meta_services.sh
             start_all_services.sh
