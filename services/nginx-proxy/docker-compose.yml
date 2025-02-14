@@ -8,8 +8,15 @@ services:
       - /run/user/${UID}/podman/podman.sock:/tmp/docker.sock:ro
     networks:
       - proxy_network
+    ports:
+      - "${HOST}:80:80"
+      - "${HOST}:443:443"
     restart: unless-stopped
 
 networks:
   proxy_network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: ${HOST}/24
+          gateway: ${GATEWAY}
