@@ -1,6 +1,7 @@
 #!/bin/bash
-
+echo "::group::$(basename "$0") log"
 set -e
+trap 'echo "::endgroup::"; echo "❌ $(basename "$0") failed!"' EXIT
 
 UNITS_DIR="$HOME/.config/containers/systemd"
 SYSTEMD_DIR="$HOME/.config/systemd/user"
@@ -111,3 +112,4 @@ echo "Reloading systemd..."
 systemctl --user daemon-reload
 
 echo "All systemd meta-services generated successfully."
+echo "::endgroup::"

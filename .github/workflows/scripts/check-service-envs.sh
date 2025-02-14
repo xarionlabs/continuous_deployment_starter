@@ -1,6 +1,8 @@
 #!/bin/bash
-
+echo "::group::$(basename "$0") log"
 set -e
+trap 'echo "::endgroup::"; echo "❌ $(basename "$0") failed!"' EXIT
+
 missing_any=0
 
 if [[ ! -d "services" ]]; then
@@ -23,7 +25,7 @@ for service in services/*; do
     done
   fi
 done
-
+echo "::endgroup::"
 if [[ "$missing_any" -eq 1 ]]; then
     echo "❌ Missing environment variables detected. Please check the output above.\n
     Make sure that your Github environment has these variables set. "

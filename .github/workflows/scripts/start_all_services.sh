@@ -1,5 +1,5 @@
 #!/bin/bash
-
+echo "::group::$(basename "$0") log"
 set -e
 
 SYSTEMD_DIR="$HOME/.config/systemd/user"
@@ -26,7 +26,7 @@ for type in container network volume; do
         SERVICE_FILES+=("$service_name")
     done
 done
-
+echo "::endgroup::"
 FAILED_SERVICES=()
 
 for service in "${SERVICE_FILES[@]}"; do
