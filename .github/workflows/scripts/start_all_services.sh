@@ -4,6 +4,9 @@ echo "::group::$(basename "$0") log"
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 UNITS_DIR="$HOME/.config/containers/systemd"
 
+echo "Reloading systemd..."
+systemctl --user daemon-reload
+
 echo "Restarting all container services..."
 systemctl --user restart all-containers.service
 

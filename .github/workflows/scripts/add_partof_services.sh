@@ -28,7 +28,4 @@ update_unit_partof "network" ".network"
 update_unit_partof "volume" ".volume"
 update_unit_partof "container" ".container"
 
-echo "Reloading systemd..."
-systemctl --user daemon-reload
-
 echo "All individual services updated successfully."
