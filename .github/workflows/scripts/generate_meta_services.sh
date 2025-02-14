@@ -1,8 +1,7 @@
 #!/bin/bash
 echo "::group::$(basename "$0") log"
 set -e
-trap 'echo "::endgroup::"; echo "❌ $(basename "$0") failed!"' EXIT
-
+trap 'EXIT_CODE=$?; echo "::endgroup::"; if [ $EXIT_CODE -ne 0 ]; then echo "❌ $(basename "$0") failed!"; else echo "✅ $(basename "$0") succeeded!"; fi' EXIT
 UNITS_DIR="$HOME/.config/containers/systemd"
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 

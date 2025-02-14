@@ -1,6 +1,5 @@
 #!/bin/bash
 echo "::group::$(basename "$0") log"
-set -e
 
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 UNITS_DIR="$HOME/.config/containers/systemd"
