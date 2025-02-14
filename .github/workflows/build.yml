@@ -87,6 +87,7 @@ jobs:
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
           context: applications/${{ matrix.APPLICATION }}
+          pull: true
           push: false
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
