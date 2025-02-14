@@ -9,13 +9,15 @@ mkdir -p "$UNITS_DIR"
 mkdir -p "$SYSTEMD_DIR"
 
 generate_meta_service() {
-    local type=$1  # "network", "volume", or "container"
+    local type=$1  # "network", "volume", "container"
+    local suffix=$2  # Naming suffix: "-network", "-volume", or "" for containers
     local meta_service="$SYSTEMD_DIR/all-${type}s.service"
     local services_list=()
 
     for file in "$UNITS_DIR"/*."$type"; do
         [ -e "$file" ] || continue
-        service_name="$(basename "$file" ."$type").service"
+        base_name="$(basename "$file" ."$type")"
+        service_name="${base_name}${suffix}.service"
         services_list+=("$service_name")
     done
 
@@ -47,9 +49,9 @@ WantedBy=default.target
 EOF
 }
 
-generate_meta_service "network"
-generate_meta_service "volume"
-generate_meta_service "container"
+generate_meta_service "network" "-network"
+generate_meta_service "volume" "-volume"
+generate_meta_service "container" ""
 
 NETWORKS_SERVICE="$SYSTEMD_DIR/all-networks.service"
 VOLUMES_SERVICE="$SYSTEMD_DIR/all-volumes.service"
@@ -58,7 +60,8 @@ CONTAINER_SERVICES=()
 
 for file in "$UNITS_DIR"/*.container; do
     [ -e "$file" ] || continue
-    service_name="$(basename "$file" .container).service"
+    base_name="$(basename "$file" .container)"
+    service_name="${base_name}.service"
     CONTAINER_SERVICES+=("$service_name")
 done
 
