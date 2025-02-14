@@ -109,8 +109,5 @@ RemainAfterExit=true
 WantedBy=default.target
 EOF
 
-echo "Reloading systemd..."
-systemctl --user daemon-reload
-
 echo "All systemd meta-services generated successfully."
 
