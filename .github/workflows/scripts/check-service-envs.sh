@@ -24,7 +24,7 @@ for service in services/*; do
     done
   fi
 done
-echo "::endgroup::"
+
 if [[ "$missing_any" -eq 1 ]]; then
     echo "❌ Missing environment variables detected. Please check the output above.\n
     Make sure that your Github environment has these variables set. "

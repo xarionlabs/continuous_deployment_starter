@@ -32,5 +32,4 @@ while IFS= read -r SECRET_ROW; do
      echo "Created Podman secret: $SECRET_NAME"
 done <<< "$PARSED_SECRETS"
 
-echo "::endgroup::"
 echo "Done!"

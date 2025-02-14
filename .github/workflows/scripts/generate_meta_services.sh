@@ -2,6 +2,7 @@
 echo "::group::$(basename "$0") log"
 set -e
 trap 'EXIT_CODE=$?; echo -n "::endgroup::"; if [ $EXIT_CODE -ne 0 ]; then echo "❌ $(basename "$0") failed!"; else echo "✅ $(basename "$0") succeeded!"; fi' EXIT
+
 UNITS_DIR="$HOME/.config/containers/systemd"
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 
@@ -32,6 +33,7 @@ generate_meta_service() {
     cat > "$meta_service" <<EOF
 [Unit]
 Description=Service to manage all $type services
+PartOf=all-containers.service
 EOF
 
     echo "Requires=${services_list[*]}" >> "$meta_service"
@@ -51,7 +53,7 @@ EOF
 
 generate_meta_service "network" "-network"
 generate_meta_service "volume" "-volume"
-generate_meta_service "container" ""
+
 
 NETWORKS_SERVICE="$SYSTEMD_DIR/all-networks.service"
 VOLUMES_SERVICE="$SYSTEMD_DIR/all-volumes.service"
@@ -111,4 +113,4 @@ echo "Reloading systemd..."
 systemctl --user daemon-reload
 
 echo "All systemd meta-services generated successfully."
-echo "::endgroup::"
+
