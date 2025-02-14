@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "::group::$(basename "$0") log"
 set -e
-trap 'EXIT_CODE=$?; echo "::endgroup::"; if [ $EXIT_CODE -ne 0 ]; then echo "❌ $(basename "$0") failed!"; else echo "✅ $(basename "$0") succeeded!"; fi' EXIT
+trap 'EXIT_CODE=$?; echo -n "::endgroup::"; if [ $EXIT_CODE -ne 0 ]; then echo "❌ $(basename "$0") failed!"; else echo "✅ $(basename "$0") succeeded!"; fi' EXIT
 
 SECRETS_JSON="$1"
 
