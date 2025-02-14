@@ -6,14 +6,14 @@ services:
     environment:
       VIRTUAL_HOST: ${APP_1_VIRTUAL_HOST}
       DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
-      POSTGRES_PASSWORD_FILE: /run/secrets/pg_pass
+      POSTGRES_PASSWORD_FILE: /run/secrets/PG_PASS
 
     networks:
       - db_network
       - proxy_network
     restart: unless-stopped
     secrets:
-      - pg_pass
+      - PG_PASS
 
 networks:
   db_network:
