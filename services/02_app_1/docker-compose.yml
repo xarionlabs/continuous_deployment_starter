@@ -7,7 +7,8 @@ services:
       VIRTUAL_HOST: ${APP_1_VIRTUAL_HOST}
       DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
       POSTGRES_PASSWORD_FILE: /run/secrets/PG_PASS
-
+    expose:
+      - "8080"
     networks:
       - db_network
       - proxy_network
