@@ -90,6 +90,7 @@ jobs:
           push: false
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
       
       - name: Run tests on the Docker image
         id: test-images
@@ -105,6 +106,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-to: type=gha,mode=max
 
       # This step generates an artifact attestation for the image, which is an unforgeable statement about where and how it was built. It increases supply chain security for people who consume the image. For more information, see [AUTOTITLE](/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds).
       - name: Generate artifact attestation
