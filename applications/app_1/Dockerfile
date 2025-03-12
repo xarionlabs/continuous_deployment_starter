@@ -1,5 +1,8 @@
 FROM python:3.12-bookworm
 
+RUN apt-get update \
+    && apt-get -y install libpq-dev gcc \
+    && pip install psycopg2
 WORKDIR /app
 
 COPY requirements.txt /app
