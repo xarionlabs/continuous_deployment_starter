@@ -95,7 +95,7 @@ jobs:
 
       - name: Run tests on the Docker image
         id: test-images
-        run: docker run --entrypoint=/app/test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
+        run: docker run --entrypoint=/app/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2

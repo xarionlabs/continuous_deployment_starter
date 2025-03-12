@@ -9,8 +9,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY src /app/src
 COPY test /app/test
-COPY test.sh /app
+COPY entrypoint_test.sh /app
 
-RUN chmod +x test.sh
+RUN chmod +x entrypoint_test.sh
 
 ENTRYPOINT ["python", "-m", "streamlit", "run", "src/application.py"]
