@@ -1,0 +1,49 @@
+services:
+  db:
+    image: docker.io/postgres:16.6
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: localpassword
+      POSTGRES_DB: mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - db_network
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      - db
+    working_dir: /src
+    volumes:
+      - ./src:/src
+    entrypoint: ["streamlit", "run", "--server.headless", "true", "--server.port", "8080", "/src/app/main.py"]
+    environment:
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/mydatabase
+    ports:
+      - "8080:8080"
+    networks:
+      - db_network
+
+  api:
+    build: .
+    depends_on:
+      - db
+    working_dir: /src
+    volumes:
+      - ./src:/src
+    entrypoint: ["fastapi", "dev", "/src/api/main.py", "--host", "0.0.0.0"]
+    environment:
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/mydatabase
+    ports:
+      - "8000:8000"
+    networks:
+      - db_network
+
+volumes:
+  postgres_data:
+
+networks:
+  db_network:
+    driver: bridge
