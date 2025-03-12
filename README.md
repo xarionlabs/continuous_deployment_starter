@@ -37,6 +37,13 @@
   - mongodb, redis, litellm, chromadb, nginx, etc.
   - version.env
 - workers # to be figured out
+- libraries
+  - shared_lib
+    - src
+      - __init__.py
+      - shared_function.py
+    - setup.py
+    - version.py
 - README
 - .gitignore
 - etc
@@ -74,6 +81,90 @@
 - **Release Branch**: We have a branch called *releases*. This branch has extra commits that append the latest version in `services/applications/version.env`. The bottom line of this file indicates the APP_VERSION env variable. This env variable is going to be used by all the services that are developed by us. When we pull the latest `releases` branch, we should get the latest deployed (or deployable) version with the version at the bottom of the `services/version.env` file. 
 - **Applications**: all applications needto be defined as a deployable docker-compose item under `services/applications/docker-compose.yaml`
 
+## Using the Shared Library
 
+### Local Development
 
+For local development, you can use editable pip installs to include the shared library in your applications. This allows you to make changes to the shared library and see the effects immediately without needing to reinstall the library.
 
+1. Navigate to the `applications/app_1` or `applications/app_2` directory.
+2. Ensure that the `requirements.txt` file includes the following line:
+   ```
+   -e ../../libraries/shared_lib
+   ```
+3. Install the requirements:
+   ```
+   pip install -r requirements.txt
+   ```
+
+### Versioning the Shared Library
+
+The shared library includes a `version.py` file that defines the current version of the library. Update this file with each release to keep track of the version.
+
+1. Open the `libraries/shared_lib/version.py` file.
+2. Update the `__version__` variable with the new version number:
+   ```python
+   __version__ = "0.1.1"  # Update to the new version
+   ```
+
+### Shared Library Structure
+
+The shared library is organized as follows:
+
+- `libraries/shared_lib`
+  - `src`
+    - `__init__.py`
+    - `shared_function.py`
+  - `setup.py`
+  - `version.py`
+
+### Example Usage
+
+In your application, you can import and use the shared functions from the shared library. For example, in `applications/app_1/src/application.py`:
+
+```python
+from shared_lib.src.shared_function import get_shared_str
+
+def get_str():
+    return get_shared_str()
+```
+
+This allows you to reuse code across multiple applications, promoting code sharing and reducing duplication.
+
+## Docker Compose for Local Development
+
+To facilitate local development, you can use Docker Compose to set up your development environment. This includes mounting the shared library as a volume and building the dependencies beforehand.
+
+1. Create a `docker-compose.yml` file in the root directory of your project with the following content:
+
+```yaml
+version: '3.8'
+
+services:
+  app_1:
+    build:
+      context: ./applications/app_1
+    volumes:
+      - ./libraries/shared_lib:/app/libraries/shared_lib
+    environment:
+      - PYTHONPATH=/app/libraries/shared_lib/src
+    ports:
+      - "8080:8080"
+
+  app_2:
+    build:
+      context: ./applications/app_2
+    volumes:
+      - ./libraries/shared_lib:/app/libraries/shared_lib
+    environment:
+      - PYTHONPATH=/app/libraries/shared_lib/src
+    ports:
+      - "8081:8081"
+```
+
+2. Run the following command to start the services:
+   ```
+   docker-compose up --build
+   ```
+
+This setup ensures that the shared library is mounted as a volume, allowing you to make changes to the library and see the effects immediately in your applications. The dependencies are also built beforehand to ensure that the applications have all the required packages installed.

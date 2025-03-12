@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app_1:
+    build:
+      context: ./applications/app_1
+    volumes:
+      - ./libraries/shared_lib:/app/libraries/shared_lib
+    environment:
+      - PYTHONPATH=/app/libraries/shared_lib/src
+    ports:
+      - "8080:8080"
+
+  app_2:
+    build:
+      context: ./applications/app_2
+    volumes:
+      - ./libraries/shared_lib:/app/libraries/shared_lib
+    environment:
+      - PYTHONPATH=/app/libraries/shared_lib/src
+    ports:
+      - "8081:8081"
