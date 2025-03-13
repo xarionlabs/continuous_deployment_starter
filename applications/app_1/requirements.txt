@@ -1,6 +1,7 @@
-streamlit==1.40.0
+streamlit==1.43.0
 pytest==8.3.4
 fastapi[standard]==0.115.11
 sqlalchemy==2.0.39
 alembic==1.15.1
 psycopg2-binary~=2.9.10
+Authlib>=1.5.1

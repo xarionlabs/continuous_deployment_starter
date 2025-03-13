@@ -19,6 +19,8 @@ services:
     volumes:
       - ./src:/src
     entrypoint: ["streamlit", "run", "--server.headless", "true", "--server.port", "8080", "/src/app/main.py"]
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://postgres:localpassword@db:5432/mydatabase
     ports:

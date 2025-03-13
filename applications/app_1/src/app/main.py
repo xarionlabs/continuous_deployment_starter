@@ -1,8 +1,12 @@
 import streamlit as st
+from st_oauth import setup
+setup()
 
+if not st.experimental_user.is_logged_in:
+    if st.button("Log in with Google"):
+        st.login()
+    st.stop()
 
-def get_str():
-    return "hello world this is our first application! welcome to my world."
-
-
-st.text(get_str())
+if st.button("Log out"):
+    st.logout()
+st.markdown(f"Welcome! {st.experimental_user.name}")
