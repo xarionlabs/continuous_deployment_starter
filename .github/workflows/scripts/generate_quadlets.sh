@@ -14,4 +14,5 @@ done
 add_network_names.sh
 add_volume_names.sh
 add_partof_services.sh
+add_secrets_to_env.sh
 echo "::endgroup::"
