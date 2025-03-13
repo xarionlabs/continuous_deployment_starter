@@ -15,6 +15,9 @@ services:
     restart: unless-stopped
     secrets:
       - PG_PASS
+      - STREAMLIT_OAUTH_CLIENT_ID,type=env,target=STREAMLIT_OAUTH_CLIENT_ID
+      - STREAMLIT_OAUTH_CLIENT_SECRET,type=env,target=STREAMLIT_OAUTH_CLIENT_SECRET
+      - STREAMLIT_OAUTH_COOKIE_SECRET,type=env,target=STREAMLIT_OAUTH_COOKIE_SECRET
 
 networks:
   db_network:
