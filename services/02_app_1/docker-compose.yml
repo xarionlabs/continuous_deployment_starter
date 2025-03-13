@@ -6,7 +6,7 @@ services:
     environment:
       VIRTUAL_HOST: ${APP_1_VIRTUAL_HOST}
       DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
-      POSTGRES_PASSWORD_FILE: /run/secrets/PG_PASS
+      PG_PASS: ${PG_PASS}
     expose:
       - "8080"
     networks:
@@ -15,12 +15,13 @@ services:
     restart: unless-stopped
     secrets:
       - PG_PASS
-      - STREAMLIT_OAUTH_CLIENT_ID,type=env,target=STREAMLIT_OAUTH_CLIENT_ID
-      - STREAMLIT_OAUTH_CLIENT_SECRET,type=env,target=STREAMLIT_OAUTH_CLIENT_SECRET
-      - STREAMLIT_OAUTH_COOKIE_SECRET,type=env,target=STREAMLIT_OAUTH_COOKIE_SECRET
+      - STREAMLIT_OAUTH_CLIENT_ID
+      - STREAMLIT_OAUTH_CLIENT_SECRET
+      - STREAMLIT_OAUTH_COOKIE_SECRET
 
 networks:
   db_network:
     driver: bridge
   proxy_network:
     driver: bridge
+
