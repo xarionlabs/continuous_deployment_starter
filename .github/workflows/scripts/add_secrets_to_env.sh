@@ -5,8 +5,8 @@ cd "$CONFIG_DIR" || exit 1
 
 for file in *.container; do
   [[ -e "$file" ]] || continue
-  if grep -q '^Secrets=' "$file"; then
-    sed -i '/^Secrets=/ s/$/,type=env/' "$file"
+  if grep -q '^Secret=' "$file"; then
+    sed -i '/^Secret=/ s/$/,type=env/' "$file"
     echo "Updated Secrets in $file"
   fi
 done
