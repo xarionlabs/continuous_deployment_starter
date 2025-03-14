@@ -1,0 +1,6 @@
+username,database,role
+appuser,mydatabase,write
+readonlyuser,mydatabase,read
+admin,mydatabase,admin
+devuser,devdb,write
+qauser,qadb,read
