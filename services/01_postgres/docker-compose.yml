@@ -15,7 +15,6 @@ services:
 
   user_management:
     image: ghcr.io/xarionlabs/continuous_deployment_starter/utilities/user_management:latest
-    entrypoint: entrypoint.sh
     volumes:
       - ./users.csv:/app/users.csv
     environment:
