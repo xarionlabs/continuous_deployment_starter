@@ -1,5 +1,8 @@
 #!/bin/bash
 echo "::group::$(basename "$0") log"
+# clean up the existing services under ~/.config/containers/systemd
+rm ~/.config/containers/systemd/*
+
 for service in $(find services -mindepth 1 -maxdepth 1 -type d | sort -r); do
   if [[ -d "$service" ]]; then
     compose_files=("$service/"*compose.y*ml)

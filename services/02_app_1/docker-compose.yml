@@ -24,6 +24,8 @@ services:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
     depends_on:
       - db
+      - user_management
+      - app_1_migrations
     environment:
       VIRTUAL_HOST: ${APP_1_API_VIRTUAL_HOST}
       POSTGRES_USER: app_1
@@ -43,6 +45,7 @@ services:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
     depends_on:
       - db
+      - user_management
     environment:
       POSTGRES_USER: app_1_migrations
       POSTGRES_HOST: db
