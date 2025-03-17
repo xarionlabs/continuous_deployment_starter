@@ -5,7 +5,9 @@ services:
       - db
     environment:
       VIRTUAL_HOST: ${APP_1_VIRTUAL_HOST}
-      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
+      POSTGRES_USER: app_1
+      POSTGRES_HOST: db
+      POSTGRES_DB: app_1
     expose:
       - "8080"
     networks:
@@ -13,7 +15,7 @@ services:
       - proxy_network
     restart: unless-stopped
     secrets:
-      - POSTGRES_PASSWORD
+      - PSQL_APP_1_PASSWORD
       - STREAMLIT_OAUTH_CLIENT_ID
       - STREAMLIT_OAUTH_CLIENT_SECRET
       - STREAMLIT_OAUTH_COOKIE_SECRET
@@ -24,7 +26,9 @@ services:
       - db
     environment:
       VIRTUAL_HOST: ${APP_1_API_VIRTUAL_HOST}
-      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
+      POSTGRES_USER: app_1
+      POSTGRES_HOST: db
+      POSTGRES_DB: app_1
     entrypoint: ["entrypoint_api.sh"]
     expose:
       - "8000"
@@ -33,20 +37,22 @@ services:
       - proxy_network
     restart: unless-stopped
     secrets:
-      - POSTGRES_PASSWORD
+      - PSQL_APP_1_PASSWORD
 
   app_1_migrations:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
+      POSTGRES_USER: app_1_migrations
+      POSTGRES_HOST: db
+      POSTGRES_DB: app_1
       PYTHONPATH: /app/src:$(PYTHONPATH)
     working_dir: "/app/src/data/db/migrations"
     entrypoint: ["entrypoint_migrations.sh"]
     restart: "no"
     secrets:
-      - POSTGRES_PASSWORD
+      - PSQL_APP_1_MIGRATIONS_PASSWORD
 
 networks:
   db_network:

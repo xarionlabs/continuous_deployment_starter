@@ -13,10 +13,11 @@ RUN pip3 install -r requirements.txt
 COPY src /app/src
 COPY test /app/test
 
-
 COPY entrypoint_test.sh /app
+COPY entrypoint.sh /app
 
 RUN chmod +x entrypoint_test.sh
+RUN chmod +x entrypoint.sh
 
 RUN useradd -ms /bin/bash py_postgres
 
