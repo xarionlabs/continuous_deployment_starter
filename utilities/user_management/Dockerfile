@@ -21,6 +21,8 @@ RUN chmod +x entrypoint.sh
 
 RUN useradd -ms /bin/bash py_postgres
 
+RUN chown -R py_postgres:py_postgres /app
+
 USER py_postgres
 
-ENTRYPOINT ["python"]
+ENTRYPOINT ["entrypoint.sh"]

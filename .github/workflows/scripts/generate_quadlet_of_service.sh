@@ -10,3 +10,5 @@
       --overwrite \
       compose \
       -
+
+find . -type f ! -name 'docker-compose.yml' -exec cp {} ~/.config/containers/systemd \;
