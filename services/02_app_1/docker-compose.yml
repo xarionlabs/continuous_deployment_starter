@@ -53,6 +53,8 @@ services:
       PYTHONPATH: /app/src:$(PYTHONPATH)
     entrypoint: ["./entrypoint_migrations.sh"]
     restart: "no"
+    networks:
+      - db_network
     secrets:
       - PSQL_APP_1_MIGRATIONS_PASSWORD
 
