@@ -1,0 +1,43 @@
+services:
+  db:
+    image: docker.io/postgres:16.6
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: mydatabase
+      POSTGRES_PASSWORD: supersecurepassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - db_network
+    restart: unless-stopped
+
+  user-management:
+    build: .
+    depends_on:
+      - db
+    networks:
+      - db_network
+    volumes:
+      - ./test/users.csv:/app/users.csv
+      - ./entrypoint.sh:/app/entrypoint.sh
+      - ./entrypoint_test.sh:/app/entrypoint_test.sh
+      - ./:/src
+    working_dir: /src
+    entrypoint: ["./entrypoint_test.sh"]
+    environment:
+      DB_HOST: "db"
+      DB_USER: "postgres"
+      DB_NAME: "mydatabase"
+      POSTGRES_PASSWORD: "supersecurepassword"
+      PSQL_APPUSER_PASSWORD: "secureappuserpassword"
+      PSQL_READONLYUSER_PASSWORD: "securereadonlypassword"
+      PSQL_ADMIN_PASSWORD: "secureadminpassword"
+      PSQL_DEVUSER_PASSWORD: "securedevuserpassword"
+      PSQL_QAUSER_PASSWORD: "secureqauserpassword"
+
+
+volumes:
+  postgres_data:
+
+networks:
+  db_network:
