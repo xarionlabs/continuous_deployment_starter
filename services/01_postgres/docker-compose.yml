@@ -14,17 +14,17 @@ services:
       - POSTGRES_PASSWORD
 
   user_management:
-    build: utilities/user_management
+    image: ghcr.io/xarionlabs/continuous_deployment_starter/utilities/user_management:latest
     entrypoint: entrypoint.sh
     volumes:
-      - services/01_postgres/users.csv:/app/users.csv
+      - ./users.csv:/app/users.csv
     environment:
       POSTGRES_USER: postgres
     depends_on:
       - db
     networks:
       - db_network
-    restart: no
+    restart: "no"
     secrets:
       - POSTGRES_PASSWORD
       - PSQL_APP_1_MIGRATIONS_PASSWORD
