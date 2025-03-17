@@ -1,5 +1,5 @@
 services:
-  app_1:
+  app_1_application:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
     depends_on:
       - db
@@ -17,6 +17,36 @@ services:
       - STREAMLIT_OAUTH_CLIENT_ID
       - STREAMLIT_OAUTH_CLIENT_SECRET
       - STREAMLIT_OAUTH_COOKIE_SECRET
+
+  app_1_api:
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
+    depends_on:
+      - db
+    environment:
+      VIRTUAL_HOST: ${APP_1_API_VIRTUAL_HOST}
+      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
+    entrypoint: ["entrypoint_api.sh"]
+    expose:
+      - "8000"
+    networks:
+      - db_network
+      - proxy_network
+    restart: unless-stopped
+    secrets:
+      - POSTGRES_PASSWORD
+
+  app_1_migrations:
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app_1:${APP_VERSION}"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://myuser:mypassword@db:5432/mydatabase
+      PYTHONPATH: /app/src:$(PYTHONPATH)
+    working_dir: "/app/src/data/db/migrations"
+    entrypoint: ["entrypoint_migrations.sh"]
+    restart: "no"
+    secrets:
+      - POSTGRES_PASSWORD
 
 networks:
   db_network:
