@@ -23,7 +23,7 @@ services:
       - .env
     environment:
       POSTGRES_USER: postgres
-      PSQL_POSTGRES_USER_PASSWORD: localpassword
+      PSQL_POSTGRES_PASSWORD: localpassword
       POSTGRES_DB: mydatabase
       POSTGRES_HOST: db
     ports:
@@ -41,11 +41,29 @@ services:
     entrypoint: ["fastapi", "dev", "/src/api/main.py", "--host", "0.0.0.0"]
     environment:
       POSTGRES_USER: postgres
-      PSQL_POSTGRES_USER_PASSWORD: localpassword
+      PSQL_POSTGRES_PASSWORD: localpassword
       POSTGRES_DB: mydatabase
       POSTGRES_HOST: db
     ports:
       - "8000:8000"
+    networks:
+      - db_network
+
+
+  generate_migrations:
+    build: .
+    depends_on:
+      - db
+    working_dir: /src/data/db/migrations
+    volumes:
+      - ./src:/src
+    entrypoint: ['alembic', 'revision', '--autogenerate', '-m', 'next version']
+    environment:
+      PYTHONPATH: /src
+      POSTGRES_USER: postgres
+      PSQL_POSTGRES_PASSWORD: localpassword
+      POSTGRES_DB: mydatabase
+      POSTGRES_HOST: db
     networks:
       - db_network
 
