@@ -13,6 +13,7 @@ from data.db.models import target_metadata as models_target_metadata
 # access to the values within the .ini file in use.
 config = context.config
 
+
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

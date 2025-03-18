@@ -61,7 +61,6 @@ def create_load_function_from_sql(sql_file, db_name):
     );
     """ + sql_content
 
-    sql_content = sql_content.replace("CREATE DATABASE", "-- CREATE DATABASE")  # Comment out the database creation line
     # return a callable that executes the SQL with the following parameters host, port, user, dbname, password
     def load_function(host, port, user, dbname, password, sql=sql_content):
         sql = sql.replace("{db}", dbname)

@@ -61,12 +61,6 @@ def create_user_management_sql(csv_file=CSV_FILE, sql_dir=SQL_FILE):
         with open(sql_file, "w") as sqlfile:
             sqlfile.write(f"-- SQL script for database {db}\n")
 
-            # Step 0: Create database if it doesn't exist
-            sqlfile.write(f"""
-            -- Create database if it doesn't exist
-            CREATE DATABASE {db};
-            """)
-
             # Step 1: Create role groups (if they don't exist)
             sqlfile.write(f"""
             DO $$ 
