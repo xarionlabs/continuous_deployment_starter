@@ -2,11 +2,16 @@
 
 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
 python -m manage_users
+
 export PGPASSWORD=$POSTGRES_PASSWORD
 
-if [ ! -f /app/users.sql ]; then
-    echo "users.sql file not found!"
-    exit 1
-fi
-
-psql -h db -U $POSTGRES_USER -f /app/users.sql
+for file in /app/users.sql/*.sql; do
+    if [ -f "$file" ]; then
+        echo "Processing $file..."
+        # Extract the database name from the file name
+        db_name=$(basename "$file" .sql)
+        psql -h db -U $POSTGRES_USER -d $db_name -f "$file"
+    else
+        echo "$file not found!"
+    fi
+done
