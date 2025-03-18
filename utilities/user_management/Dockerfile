@@ -25,4 +25,4 @@ RUN chown -R py_postgres:py_postgres /app
 
 USER py_postgres
 
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]

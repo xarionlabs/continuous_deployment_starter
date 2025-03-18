@@ -49,5 +49,6 @@ def test_user_permissions(user, postgresql_testdb1, postgresql_testdb2):
         # ✅ Should be able to ALTER and DROP tables
         cur.execute("ALTER TABLE public.test_table ADD COLUMN admin_extra TEXT;")
         cur.execute("DROP TABLE public.test_table;")
+        cur.execute("CREATE TABLE public.test_table_admin (id SERIAL PRIMARY KEY, data TEXT);")
 
     cur.close()

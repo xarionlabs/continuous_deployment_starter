@@ -36,7 +36,7 @@ import os
 import csv
 
 
-def create_user_management_sql(csv_file, sql_dir):
+def create_user_management_sql(csv_file=CSV_FILE, sql_dir=SQL_FILE):
     """Generate SQL scripts for user and role management using role groups."""
     databases = {}  # Store users grouped by database
     all_users = set()
@@ -60,6 +60,12 @@ def create_user_management_sql(csv_file, sql_dir):
         sql_file = os.path.join(sql_dir, f"{db}.sql")
         with open(sql_file, "w") as sqlfile:
             sqlfile.write(f"-- SQL script for database {db}\n")
+
+            # Step 0: Create database if it doesn't exist
+            sqlfile.write(f"""
+            -- Create database if it doesn't exist
+            CREATE DATABASE {db};
+            """)
 
             # Step 1: Create role groups (if they don't exist)
             sqlfile.write(f"""
@@ -95,8 +101,10 @@ def create_user_management_sql(csv_file, sql_dir):
             -- Grant full admin access to admin_group
             GRANT CONNECT ON DATABASE {db} TO admin_group;
             GRANT USAGE ON SCHEMA public TO admin_group;
+            GRANT CREATE ON SCHEMA public TO admin_group;
             GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO admin_group;
             GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO admin_group;
+            GRANT ALL PRIVILEGES ON DATABASE {db} TO admin_group;
             DO $$ 
             DECLARE r RECORD;
             BEGIN
