@@ -45,6 +45,14 @@ jobs:
           for app in $(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'); do
             echo "Running e2e tests for $app in $ENVIRONMENT environment..."
             
+            # Debug information
+            echo "Debug - Image reference components:"
+            echo "REGISTRY: $REGISTRY"
+            echo "GITHUB_REPOSITORY: ${{ github.repository }}"
+            echo "APP: $app"
+            echo "TAG: $TAG"
+            echo "Full image reference: $REGISTRY/${{ github.repository }}/$app:$TAG"
+            
             # Run the e2e tests using the application's own entrypoint
             docker run --rm \
               --network host \
