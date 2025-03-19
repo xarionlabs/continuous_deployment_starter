@@ -64,6 +64,7 @@ jobs:
     needs: [define-tag, skip-check]
     outputs:
       applications: ${{ steps.find_applications.outputs.applications }}
+      has_changes: ${{ steps.find_applications.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -74,7 +75,8 @@ jobs:
         run: |
           if [ "${{ needs.skip-check.outputs.force_build }}" = "true" ]; then
             # If force_build is true, get all applications
-            echo "applications=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
+            CHANGED_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///")
+            echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             # Get the list of changed files
             CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
@@ -82,14 +84,15 @@ jobs:
             # Find applications that have changed
             CHANGED_APPS=$(echo "$CHANGED_FILES" | grep "^applications/" | cut -d'/' -f2 | sort -u)
             
-            # If no applications changed, get all applications
-            if [ -z "$CHANGED_APPS" ]; then
-              CHANGED_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///")
+            if [ -n "$CHANGED_APPS" ]; then
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_changes=false" >> $GITHUB_OUTPUT
             fi
-            
-            # Convert to JSON array
-            echo "applications=$(echo "$CHANGED_APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
           fi
+          
+          # Convert to JSON array
+          echo "applications=$(echo "$CHANGED_APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
       - name: Print applications to build
         run: |
@@ -98,7 +101,7 @@ jobs:
 
   build-application:
     needs: [define-tag, find-changed-applications]
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -142,7 +145,7 @@ jobs:
 
       - name: Run tests on the Docker image
         id: test-images
-        run: docker run --entrypoint=/app/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
+        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
@@ -156,6 +159,8 @@ jobs:
     needs: 
       - build-application
       - define-tag
+      - find-changed-applications
+    if: ${{ needs.find-changed-applications.outputs.has_changes == 'true' }}
     permissions:
       contents: write
     steps:
@@ -178,6 +183,8 @@ jobs:
       - define-tag
       - build-application
       - create-tag-ref
+      - find-changed-applications
+    if: ${{ needs.find-changed-applications.outputs.has_changes == 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -194,9 +201,9 @@ jobs:
           git push origin releases
 
   trigger-staging-release:
-    needs: [build-application, create-tag-ref, update-the-release-branch]
+    needs: [build-application, create-tag-ref, update-the-release-branch, find-changed-applications]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     steps:
       - name: Trigger staging release
         run: |
@@ -207,7 +214,7 @@ jobs:
   trigger-staging-e2e:
     needs: [trigger-staging-release]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     steps:
       - name: Wait for staging release
         run: |
@@ -232,7 +239,7 @@ jobs:
   trigger-live-release:
     needs: [trigger-staging-e2e]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     steps:
       - name: Wait for staging e2e tests
         run: |
@@ -257,7 +264,7 @@ jobs:
   trigger-live-e2e:
     needs: [trigger-live-release]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     steps:
       - name: Wait for live release
         run: |
