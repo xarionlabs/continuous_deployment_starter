@@ -50,7 +50,7 @@ def test_user(db_session):
 def test_create_user(client):
     response = client.post(
         "/api/v1/users/",
-        params={"email": "new@example.com"},
+        json={"email": "new@example.com"},
         headers={"X-API-Key": "test_api_key"}
     )
     assert response.status_code == 200
@@ -88,7 +88,7 @@ def test_read_user_not_found(client):
 def test_update_user(client, test_user):
     response = client.put(
         f"/api/v1/users/{test_user.id}",
-        params={"email": "updated@example.com"},
+        json={"email": "updated@example.com"},
         headers={"X-API-Key": "test_api_key"}
     )
     assert response.status_code == 200
@@ -98,7 +98,7 @@ def test_update_user(client, test_user):
 def test_update_user_not_found(client):
     response = client.put(
         "/api/v1/users/999",
-        params={"email": "updated@example.com"},
+        json={"email": "updated@example.com"},
         headers={"X-API-Key": "test_api_key"}
     )
     assert response.status_code == 404
@@ -127,6 +127,6 @@ def test_delete_user_not_found(client):
 def test_missing_api_key(client):
     response = client.post(
         "/api/v1/users/",
-        params={"email": "new@example.com"}
+        json={"email": "new@example.com"}
     )
     assert response.status_code == 403

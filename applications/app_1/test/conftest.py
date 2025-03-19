@@ -1,16 +1,17 @@
 import os
+
+# Set environment variables before any imports
+os.environ["TESTING"] = "true"
+os.environ["API_KEY"] = "test_api_key"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Set testing environment
-os.environ["TESTING"] = "true"
-
 from data.db.connections import Base, get_db
 from api.main import app
-
 
 # Use in-memory SQLite for testing
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -43,7 +44,5 @@ def test_db():
 
 @pytest.fixture(scope="function")
 def client():
-    # Set test API key
-    os.environ["API_KEY"] = "test_api_key"
     with TestClient(app) as test_client:
         yield test_client 

@@ -1,3 +1,7 @@
 #!/bin/bash
-export PYTHONPATH=$PYTHONPATH:./src/
-pytest
+set -e
+
+export PYTHONPATH=$(pwd)/src:$PYTHONPATH
+
+echo "Running unit tests..."
+pytest test/ 

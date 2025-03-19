@@ -76,6 +76,17 @@ services:
     networks:
       - db_network
 
+  tests:
+    build: .
+    working_dir: /opt
+    volumes:
+      - ./src:/opt/src
+      - ./test:/opt/test
+      - ./entrypoints:/opt/entrypoints
+    networks:
+      - db_network
+    entrypoint: ["./entrypoints/entrypoint_test.sh"]
+
   e2e_tests:
     build: .
     depends_on:
