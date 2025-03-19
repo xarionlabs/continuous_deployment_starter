@@ -47,6 +47,7 @@ jobs:
 
   define-tag:
     runs-on: ubuntu-latest
+    needs: [skip-check]
     outputs:
       tag: ${{steps.create-commit-tag.outputs.commit_tag}}
     steps:
@@ -61,7 +62,7 @@ jobs:
 
   find-changed-applications:
     runs-on: ubuntu-latest
-    needs: [define-tag, skip-check]
+    needs: [skip-check]
     outputs:
       applications: ${{ steps.find_applications.outputs.applications }}
       has_changes: ${{ steps.find_applications.outputs.has_changes }}
@@ -159,7 +160,8 @@ jobs:
     needs: 
       - define-tag
       - find-changed-applications
-    if: ${{ !needs.skip-check.outputs.skip }}
+      - build-application
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     permissions:
       contents: write
     steps:
@@ -180,7 +182,7 @@ jobs:
       contents: write
     needs:
       - define-tag
-      - create-tag-ref
+      - find-changed-applications
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
@@ -191,25 +193,31 @@ jobs:
       - run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git merge -X theirs ${{ needs.define-tag.outputs.tag }}
-          if [ -n "${{ needs.define-tag.outputs.tag }}" ]; then
+          
+          if [ "${{ needs.find-changed-applications.outputs.has_changes }}" = "true" ]; then
+            # If we have application changes, merge the tag and update version.env
+            git merge -X theirs ${{ needs.define-tag.outputs.tag }}
             echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/version.env
             git add --force services/version.env
             git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
+          else
+            # If we have no application changes, just merge the current commit
+            git merge -X theirs ${{ github.sha }}
           fi
+          
           git push origin releases
 
   trigger-staging-release:
-    needs: [define-tag, update-the-release-branch]
+    needs: [update-the-release-branch]
     if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/release.yml
     with:
       environment: staging
     secrets: inherit
 
-
   trigger-staging-e2e:
     needs: [trigger-staging-release]
+    if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: staging
@@ -223,9 +231,9 @@ jobs:
       environment: live
     secrets: inherit
 
-
   trigger-live-e2e:
-    needs: [ trigger-live-release ]
+    needs: [trigger-live-release]
+    if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: live
