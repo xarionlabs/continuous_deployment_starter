@@ -21,7 +21,7 @@ services:
     volumes:
       - ./src:/opt/src
       - ./entrypoints:/opt/entrypoints
-    entrypoint: ["streamlit", "run", "--server.headless", "true", "--server.port", "8080", "/src/app/main.py"]
+    entrypoint: ["./entrypoints/entrypoint_app.sh"]
     env_file:
       - .env
     environment:
@@ -29,6 +29,7 @@ services:
       PSQL_POSTGRES_PASSWORD: localpassword
       POSTGRES_DB: mydatabase
       POSTGRES_HOST: db
+      DEVELOPMENT: "true"
     ports:
       - "8080:8080"
     networks:
@@ -50,6 +51,7 @@ services:
       POSTGRES_DB: mydatabase
       POSTGRES_HOST: db
       API_KEY: test_api_key
+      DEVELOPMENT: "true"
     ports:
       - "8000:8000"
     networks:

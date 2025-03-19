@@ -8,4 +8,11 @@ done
 echo "Database is ready!"
 
 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
-fastapi dev src/api/main.py --host 0.0.0.0 --port 8000
+
+if [ "$DEVELOPMENT" = "true" ]; then
+    echo "Starting FastAPI in development mode..."
+    fastapi dev src/api/main.py --host 0.0.0.0 --port 8000
+else
+    echo "Starting FastAPI in production mode..."
+    fastapi run src/api/main.py --host 0.0.0.0 --port 8000
+fi
