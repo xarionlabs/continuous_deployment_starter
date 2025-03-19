@@ -71,8 +71,8 @@ jobs:
             docker run --rm \
               --network host \
               --env-file .env \
-              "$REGISTRY/${{ github.repository }}/$app:$TAG" \
-              /app/e2e_tests/entrypoint_e2e.sh
+              --entrypoint /app/e2e_tests/entrypoint_e2e.sh \
+              "$REGISTRY/${{ github.repository }}/$app:$TAG" 
             
             # Exit if tests fail
             if [ $? -ne 0 ]; then
