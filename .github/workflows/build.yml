@@ -207,7 +207,7 @@ jobs:
     if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/release.yml
     with:
-      environment: live
+      environment: staging
 
 
   trigger-staging-e2e:
