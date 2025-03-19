@@ -1,40 +1,19 @@
 name: staging-release
+
 on:
-  workflow_run:
-    workflows: ["build"]
-    branches: [main]
-    types: 
-      - completed
+  workflow_dispatch:
+    inputs:
+      build_tag:
+        description: 'Build tag to use'
+        required: true
+        type: string
 
 jobs:
   release:
-    runs-on: ubuntu-latest
-    environment: staging
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    steps:
-      - name: executing remote ssh commands using ssh key
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          VARS_JSON: ${{ toJson(vars) }}
-          SECRETS_JSON: ${{ toJson(secrets) }}
-        with:
-          host: ${{ vars.HOST }}
-          username: ${{ vars.USERNAME }}
-          key: ${{ secrets.KEY }}
-          envs: VARS_JSON, SECRETS_JSON
-          script: |
-            set -e
-            cd ~/runtime/continuous_deployment_starter
-            export PATH=$PATH:$(pwd)/.github/workflows/scripts/
-            git checkout releases
-            git pull origin releases
-            refresh_podman_secrets.sh "$SECRETS_JSON"
-            create_env_variables.sh
-            set -o allexport
-            source services/version.env
-            source .env
-            set +o allexport
-            check-service-envs.sh
-            generate_quadlets.sh
-            generate_meta_services.sh
-            start_all_services.sh
+    uses: ./.github/workflows/release.yml
+    timeout-minutes: 30
+    with:
+      environment: staging
+      build_tag: ${{ github.event.inputs.build_tag }}
+    secrets:
+      KEY: ${{ secrets.KEY }}

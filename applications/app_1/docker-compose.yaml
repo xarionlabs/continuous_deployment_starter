@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: docker.io/postgres:16.6
@@ -15,9 +17,10 @@ services:
     build: .
     depends_on:
       - db
-    working_dir: /src
+    working_dir: /opt
     volumes:
-      - ./src:/src
+      - ./src:/opt/src
+      - ./entrypoints:/opt/entrypoints
     entrypoint: ["streamlit", "run", "--server.headless", "true", "--server.port", "8080", "/src/app/main.py"]
     env_file:
       - .env
@@ -35,29 +38,33 @@ services:
     build: .
     depends_on:
       - db
-    working_dir: /src
+    working_dir: /opt
     volumes:
-      - ./src:/src
-    entrypoint: ["fastapi", "dev", "/src/api/main.py", "--host", "0.0.0.0"]
+      - ./src:/opt/src
+      - ./test:/opt/test
+      - ./entrypoints:/opt/entrypoints
+    entrypoint: ["./entrypoints/entrypoint_api.sh"]
     environment:
       POSTGRES_USER: postgres
       PSQL_POSTGRES_PASSWORD: localpassword
       POSTGRES_DB: mydatabase
       POSTGRES_HOST: db
+      API_KEY: test_api_key
     ports:
       - "8000:8000"
     networks:
       - db_network
-
+      - api_network
 
   generate_migrations:
     build: .
     depends_on:
       - db
-    working_dir: /src/data/db/migrations
+    working_dir: /opt
     volumes:
-      - ./src:/src
-    entrypoint: ['alembic', 'revision', '--autogenerate', '-m', 'next version']
+      - ./src:/opt/src
+      - ./entrypoints:/opt/entrypoints
+    entrypoint: ["./entrypoints/entrypoint_migrations.sh"]
     environment:
       PYTHONPATH: /src
       POSTGRES_USER: postgres
@@ -67,9 +74,33 @@ services:
     networks:
       - db_network
 
+  e2e_tests:
+    build: .
+    depends_on:
+      - api
+    working_dir: /opt
+    volumes:
+      - ./src:/opt/src
+      - ./e2e_tests:/opt/e2e_tests
+      - ./entrypoints:/opt/entrypoints
+    environment:
+      PYTHONPATH: /opt/src
+      APP_1_API_VIRTUAL_HOST: api
+      STAGING_API_KEY: test_api_key
+      POSTGRES_USER: postgres
+      PSQL_POSTGRES_PASSWORD: localpassword
+      POSTGRES_DB: mydatabase
+      POSTGRES_HOST: db
+    networks:
+      - db_network
+      - api_network
+    entrypoint: ["./entrypoints/entrypoint_e2e.sh"]
+
 volumes:
   postgres_data:
 
 networks:
   db_network:
+    driver: bridge
+  api_network:
     driver: bridge

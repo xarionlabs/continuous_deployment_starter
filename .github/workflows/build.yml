@@ -3,6 +3,12 @@ name: build
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      build_tag:
+        description: 'Build tag to use'
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -28,7 +34,11 @@ jobs:
       - name: create commit tag name
         id: create-commit-tag
         run: |
-          echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "commit_tag=${{ github.event.inputs.build_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          fi
 
   define-applications:
     runs-on: ubuntu-latest
@@ -144,3 +154,89 @@ jobs:
           git add --force services/version.env
           git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
           git push origin releases
+
+  trigger-staging-release:
+    needs: [build-and-push-applications, create-tag-ref, update-the-release-branch]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip }}
+    steps:
+      - name: Trigger staging release
+        run: |
+          gh workflow run staging-release.yml -f build_tag=${{ needs.define-tag.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-staging-e2e:
+    needs: [trigger-staging-release]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip }}
+    steps:
+      - name: Wait for staging release
+        run: |
+          sleep 30  # Give staging release time to start
+          while true; do
+            STATUS=$(gh run list --workflow=staging-release.yml --limit=1 --json status --jq '.[0].status')
+            if [ "$STATUS" = "completed" ]; then
+              break
+            elif [ "$STATUS" = "failure" ]; then
+              echo "Staging release failed"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Trigger staging e2e tests
+        run: |
+          gh workflow run e2e-tests.yml -f build_tag=${{ needs.define-tag.outputs.tag }} -f environment=staging
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-live-release:
+    needs: [trigger-staging-e2e]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip }}
+    steps:
+      - name: Wait for staging e2e tests
+        run: |
+          sleep 30  # Give e2e tests time to start
+          while true; do
+            STATUS=$(gh run list --workflow=e2e-tests.yml --limit=1 --json status --jq '.[0].status')
+            if [ "$STATUS" = "completed" ]; then
+              break
+            elif [ "$STATUS" = "failure" ]; then
+              echo "Staging e2e tests failed"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Trigger live release
+        run: |
+          gh workflow run live-release.yml -f build_tag=${{ needs.define-tag.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-live-e2e:
+    needs: [trigger-live-release]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip }}
+    steps:
+      - name: Wait for live release
+        run: |
+          sleep 30  # Give live release time to start
+          while true; do
+            STATUS=$(gh run list --workflow=live-release.yml --limit=1 --json status --jq '.[0].status')
+            if [ "$STATUS" = "completed" ]; then
+              break
+            elif [ "$STATUS" = "failure" ]; then
+              echo "Live release failed"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Trigger live e2e tests
+        run: |
+          gh workflow run e2e-tests.yml -f build_tag=${{ needs.define-tag.outputs.tag }} -f environment=live
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

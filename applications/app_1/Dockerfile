@@ -1,7 +1,7 @@
 FROM python:3.12-bookworm
 
 RUN apt-get update \
-    && apt-get -y install libpq-dev gcc \
+    && apt-get -y install libpq-dev gcc netcat-traditional \
     && pip install psycopg2
 WORKDIR /app
 
@@ -12,14 +12,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY src /app/src
 COPY test /app/test
-COPY entrypoint.sh /app
-COPY entrypoint_api.sh /app
-COPY entrypoint_test.sh /app
-COPY entrypoint_migrations.sh /app
+COPY e2e_tests /app/e2e_tests
+COPY entrypoints /app/entrypoints
 
-RUN chmod +x entrypoint.sh
-RUN chmod +x entrypoint_api.sh
-RUN chmod +x entrypoint_test.sh
-RUN chmod +x entrypoint_migrations.sh
+RUN chmod +x entrypoints/*.sh
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoints/entrypoint.sh"]

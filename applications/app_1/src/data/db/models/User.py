@@ -1,12 +1,8 @@
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.orm import Mapped, mapped_column
 
-from sqlalchemy import Column, Integer, String, DateTime, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-
-# declarative base class
-class Base(DeclarativeBase):
-    pass
+from data.db.connections import Base
 
 
 class User(Base):
