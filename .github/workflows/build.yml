@@ -184,7 +184,7 @@ jobs:
       - define-tag
       - create-tag-ref
       - find-changed-applications
-    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -204,15 +204,15 @@ jobs:
 
   trigger-staging-release:
     needs: [define-tag, update-the-release-branch]
-    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/release.yml
     with:
       environment: staging
     secrets: inherit
 
-
   trigger-staging-e2e:
     needs: [trigger-staging-release]
+    if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: staging
@@ -226,9 +226,9 @@ jobs:
       environment: live
     secrets: inherit
 
-
   trigger-live-e2e:
-    needs: [ trigger-live-release ]
+    needs: [trigger-live-release]
+    if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: live
