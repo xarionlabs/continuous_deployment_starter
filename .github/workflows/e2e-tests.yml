@@ -51,7 +51,7 @@ jobs:
           # Create a temporary .env file with all environment variables
           echo "APP_ENV=$ENVIRONMENT" > .env
           echo "APP_VERSION=$TAG" >> .env
-          python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)}') for k, v in data.items()]" >> .env
+          python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)[1:-1]}') for k, v in data.items()]" >> .env
           
           echo "Environment variables loaded into .env file"
           cat .env
