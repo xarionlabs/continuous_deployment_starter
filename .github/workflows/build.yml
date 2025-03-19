@@ -218,19 +218,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Wait for staging release
-        run: |
-          sleep 30  # Give staging release time to start
-          while true; do
-            STATUS=$(gh run list --workflow=staging-release.yml --limit=1 --json status --jq '.[0].status')
-            if [ "$STATUS" = "completed" ]; then
-              break
-            elif [ "$STATUS" = "failure" ]; then
-              echo "Staging release failed"
-              exit 1
-            fi
-            sleep 10
-          done
+#      - name: Wait for staging release
+#        run: |
+#          sleep 30  # Give staging release time to start
+#          while true; do
+#            STATUS=$(gh run list --workflow=staging-release.yml --limit=1 --json status --jq '.[0].status')
+#            if [ "$STATUS" = "completed" ]; then
+#              break
+#            elif [ "$STATUS" = "failure" ]; then
+#              echo "Staging release failed"
+#              exit 1
+#            fi
+#            sleep 10
+#          done
 
       - name: Trigger staging e2e tests
         uses: ./.github/workflows/e2e-tests.yml
@@ -240,31 +240,10 @@ jobs:
 
   trigger-live-release:
     needs: [trigger-staging-e2e]
-    runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Wait for staging e2e tests
-        run: |
-          sleep 30  # Give e2e tests time to start
-          while true; do
-            STATUS=$(gh run list --workflow=e2e-tests.yml --limit=1 --json status --jq '.[0].status')
-            if [ "$STATUS" = "completed" ]; then
-              break
-            elif [ "$STATUS" = "failure" ]; then
-              echo "Staging e2e tests failed"
-              exit 1
-            fi
-            sleep 10
-          done
-
-      - name: Trigger live release
-        uses: ./.github/workflows/live-release.yml
-        with:
-          build_tag: ${{ needs.define-tag.outputs.tag }}
+    uses: ./.github/workflows/staging-release.yml
+    with:
+      build_tag: ${{ needs.define-tag.outputs.tag }}
 
   trigger-live-e2e:
     needs: [trigger-live-release]
@@ -275,19 +254,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Wait for live release
-        run: |
-          sleep 30  # Give live release time to start
-          while true; do
-            STATUS=$(gh run list --workflow=live-release.yml --limit=1 --json status --jq '.[0].status')
-            if [ "$STATUS" = "completed" ]; then
-              break
-            elif [ "$STATUS" = "failure" ]; then
-              echo "Live release failed"
-              exit 1
-            fi
-            sleep 10
-          done
+#      - name: Wait for live release
+#        run: |
+#          sleep 30  # Give live release time to start
+#          while true; do
+#            STATUS=$(gh run list --workflow=live-release.yml --limit=1 --json status --jq '.[0].status')
+#            if [ "$STATUS" = "completed" ]; then
+#              break
+#            elif [ "$STATUS" = "failure" ]; then
+#              echo "Live release failed"
+#              exit 1
+#            fi
+#            sleep 10
+#          done
 
       - name: Trigger live e2e tests
         uses: ./.github/workflows/e2e-tests.yml
