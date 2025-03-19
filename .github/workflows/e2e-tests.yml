@@ -3,10 +3,6 @@ name: e2e-tests
 on:
   workflow_dispatch:
     inputs:
-      build_tag:
-        description: 'Build tag to use'
-        required: true
-        type: string
       environment:
         description: 'Environment to run tests in'
         required: true

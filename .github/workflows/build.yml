@@ -205,9 +205,10 @@ jobs:
   trigger-staging-release:
     needs: [define-tag, find-changed-applications]
     if: ${{ !needs.skip-check.outputs.skip }}
-    uses: ./.github/workflows/staging-release.yml
+    uses: ./.github/workflows/release.yml
     with:
-      build_tag: ${{ needs.define-tag.outputs.tag }}
+      environment: live
+
 
   trigger-staging-e2e:
     needs: [trigger-staging-release]
@@ -235,15 +236,15 @@ jobs:
       - name: Trigger staging e2e tests
         uses: ./.github/workflows/e2e-tests.yml
         with:
-          build_tag: ${{ needs.define-tag.outputs.tag }}
           environment: staging
 
   trigger-live-release:
     needs: [trigger-staging-e2e]
     if: ${{ !needs.skip-check.outputs.skip }}
-    uses: ./.github/workflows/staging-release.yml
+    uses: ./.github/workflows/release.yml
     with:
-      build_tag: ${{ needs.define-tag.outputs.tag }}
+      environment: live
+
 
   trigger-live-e2e:
     needs: [trigger-live-release]
@@ -271,5 +272,4 @@ jobs:
       - name: Trigger live e2e tests
         uses: ./.github/workflows/e2e-tests.yml
         with:
-          build_tag: ${{ needs.define-tag.outputs.tag }}
           environment: live
