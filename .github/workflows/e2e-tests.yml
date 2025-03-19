@@ -15,6 +15,20 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: releases
+      
+      - name: Load version from services/version.env
+        id: load_version
+        run: |
+          if [ -f services/version.env ]; then
+            source services/version.env
+            echo "version=${APP_VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "Error: services/version.env not found"
+            exit 1
+          fi
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -31,7 +45,7 @@ jobs:
         env:
           VARS_JSON: ${{ toJson(vars) }}
           REGISTRY: ghcr.io
-          TAG: ${{ github.event.inputs.build_tag }}
+          TAG: ${{ steps.load_version.outputs.version }}
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           # Create a temporary .env file with all environment variables
