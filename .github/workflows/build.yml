@@ -207,6 +207,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
       - name: Trigger staging release
         run: |
           gh workflow run staging-release.yml
@@ -218,6 +222,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Wait for staging release
         run: |
           sleep 30  # Give staging release time to start
@@ -243,6 +251,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Wait for staging e2e tests
         run: |
           sleep 30  # Give e2e tests time to start
@@ -268,6 +280,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Wait for live release
         run: |
           sleep 30  # Give live release time to start
