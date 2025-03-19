@@ -2,17 +2,9 @@ name: live-release
 
 on:
   workflow_call:
-    inputs:
-      build_tag:
-        description: 'Build tag to use'
-        required: true
-        type: string
 
 jobs:
   release:
     uses: ./.github/workflows/release.yml
     with:
       environment: live
-      build_tag: ${{ github.event.inputs.build_tag }}
-    secrets:
-      KEY: ${{ secrets.KEY }}

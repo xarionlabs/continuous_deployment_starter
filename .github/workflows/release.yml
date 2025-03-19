@@ -6,9 +6,6 @@ on:
       environment:
         required: true
         type: string
-    secrets:
-      KEY:
-        required: true
 
 jobs:
   release:
