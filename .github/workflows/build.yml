@@ -47,26 +47,22 @@ jobs:
 
   define-tag:
     runs-on: ubuntu-latest
-    needs: [skip-check, find-changed-applications]
+    needs: [skip-check]
     outputs:
       tag: ${{steps.create-commit-tag.outputs.commit_tag}}
     steps:
       - name: create commit tag name
         id: create-commit-tag
         run: |
-          if [ "${{ needs.find-changed-applications.outputs.has_changes }}" = "true" ]; then
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              echo "commit_tag=${{ github.event.inputs.build_tag }}" >> $GITHUB_OUTPUT
-            else
-              echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
-            fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "commit_tag=${{ github.event.inputs.build_tag }}" >> $GITHUB_OUTPUT
           else
-            echo "commit_tag=" >> $GITHUB_OUTPUT
+            echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
           fi
 
   find-changed-applications:
     runs-on: ubuntu-latest
-    needs: [define-tag, skip-check]
+    needs: [skip-check]
     outputs:
       applications: ${{ steps.find_applications.outputs.applications }}
       has_changes: ${{ steps.find_applications.outputs.has_changes }}
