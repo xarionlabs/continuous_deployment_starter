@@ -13,21 +13,9 @@ This script fetches and displays the logs of the latest GitHub Actions workflow 
 
 Requirements:
 - GitHub CLI (`gh`) installed and authenticated
-- Docker installed (for running `jq`)
 
 Usage:
 ```bash
-./get_latest_workflow_logs.sh
+./see_workflow_logs.sh
 ```
 
-### run_with_jq.sh
-
-A wrapper script that runs `jq` in a Docker container. This ensures consistent JSON processing across different environments.
-
-Requirements:
-- Docker installed
-
-Usage:
-```bash
-echo '{"key": "value"}' | ./run_with_jq.sh '.key'
-``` 
