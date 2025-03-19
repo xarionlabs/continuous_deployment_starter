@@ -182,6 +182,7 @@ jobs:
       contents: write
     needs:
       - define-tag
+      - find-changed-applications
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
@@ -192,12 +193,18 @@ jobs:
       - run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git merge -X theirs ${{ needs.define-tag.outputs.tag }}
-          if [ -n "${{ needs.define-tag.outputs.tag }}" ]; then
+          
+          if [ "${{ needs.find-changed-applications.outputs.has_changes }}" = "true" ]; then
+            # If we have application changes, merge the tag and update version.env
+            git merge -X theirs ${{ needs.define-tag.outputs.tag }}
             echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/version.env
             git add --force services/version.env
             git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
+          else
+            # If we have no application changes, just merge the current commit
+            git merge -X theirs ${{ github.sha }}
           fi
+          
           git push origin releases
 
   trigger-staging-release:
