@@ -8,6 +8,9 @@ from sqlalchemy.pool import StaticPool
 from data.db.connections import Base, get_db
 from api.main import app
 
+# Set testing environment
+os.environ["TESTING"] = "true"
+
 # Use in-memory SQLite for testing
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
