@@ -206,9 +206,6 @@ jobs:
     needs: [define-tag, find-changed-applications]
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
-    permissions:
-      contents: read
-      workflows: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -223,9 +220,6 @@ jobs:
     needs: [trigger-staging-release]
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
-    permissions:
-      contents: read
-      workflows: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -255,9 +249,6 @@ jobs:
     needs: [trigger-staging-e2e]
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
-    permissions:
-      contents: read
-      workflows: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -286,9 +277,6 @@ jobs:
     needs: [trigger-live-release]
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
-    permissions:
-      contents: read
-      workflows: write
     steps:
       - uses: actions/checkout@v4
         with:
