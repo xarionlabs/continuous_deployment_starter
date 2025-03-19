@@ -204,17 +204,10 @@ jobs:
 
   trigger-staging-release:
     needs: [define-tag, find-changed-applications]
-    runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Trigger staging release
-        uses: ./.github/workflows/staging-release.yml
-        with:
-          build_tag: ${{ needs.define-tag.outputs.tag }}
+    uses: ./.github/workflows/staging-release.yml
+    with:
+      build_tag: ${{ needs.define-tag.outputs.tag }}
 
   trigger-staging-e2e:
     needs: [trigger-staging-release]
