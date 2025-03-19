@@ -2,6 +2,8 @@
 
 # Exit on error
 set -e
+# change directory to the script's directory
+cd "$(dirname "$0")"
 
 # Check if gh CLI is installed
 if ! command -v gh &> /dev/null; then
@@ -40,3 +42,6 @@ echo "$JOBS_INFO" | python3 parse_workflow_logs.py --jobs-info
 # Get the failed logs if any
 echo "Fetching failed job logs..."
 gh run view "$RUN_ID" --log-failed | cat 
+
+
+cd -
