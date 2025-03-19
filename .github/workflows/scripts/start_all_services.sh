@@ -21,6 +21,8 @@ check_service_status() {
     local service="$1"
     local type=$(systemctl --user show -p Type --value "$service" || true)
     local status
+    local max_retries=3
+    local retry_count=0
 
     if [ "$type" == "oneshot" ]; then
         status=$(systemctl --user show -p Result --value "$service" || true)
@@ -36,20 +38,35 @@ check_service_status() {
             echo "✅ $service recovered after wait"
         fi
     else
-        status=$(systemctl --user show -p ActiveState --value "$service" || true)
-        if [ "$status" != "active" ]; then
-            echo "❌ $service is not running (Status: $status)"
-            echo "⏳ Waiting 5 seconds to allow for potential recovery..."
-            sleep 5
-            # Check status again after wait
+        while true; do
             status=$(systemctl --user show -p ActiveState --value "$service" || true)
-            if [ "$status" != "active" ]; then
-                return 1
-            fi
-            echo "✅ $service recovered after wait"
-        fi
+            
+            case "$status" in
+                "active")
+                    echo "✅ $service is running successfully"
+                    return 0
+                    ;;
+                "deactivating"|"activating")
+                    if [ $retry_count -ge $max_retries ]; then
+                        echo "❌ $service is stuck in $status state after $max_retries retries"
+                        return 1
+                    fi
+                    echo "⏳ $service is $status, waiting 5 seconds (attempt $((retry_count + 1))/$max_retries)..."
+                    sleep 5
+                    retry_count=$((retry_count + 1))
+                    ;;
+                *)
+                    if [ $retry_count -ge $max_retries ]; then
+                        echo "❌ $service is not running (Status: $status)"
+                        return 1
+                    fi
+                    echo "⏳ $service is not running (Status: $status), waiting 5 seconds (attempt $((retry_count + 1))/$max_retries)..."
+                    sleep 5
+                    retry_count=$((retry_count + 1))
+                    ;;
+            esac
+        done
     fi
-    echo "✅ $service is running successfully"
     return 0
 }
 
