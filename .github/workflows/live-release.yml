@@ -1,7 +1,7 @@
 name: live-release
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       build_tag:
         description: 'Build tag to use'
