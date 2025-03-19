@@ -205,7 +205,7 @@ jobs:
   trigger-staging-release:
     needs: [define-tag, find-changed-applications]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - name: Trigger staging release
         run: |
@@ -216,7 +216,7 @@ jobs:
   trigger-staging-e2e:
     needs: [trigger-staging-release]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - name: Wait for staging release
         run: |
@@ -241,7 +241,7 @@ jobs:
   trigger-live-release:
     needs: [trigger-staging-e2e]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - name: Wait for staging e2e tests
         run: |
@@ -266,7 +266,7 @@ jobs:
   trigger-live-e2e:
     needs: [trigger-live-release]
     runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - name: Wait for live release
         run: |
