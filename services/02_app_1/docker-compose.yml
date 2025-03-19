@@ -31,7 +31,8 @@ services:
       POSTGRES_USER: app_1
       POSTGRES_HOST: db
       POSTGRES_DB: app_1
-    entrypoint: ["./entrypoint_api.sh"]
+      API_KEY: ${APP_1_API_KEY}
+    entrypoint: ["./entrypoints/entrypoint_api.sh"]
     expose:
       - "8000"
     networks:
@@ -51,7 +52,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_DB: app_1
       PYTHONPATH: /app/src:$(PYTHONPATH)
-    entrypoint: ["./entrypoint_migrations.sh"]
+    entrypoint: ["./entrypoints/entrypoint_migrations.sh"]
     restart: "no"
     networks:
       - db_network

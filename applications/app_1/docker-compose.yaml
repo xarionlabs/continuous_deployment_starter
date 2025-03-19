@@ -99,7 +99,7 @@ services:
     environment:
       PYTHONPATH: /opt/src
       APP_1_API_VIRTUAL_HOST: api
-      STAGING_API_KEY: test_api_key
+      API_KEY: test_api_key
       POSTGRES_USER: postgres
       PSQL_POSTGRES_PASSWORD: localpassword
       POSTGRES_DB: mydatabase
