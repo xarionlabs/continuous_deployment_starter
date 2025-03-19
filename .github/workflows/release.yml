@@ -31,7 +31,14 @@ jobs:
           envs: VARS_JSON, SECRETS_JSON, APP_VERSION
           script: |
             set -e
+            echo "Debug: Checking directories..."
+            ls -la ~/runtime || echo "Runtime directory missing"
+            ls -la ~/runtime/continuous_deployment_starter || echo "Project directory missing"
+            echo "Debug: Checking repository state..."
+            ls -la ~/runtime/continuous_deployment_starter/.git || echo "No git repository found"
             cd ~/runtime/continuous_deployment_starter
+            git status || echo "Git status failed"
+            
             export PATH=$PATH:$(pwd)/.github/workflows/scripts/
             git checkout releases
             git pull origin releases
