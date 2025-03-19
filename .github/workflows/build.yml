@@ -215,10 +215,9 @@ jobs:
           fetch-depth: 0
       
       - name: Trigger staging release
-        run: |
-          gh workflow run staging-release.yml
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/workflows/staging-release.yml
+        with:
+          build_tag: ${{ needs.define-tag.outputs.tag }}
 
   trigger-staging-e2e:
     needs: [trigger-staging-release]
@@ -247,10 +246,10 @@ jobs:
           done
 
       - name: Trigger staging e2e tests
-        run: |
-          gh workflow run e2e-tests.yml -f build_tag=${{ needs.define-tag.outputs.tag }} -f environment=staging
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/workflows/e2e-tests.yml
+        with:
+          build_tag: ${{ needs.define-tag.outputs.tag }}
+          environment: staging
 
   trigger-live-release:
     needs: [trigger-staging-e2e]
@@ -279,10 +278,9 @@ jobs:
           done
 
       - name: Trigger live release
-        run: |
-          gh workflow run live-release.yml
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/workflows/live-release.yml
+        with:
+          build_tag: ${{ needs.define-tag.outputs.tag }}
 
   trigger-live-e2e:
     needs: [trigger-live-release]
@@ -311,7 +309,7 @@ jobs:
           done
 
       - name: Trigger live e2e tests
-        run: |
-          gh workflow run e2e-tests.yml -f build_tag=${{ needs.define-tag.outputs.tag }} -f environment=live
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/workflows/e2e-tests.yml
+        with:
+          build_tag: ${{ needs.define-tag.outputs.tag }}
+          environment: live
