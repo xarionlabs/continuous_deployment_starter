@@ -11,11 +11,24 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: ${{ github.event.inputs.environment }}
+    environment: ${{ inputs.environment }}
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: releases
       
+      - name: Load version from services/version.env
+        id: load_version
+        run: |
+          if [ -f services/version.env ]; then
+            source services/version.env
+            echo "version=${APP_VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "Error: services/version.env not found"
+            exit 1
+          fi
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -26,39 +39,40 @@ jobs:
       - name: Find applications with e2e tests
         id: find_applications
         run: |
-          echo "applications=$(find applications -type d -exec test -e '{}'/e2e_tests/entrypoint_e2e.sh \; -print | sed "s/applications\///" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
+          echo "applications=$(find applications -type d -exec test -e '{}'/entrypoints/entrypoint_e2e.sh \; -print | sed "s/applications\///" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
       - name: Run e2e tests for each application
         env:
           VARS_JSON: ${{ toJson(vars) }}
           REGISTRY: ghcr.io
-          TAG: ${{ github.event.inputs.build_tag }}
-          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          TAG: ${{ steps.load_version.outputs.version }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          # Generate extra -e flags from VARS_JSON
-          ENV_FLAGS=$(python3 - <<'EOF'
-            import os, json
-            def shell_quote(s):
-                return "'" + s.replace("'", "'\\''") + "'"
-            data = json.loads(os.environ["VARS_JSON"])
-            flags = []
-            for key, value in data.items():
-                flags.append(f"-e {key}=" + shell_quote(str(value)))
-            print(" ".join(flags))
-          EOF
-          )
-          echo "Using additional environment flags: $ENV_FLAGS"
+          # Create a temporary .env file with all environment variables
+          echo "APP_ENV=$ENVIRONMENT" > .env
+          echo "APP_VERSION=$TAG" >> .env
+          python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)[1:-1]}') for k, v in data.items()]" >> .env
+          
+          echo "Environment variables loaded into .env file"
+          cat .env
+          
           for app in $(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'); do
             echo "Running e2e tests for $app in $ENVIRONMENT environment..."
+            
+            # Debug information
+            echo "Debug - Image reference components:"
+            echo "REGISTRY: $REGISTRY"
+            echo "GITHUB_REPOSITORY: ${{ github.repository }}"
+            echo "APP: $app"
+            echo "TAG: $TAG"
+            echo "Full image reference: $REGISTRY/${{ github.repository }}/$app:$TAG"
             
             # Run the e2e tests using the application's own entrypoint
             docker run --rm \
               --network host \
-              -e APP_ENV="$ENVIRONMENT" \
-              -e APP_VERSION="$TAG" \
-              $ENV_FLAGS \
-              $REGISTRY/${{ github.repository }}/$app:$TAG \
-              /app/e2e_tests/entrypoint_e2e.sh
+              --env-file .env \
+              --entrypoint /app/entrypoints/entrypoint_e2e.sh \
+              "$REGISTRY/${{ github.repository }}/$app:$TAG" 
             
             # Exit if tests fail
             if [ $? -ne 0 ]; then
