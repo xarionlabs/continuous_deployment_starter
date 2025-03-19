@@ -35,7 +35,7 @@ jobs:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
         run: |
           # Generate extra -e flags from VARS_JSON
-          ENV_FLAGS=$(python3 -c "import os,json; print(' '.join([f'-e {k}='+json.dumps(v) for k,v in json.loads(os.environ['VARS_JSON']).items()]))")
+          IFS=$'\n' read -rd '' -a ENV_FLAGS <<< "$(python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); print('\n'.join([f'-e {k}='+json.dumps(v) for k, v in data.items()]))")"
           echo "Using additional environment flags: $ENV_FLAGS"
           for app in $(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'); do
             echo "Running e2e tests for $app in $ENVIRONMENT environment..."
