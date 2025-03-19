@@ -5,7 +5,10 @@ on:
     inputs:
       environment:
         required: true
-        type: string
+        type: choice
+        options:
+          - staging
+          - live
 
 jobs:
   release:
