@@ -195,19 +195,21 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git merge -X theirs ${{ needs.define-tag.outputs.tag }}
-          echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/version.env
-          git add --force services/version.env
-          git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
+          if [ -n "${{ needs.define-tag.outputs.tag }}" ]; then
+            echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/version.env
+            git add --force services/version.env
+            git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
+          fi
           git push origin releases
 
   trigger-staging-release:
-    needs: [build-application, create-tag-ref, update-the-release-branch, find-changed-applications]
+    needs: [define-tag, find-changed-applications]
     runs-on: ubuntu-latest
     if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     steps:
       - name: Trigger staging release
         run: |
-          gh workflow run staging-release.yml -f build_tag=${{ needs.define-tag.outputs.tag }}
+          gh workflow run staging-release.yml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -257,7 +259,7 @@ jobs:
 
       - name: Trigger live release
         run: |
-          gh workflow run live-release.yml -f build_tag=${{ needs.define-tag.outputs.tag }}
+          gh workflow run live-release.yml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -6,9 +6,6 @@ on:
       environment:
         required: true
         type: string
-      build_tag:
-        required: true
-        type: string
     secrets:
       KEY:
         required: true
@@ -23,12 +20,11 @@ jobs:
         env:
           VARS_JSON: ${{ toJson(vars) }}
           SECRETS_JSON: ${{ toJson(secrets) }}
-          APP_VERSION: ${{ inputs.build_tag }}
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          envs: VARS_JSON, SECRETS_JSON, APP_VERSION
+          envs: VARS_JSON, SECRETS_JSON
           script: |
             set -e
             echo "Debug: Checking directories..."
@@ -46,6 +42,7 @@ jobs:
             create_env_variables.sh
             set -o allexport
             source .env
+            source services/version.env
             set +o allexport
             check-service-envs.sh
             generate_quadlets.sh
