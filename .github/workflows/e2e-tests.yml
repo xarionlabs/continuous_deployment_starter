@@ -45,7 +45,7 @@ jobs:
               --network host \
               -e APP_ENV="$ENVIRONMENT" \
               -e APP_VERSION="$TAG" \
-              $ENV_FLAGS \
+              "${ENV_FLAGS[@]}" \
               $REGISTRY/${{ github.repository }}/$app:$TAG \
               /app/e2e_tests/entrypoint_e2e.sh
             
