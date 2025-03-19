@@ -213,31 +213,10 @@ jobs:
 
   trigger-staging-e2e:
     needs: [trigger-staging-release]
-    runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-#      - name: Wait for staging release
-#        run: |
-#          sleep 30  # Give staging release time to start
-#          while true; do
-#            STATUS=$(gh run list --workflow=staging-release.yml --limit=1 --json status --jq '.[0].status')
-#            if [ "$STATUS" = "completed" ]; then
-#              break
-#            elif [ "$STATUS" = "failure" ]; then
-#              echo "Staging release failed"
-#              exit 1
-#            fi
-#            sleep 10
-#          done
-
-      - name: Trigger staging e2e tests
-        uses: ./.github/workflows/e2e-tests.yml
-        with:
-          environment: staging
+    uses: ./.github/workflows/e2e-tests.yml
+    with:
+      environment: staging
+    secrets: inherit
 
   trigger-live-release:
     needs: [trigger-staging-e2e]
@@ -249,29 +228,8 @@ jobs:
 
 
   trigger-live-e2e:
-    needs: [trigger-live-release]
-    runs-on: ubuntu-latest
-    if: ${{ !needs.skip-check.outputs.skip }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-#      - name: Wait for live release
-#        run: |
-#          sleep 30  # Give live release time to start
-#          while true; do
-#            STATUS=$(gh run list --workflow=live-release.yml --limit=1 --json status --jq '.[0].status')
-#            if [ "$STATUS" = "completed" ]; then
-#              break
-#            elif [ "$STATUS" = "failure" ]; then
-#              echo "Live release failed"
-#              exit 1
-#            fi
-#            sleep 10
-#          done
-
-      - name: Trigger live e2e tests
-        uses: ./.github/workflows/e2e-tests.yml
-        with:
-          environment: live
+    needs: [ trigger-live-release ]
+    uses: ./.github/workflows/e2e-tests.yml
+    with:
+      environment: live
+    secrets: inherit
