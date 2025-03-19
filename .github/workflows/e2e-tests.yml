@@ -1,0 +1,65 @@
+name: e2e-tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_tag:
+        description: 'Build tag to use'
+        required: true
+        type: string
+      environment:
+        description: 'Environment to run tests in'
+        required: true
+        type: choice
+        options:
+          - staging
+          - live
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find applications with e2e tests
+        id: find_applications
+        run: |
+          echo "applications=$(find applications -type d -exec test -e '{}'/e2e_tests/entrypoint_e2e.sh \; -print | sed "s/applications\///" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
+
+      - name: Run e2e tests for each application
+        env:
+          VARS_JSON: ${{ toJson(vars) }}
+          SECRETS_JSON: ${{ toJson(secrets) }}
+          REGISTRY: ghcr.io
+          TAG: ${{ github.event.inputs.build_tag }}
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+        run: |
+          for app in $(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'); do
+            echo "Running e2e tests for $app in $ENVIRONMENT environment..."
+            
+            # Run the e2e tests using the application's own entrypoint
+            docker run --rm \
+              --network host \
+              -e VARS_JSON="$VARS_JSON" \
+              -e SECRETS_JSON="$SECRETS_JSON" \
+              -e APP_ENV="$ENVIRONMENT" \
+              -e APP_VERSION="$TAG" \
+              $REGISTRY/${{ github.repository }}/$app:$TAG \
+              /app/e2e_tests/entrypoint_e2e.sh
+            
+            # Exit if tests fail
+            if [ $? -ne 0 ]; then
+              echo "E2E tests failed for $app in $ENVIRONMENT environment"
+              exit 1
+            fi
+          done 

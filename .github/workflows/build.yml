@@ -3,6 +3,17 @@ name: build
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      build_tag:
+        description: 'Build tag to use'
+        required: true
+        type: string
+      force_build_all:
+        description: 'Force build all applications'
+        required: false
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -12,13 +23,27 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{steps.skip-workflow.outputs.skip}}
+      force_build: ${{steps.force-build-check.outputs.force}}
     steps:
       - name: skip-workflow
-        id: skip-workflow # id used for referencing step
+        id: skip-workflow
         uses: saulmaldonado/skip-workflow@v1
         with:
-          phrase: /\[.*skip-build.*\]/i # matches with commits that contain '[skip-build]'
+          phrase: /\[.*skip-build.*\]/i
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: check-force-build
+        id: force-build-check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "force=${{ github.event.inputs.force_build_all }}" >> $GITHUB_OUTPUT
+          else
+            if git log -1 --pretty=%B | grep -i "\[force-build\]" > /dev/null; then
+              echo "force=true" >> $GITHUB_OUTPUT
+            else
+              echo "force=false" >> $GITHUB_OUTPUT
+            fi
+          fi
 
   define-tag:
     runs-on: ubuntu-latest
@@ -28,44 +53,71 @@ jobs:
       - name: create commit tag name
         id: create-commit-tag
         run: |
-          echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "commit_tag=${{ github.event.inputs.build_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "commit_tag=$(TZ='Europe/Amsterdam' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          fi
 
-  define-applications:
+  find-changed-applications:
     runs-on: ubuntu-latest
+    needs: [define-tag, skip-check]
     outputs:
       applications: ${{ steps.find_applications.outputs.applications }}
+      has_changes: ${{ steps.find_applications.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v4
-      - name: Finding applications that have dockerfiles in them
+        with:
+          fetch-depth: 0  # Fetch all history for comparison
+      
+      - name: Find changed applications
         id: find_applications
         run: |
-          echo "applications=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
-      - name: print_output
-        run: |
-          echo "${{ steps.find_applications.outputs.applications }}"
+          if [ "${{ needs.skip-check.outputs.force_build }}" = "true" ]; then
+            # If force_build is true, get all applications
+            CHANGED_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///")
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            # Get the list of changed files
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+            
+            # Find applications that have changed
+            CHANGED_APPS=$(echo "$CHANGED_FILES" | grep "^applications/" | cut -d'/' -f2 | sort -u)
+            
+            if [ -n "$CHANGED_APPS" ]; then
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+          
+          # Convert to JSON array
+          echo "applications=$(echo "$CHANGED_APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
-  build-and-push-applications:
-    # The skip logic is broken! if build and push doesn't run, we don't create a tag and then we can't update the release branch.
-    if: ${{ !needs.skip-check.outputs.skip }}
+      - name: Print applications to build
+        run: |
+          echo "Applications to build:"
+          echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'
+
+  build-application:
+    needs: [define-tag, find-changed-applications]
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     runs-on: ubuntu-latest
-    needs: 
-      - define-tag
-      - define-applications
-      - skip-check
+    strategy:
+      matrix:
+        APPLICATION: ${{ fromJSON(needs.find-changed-applications.outputs.applications) }}
+      fail-fast: false
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
-    strategy:
-      matrix:
-        APPLICATION: ${{ fromJSON(needs.define-applications.outputs.applications) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -73,16 +125,16 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
         id: build
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        uses: docker/build-push-action@v5
         with:
           context: applications/${{ matrix.APPLICATION }}
           push: true
@@ -93,7 +145,7 @@ jobs:
 
       - name: Run tests on the Docker image
         id: test-images
-        run: docker run --entrypoint=/app/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
+        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
@@ -105,16 +157,17 @@ jobs:
   create-tag-ref:
     runs-on: ubuntu-latest
     needs: 
-      - build-and-push-applications
+      - build-application
       - define-tag
+      - find-changed-applications
+    if: ${{ needs.find-changed-applications.outputs.has_changes == 'true' }}
     permissions:
       contents: write
     steps:
       - name: Create tag
-        uses: actions/github-script@v5
+        uses: actions/github-script@v7
         with:
           script: |
-            const commit_tag = process.env.COMMIT_TAG
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -128,8 +181,10 @@ jobs:
       contents: write
     needs:
       - define-tag
-      - build-and-push-applications
+      - build-application
       - create-tag-ref
+      - find-changed-applications
+    if: ${{ needs.find-changed-applications.outputs.has_changes == 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -144,3 +199,89 @@ jobs:
           git add --force services/version.env
           git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
           git push origin releases
+
+  trigger-staging-release:
+    needs: [build-application, create-tag-ref, update-the-release-branch, find-changed-applications]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    steps:
+      - name: Trigger staging release
+        run: |
+          gh workflow run staging-release.yml -f build_tag=${{ needs.define-tag.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-staging-e2e:
+    needs: [trigger-staging-release]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    steps:
+      - name: Wait for staging release
+        run: |
+          sleep 30  # Give staging release time to start
+          while true; do
+            STATUS=$(gh run list --workflow=staging-release.yml --limit=1 --json status --jq '.[0].status')
+            if [ "$STATUS" = "completed" ]; then
+              break
+            elif [ "$STATUS" = "failure" ]; then
+              echo "Staging release failed"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Trigger staging e2e tests
+        run: |
+          gh workflow run e2e-tests.yml -f build_tag=${{ needs.define-tag.outputs.tag }} -f environment=staging
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-live-release:
+    needs: [trigger-staging-e2e]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    steps:
+      - name: Wait for staging e2e tests
+        run: |
+          sleep 30  # Give e2e tests time to start
+          while true; do
+            STATUS=$(gh run list --workflow=e2e-tests.yml --limit=1 --json status --jq '.[0].status')
+            if [ "$STATUS" = "completed" ]; then
+              break
+            elif [ "$STATUS" = "failure" ]; then
+              echo "Staging e2e tests failed"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Trigger live release
+        run: |
+          gh workflow run live-release.yml -f build_tag=${{ needs.define-tag.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-live-e2e:
+    needs: [trigger-live-release]
+    runs-on: ubuntu-latest
+    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    steps:
+      - name: Wait for live release
+        run: |
+          sleep 30  # Give live release time to start
+          while true; do
+            STATUS=$(gh run list --workflow=live-release.yml --limit=1 --json status --jq '.[0].status')
+            if [ "$STATUS" = "completed" ]; then
+              break
+            elif [ "$STATUS" = "failure" ]; then
+              echo "Live release failed"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Trigger live e2e tests
+        run: |
+          gh workflow run e2e-tests.yml -f build_tag=${{ needs.define-tag.outputs.tag }} -f environment=live
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

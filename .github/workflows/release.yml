@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      build_tag:
+        required: true
+        type: string
+    secrets:
+      KEY:
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          VARS_JSON: ${{ toJson(vars) }}
+          SECRETS_JSON: ${{ toJson(secrets) }}
+          APP_VERSION: ${{ inputs.build_tag }}
+        with:
+          host: ${{ vars.HOST }}
+          username: ${{ vars.USERNAME }}
+          key: ${{ secrets.KEY }}
+          envs: VARS_JSON, SECRETS_JSON, APP_VERSION
+          script: |
+            set -e
+            cd ~/runtime/continuous_deployment_starter
+            export PATH=$PATH:$(pwd)/.github/workflows/scripts/
+            git checkout releases
+            git pull origin releases
+            refresh_podman_secrets.sh "$SECRETS_JSON"
+            create_env_variables.sh
+            set -o allexport
+            source .env
+            set +o allexport
+            check-service-envs.sh
+            generate_quadlets.sh
+            generate_meta_services.sh
+            start_all_services.sh 
