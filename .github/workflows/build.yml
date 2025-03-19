@@ -182,8 +182,6 @@ jobs:
       contents: write
     needs:
       - define-tag
-      - create-tag-ref
-      - find-changed-applications
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
@@ -203,7 +201,7 @@ jobs:
           git push origin releases
 
   trigger-staging-release:
-    needs: [define-tag, update-the-release-branch]
+    needs: [update-the-release-branch]
     if: ${{ !needs.skip-check.outputs.skip }}
     uses: ./.github/workflows/release.yml
     with:
