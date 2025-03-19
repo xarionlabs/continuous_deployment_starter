@@ -32,10 +32,10 @@ jobs:
           VARS_JSON: ${{ toJson(vars) }}
           REGISTRY: ghcr.io
           TAG: ${{ github.event.inputs.build_tag }}
-          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
           # Generate extra -e flags from VARS_JSON and store them in a variable
-          ENV_FLAGS_OUTPUT=$(python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); print('\n'.join([f'-e {k}='+json.dumps(v) for k, v in data.items()]))")
+          ENV_FLAGS_OUTPUT=$(python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); print('\n'.join([f'-e{k}='+json.dumps(v).replace(\"\\\"\",\"\") for k, v in data.items()]))")
           
           # Use readarray to convert the output (one flag per line) into a bash array
           readarray -t ENV_FLAGS <<< "$ENV_FLAGS_OUTPUT"
