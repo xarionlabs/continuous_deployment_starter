@@ -7,7 +7,7 @@ services:
     environment:
       VIRTUAL_HOST: ${APP_PXY6_VIRTUAL_HOST}
       NODE_ENV: production
-      SHOPIFY_APP_URL: ${APP_PXY6_VIRTUAL_HOST}
+      SHOPIFY_APP_URL: https://${APP_PXY6_VIRTUAL_HOST}/
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
     expose:
       - "3000"
