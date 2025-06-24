@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  db:
+    image: docker.io/postgres:16.6
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: localpassword
+      POSTGRES_DB: app_pxy6_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - db_network
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      - db
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./entrypoints:/app/entrypoints
+    entrypoint: ["./entrypoints/entrypoint.sh"]
+    env_file:
+      - src/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    networks:
+      - db_network
+
+  tests:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./entrypoints:/app/entrypoints
+    networks:
+      - db_network
+    entrypoint: ["./entrypoints/entrypoint_test.sh"]
+    environment:
+      NODE_ENV: test
+
+  e2e_tests:
+    build: .
+    depends_on:
+      - app
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./entrypoints:/app/entrypoints
+    networks:
+      - db_network
+    entrypoint: ["./entrypoints/entrypoint_e2e.sh"]
+    environment:
+      NODE_ENV: test
+
+volumes:
+  postgres_data:
+
+networks:
+  db_network:
+    driver: bridge

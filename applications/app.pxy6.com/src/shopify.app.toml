@@ -1,0 +1,28 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "58f7b8ec9072c0d77a9293b607a010c2"
+name = "app.pxy6"
+handle = "app-pxy6"
+application_url = "https://included-investors-editions-handles.trycloudflare.com"
+embedded = true
+
+[webhooks]
+api_version = "2025-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update", "app/uninstalled" ]
+  uri = "/webhooks"
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_all_orders,read_customers,read_inventory,read_metaobjects,read_orders,read_product_listings,read_products,read_returns,write_metaobjects"
+
+[auth]
+redirect_urls = ["https://included-investors-editions-handles.trycloudflare.com/auth/callback", "https://included-investors-editions-handles.trycloudflare.com/auth/shopify/callback", "https://included-investors-editions-handles.trycloudflare.com/api/auth/callback"]
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
