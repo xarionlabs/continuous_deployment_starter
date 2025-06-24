@@ -33,14 +33,7 @@ services:
 
 networks:
   db_network:
-    external: true
+    driver: bridge
   proxy_network:
-    external: true
-
-secrets:
-  PSQL_APP_PXY6_PASSWORD:
-    external: true
-  SHOPIFY_API_KEY:
-    external: true
-  SHOPIFY_API_SECRET:
-    external: true
+    driver: bridge
+    
