@@ -25,6 +25,10 @@ jobs:
       skip: ${{steps.skip-workflow.outputs.skip}}
       force_build: ${{steps.force-build-check.outputs.force}}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: skip-workflow
         id: skip-workflow
         uses: saulmaldonado/skip-workflow@v1
@@ -202,6 +206,7 @@ jobs:
     needs:
       - define-tag
       - find-changed-applications
+      - create-tag-ref
     if: ${{ !needs.skip-check.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
