@@ -71,20 +71,39 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for comparison
       
+      - name: Find valid applications
+        id: find_valid_apps
+        run: |
+          # Find all valid application directories (those with Dockerfiles)
+          VALID_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///" | sort)
+          echo "Valid applications found:"
+          echo "$VALID_APPS"
+          echo "valid_apps=$(echo "$VALID_APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
+
       - name: Find changed applications
         id: find_applications
         run: |
+          # Get valid applications from previous step
+          VALID_APPS=$(echo '${{ steps.find_valid_apps.outputs.valid_apps }}' | jq -r '.[]')
+          
           if [ "${{ needs.skip-check.outputs.force_build }}" = "true" ]; then
-            # If force_build is true, get all applications
-            CHANGED_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///")
+            # If force_build is true, use all valid applications
+            CHANGED_APPS="$VALID_APPS"
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             # Get the list of changed files
             CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
             
-            # Find applications that have changed
-            CHANGED_APPS=$(echo "$CHANGED_FILES" | grep "^applications/" | cut -d'/' -f2 | sort -u)
+            # Find which valid applications have changes
+            CHANGED_APPS=""
+            for app in $VALID_APPS; do
+              if echo "$CHANGED_FILES" | grep -q "^applications/$app/"; then
+                CHANGED_APPS="$CHANGED_APPS$app"$'\n'
+              fi
+            done
             
+            # Remove trailing newline and check if we have changes
+            CHANGED_APPS=$(echo "$CHANGED_APPS" | sed '/^$/d')
             if [ -n "$CHANGED_APPS" ]; then
               echo "has_changes=true" >> $GITHUB_OUTPUT
             else
