@@ -29,6 +29,7 @@ services:
       - POSTGRES_PASSWORD
       - PSQL_APP_1_MIGRATIONS_PASSWORD
       - PSQL_APP_1_PASSWORD
+      - PSQL_PXY6_PASSWORD
 
 volumes:
   postgres_data:
