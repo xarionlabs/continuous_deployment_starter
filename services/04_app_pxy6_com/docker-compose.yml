@@ -3,6 +3,7 @@ services:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:${APP_VERSION}"
     depends_on:
       - db
+      - app_pxy6_com_shopify_deploy
     environment:
       VIRTUAL_HOST: ${APP_PXY6_VIRTUAL_HOST}
       NODE_ENV: production
@@ -36,4 +37,3 @@ networks:
     driver: bridge
   proxy_network:
     driver: bridge
-    
