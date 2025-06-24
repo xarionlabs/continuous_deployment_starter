@@ -84,9 +84,3 @@ This is a containerized multi-application deployment system with automated CI/CD
 ### Database Migrations
 - **app-pxy6**: Use `prisma migrate deploy` or `npm run setup`
 - **app_1**: Use `alembic upgrade head` in the data/db/migrations directory
-
-### Checking Workflow Logs
-Use the scripts in `utilities/github-automation/` to check GitHub Actions workflow logs:
-- `./see_workflow_logs.sh` - Shows latest workflow run logs and failures
-- `parse_workflow_logs.py` - Processes workflow JSON data
-- Note: Repository access may require authentication if private
