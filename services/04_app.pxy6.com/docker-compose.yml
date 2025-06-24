@@ -5,7 +5,6 @@ services:
       - db
     environment:
       VIRTUAL_HOST: ${APP_PXY6_VIRTUAL_HOST}
-      DATABASE_URL: postgresql://pxy6:${PSQL_APP_PXY6_PASSWORD}@db:5432/pxy6
       NODE_ENV: production
       SHOPIFY_APP_URL: ${APP_PXY6_VIRTUAL_HOST}
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
