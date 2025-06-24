@@ -138,6 +138,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: applications/${{ matrix.APPLICATION }}
+          file: applications/${{ matrix.APPLICATION }}/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
