@@ -7,10 +7,7 @@ services:
       VIRTUAL_HOST: ${APP_PXY6_VIRTUAL_HOST}
       DATABASE_URL: postgresql://pxy6:${PSQL_APP_PXY6_PASSWORD}@db:5432/pxy6
       NODE_ENV: production
-      SHOPIFY_API_KEY: ${SHOPIFY_API_KEY}
-      SHOPIFY_API_SECRET: ${SHOPIFY_API_SECRET}
       SHOPIFY_APP_URL: ${APP_PXY6_VIRTUAL_HOST}
-      SHOPIFY_CLI_PARTNERS_TOKEN: ${SHOPIFY_CLI_PARTNERS_TOKEN}
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
     expose:
       - "3000"
@@ -28,8 +25,6 @@ services:
   app_pxy6_com_shopify_deploy:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:${APP_VERSION}"
     environment:
-      SHOPIFY_API_KEY: ${SHOPIFY_API_KEY}
-      SHOPIFY_CLI_PARTNERS_TOKEN: ${SHOPIFY_CLI_PARTNERS_TOKEN}
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
     entrypoint: ["./entrypoints/entrypoint_shopify_config.sh"]
     restart: "no"
