@@ -13,11 +13,11 @@ RUN pip3 install -r requirements.txt
 COPY src /app/src
 COPY test /app/test
 
-COPY entrypoint_test.sh /app
-COPY entrypoint.sh /app
+RUN mkdir /app/entrypoints
+COPY entrypoint_test.sh /app/entrypoints
+COPY entrypoint.sh /app/entrypoints
 
-RUN chmod +x entrypoint_test.sh
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoints/*
 
 RUN useradd -ms /bin/bash py_postgres
 
@@ -25,4 +25,4 @@ RUN chown -R py_postgres:py_postgres /app
 
 USER py_postgres
 
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["./entrypoints/entrypoint.sh"]

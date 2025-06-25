@@ -15,7 +15,7 @@ services:
       - POSTGRES_PASSWORD
 
   user_management:
-    image: ghcr.io/xarionlabs/continuous_deployment_starter/utilities/user_management:latest
+    image: ghcr.io/xarionlabs/continuous_deployment_starter/utilities-user_management:latest
     volumes:
       - ./users.csv:/app/users.csv
     environment:
@@ -29,7 +29,7 @@ services:
       - POSTGRES_PASSWORD
       - PSQL_APP_1_MIGRATIONS_PASSWORD
       - PSQL_APP_1_PASSWORD
-      - PSQL_APP_PXY6_PASSWORD
+      - PSQL_PXY6_PASSWORD
 
 volumes:
   postgres_data:
