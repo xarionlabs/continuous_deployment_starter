@@ -25,6 +25,8 @@ services:
     networks:
       - db_network
     restart: "no"
+    labels:
+      - "io.containers.autoupdate=registry"
     secrets:
       - POSTGRES_PASSWORD
       - PSQL_APP_1_MIGRATIONS_PASSWORD

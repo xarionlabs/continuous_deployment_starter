@@ -44,4 +44,6 @@ jobs:
             check-service-envs.sh
             generate_quadlets.sh
             generate_meta_services.sh
-            start_all_services.sh 
+            start_all_services.sh
+            echo "Triggering container auto-update..."
+            podman auto-update || echo "Auto-update command failed, continuing..." 
