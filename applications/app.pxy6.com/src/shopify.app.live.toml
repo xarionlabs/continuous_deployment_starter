@@ -22,3 +22,6 @@ redirect_urls = ["https://app.pxy6.com/auth/callback", "https://app.pxy6.com/aut
 
 [pos]
 embedded = false
+
+[build]
+include_config_on_deploy = true
