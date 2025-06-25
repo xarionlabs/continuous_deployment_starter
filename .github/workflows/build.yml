@@ -171,11 +171,20 @@ jobs:
             exit 1
           fi
 
+      - name: Determine image name based on type
+        id: image_name
+        run: |
+          if [ -d "utilities/${{ matrix.ITEM }}" ]; then
+            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}
+          images: ${{ steps.image_name.outputs.name }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -186,19 +195,19 @@ jobs:
         with:
           context: ${{ steps.context.outputs.path }}
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}:${{ needs.define-tag.outputs.tag }}
+          tags: ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-to: type=gha,mode=max
           cache-from: type=gha
 
       - name: Run tests on the Docker image
         id: test-images
-        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}:${{ needs.define-tag.outputs.tag }}
+        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}
+          subject-name: ${{ steps.image_name.outputs.name }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
