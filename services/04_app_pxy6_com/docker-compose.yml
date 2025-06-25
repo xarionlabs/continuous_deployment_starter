@@ -3,8 +3,8 @@ services:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     depends_on:
       - db
-      - migrate_db_pxy6
-      - shopify_deploy_pxy6
+      - pxy6_migrate_db
+      - pxy6_shopify_deploy
     environment:
       VIRTUAL_HOST: ${APP_PXY6_VIRTUAL_HOST}
       NODE_ENV: production
