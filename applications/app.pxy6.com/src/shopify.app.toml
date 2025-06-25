@@ -1,13 +1,14 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "58f7b8ec9072c0d77a9293b607a010c2"
-name = "app.pxy6"
-handle = "app-pxy6"
+name = "pxy6-development"
+handle = "pxy6-development"
 application_url = "https://flowers-stress-return-promise.trycloudflare.com"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
+include_config_on_deploy = true
 
 [webhooks]
 api_version = "2025-04"

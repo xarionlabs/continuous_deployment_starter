@@ -20,6 +20,8 @@ services:
       - ./users.csv:/app/users.csv
     environment:
       POSTGRES_USER: postgres
+    labels:
+      - "io.containers.autoupdate=registry"
     depends_on:
       - db
     networks:
