@@ -3,7 +3,8 @@ services:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     depends_on:
       - db
-      - app_pxy6_com_shopify_deploy
+      - migrate_db_pxy6
+      - shopify_deploy_pxy6
     environment:
       VIRTUAL_HOST: ${APP_PXY6_VIRTUAL_HOST}
       NODE_ENV: production
@@ -24,7 +25,21 @@ services:
       - SHOPIFY_CLI_PARTNERS_TOKEN
 
 
-  app_pxy6_com_shopify_deploy:
+  migrate_db_pxy6:
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - db
+    labels:
+      - "io.containers.autoupdate=registry"
+    entrypoint: ["./entrypoints/entrypoint_migrate_db.sh"]
+    restart: "no"
+    secrets:
+      - SHOPIFY_CLI_PARTNERS_TOKEN
+      - SHOPIFY_API_KEY
+
+  shopify_deploy_pxy6:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     environment:
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
