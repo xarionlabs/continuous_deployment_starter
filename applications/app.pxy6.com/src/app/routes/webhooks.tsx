@@ -1,4 +1,4 @@
-import {ActionFunction} from '@remix-run/node';
+import type {ActionFunction} from '@remix-run/node';
 
 import {authenticate} from '../shopify.server';
 import {formatComplianceBlocks, sendSlackMessage} from "../utils/slack.server";

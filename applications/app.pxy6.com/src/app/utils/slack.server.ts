@@ -1,4 +1,3 @@
-import { json } from "@remix-run/node";
 
 type SlackMessage = {
   text: string;
