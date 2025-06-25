@@ -9,6 +9,8 @@ services:
       NODE_ENV: production
       SHOPIFY_APP_URL: https://${APP_PXY6_VIRTUAL_HOST}/
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
+    labels:
+      - "io.containers.autoupdate=registry"
     expose:
       - "3000"
     networks:
@@ -28,6 +30,8 @@ services:
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
     entrypoint: ["./entrypoints/entrypoint_shopify_config.sh"]
     restart: "no"
+    labels:
+      - "io.containers.autoupdate=registry"
     secrets:
       - SHOPIFY_CLI_PARTNERS_TOKEN
       - SHOPIFY_API_KEY
