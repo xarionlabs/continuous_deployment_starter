@@ -19,4 +19,5 @@ add_volume_names.sh
 add_partof_services.sh
 add_secrets_to_env.sh
 add_oneshot_services.sh
+add_autoupdate_labels.sh
 echo "::endgroup::"
