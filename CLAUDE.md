@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Application-Specific Commands
 
-#### app-pxy6 (Shopify Remix App)
+#### app.pxy6.com (Shopify Remix App)
 - `npm run dev` - Start development server with Shopify CLI
 - `npm run build` - Build for production
 - `npm run setup` - Generate Prisma client and run migrations
@@ -51,7 +51,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 - `.github/workflows/` - CI/CD pipeline definitions
 
 ### Application Types
-1. **app-pxy6**: Shopify app built with Remix, TypeScript, Prisma ORM, and Polaris UI
+1. **app.pxy6.com**: Shopify app built with Remix, TypeScript, Prisma ORM, and Polaris UI
 2. **pxy6.com**: React/Vite frontend with Tailwind CSS, shadcn/ui components, and Supabase integration
 3. **app_1**: Python backend with FastAPI API and Streamlit frontend, using SQLAlchemy and PostgreSQL
 4. **app_2**: Simple Python application
@@ -66,7 +66,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 - **Orchestration**: Docker Compose for local development, Podman with systemd for production
 - **Registry**: GitHub Container Registry (ghcr.io)
 - **Reverse Proxy**: Nginx for external access and SSL termination
-- **Database**: PostgreSQL with migrations via Prisma (app-pxy6) and Alembic (app_1)
+- **Database**: PostgreSQL with migrations via Prisma (app.pxy6.com) and Alembic (app_1)
 - **Testing**: Jest/Playwright for frontend, pytest for Python, containerized e2e tests
 
 ### Development Patterns
@@ -82,5 +82,8 @@ This is a containerized multi-application deployment system with automated CI/CD
 - Services numbered for startup order (01_postgres, 02_app_1, 03_nginx-proxy)
 
 ### Database Migrations
-- **app-pxy6**: Use `prisma migrate deploy` or `npm run setup`
+- **app.pxy6.com**: Use `prisma migrate deploy` or `npm run setup`
 - **app_1**: Use `alembic upgrade head` in the data/db/migrations directory
+
+### Deployment Information
+- **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments
