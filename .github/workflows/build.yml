@@ -175,7 +175,7 @@ jobs:
         id: image_name
         run: |
           if [ -d "utilities/${{ matrix.ITEM }}" ]; then
-            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           else
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           fi
