@@ -73,6 +73,23 @@ check_service_status() {
 echo "Reloading systemd..."
 systemctl --user daemon-reload
 
+# Pull latest container images
+echo "Pulling latest container images..."
+for service_dir in services/*/; do
+    if [[ -f "$service_dir/docker-compose.yml" ]]; then
+        echo "Checking images in $service_dir"
+        # Extract image names from docker-compose.yml and pull them
+        grep -o 'image: [^"]*' "$service_dir/docker-compose.yml" | sed 's/image: //' | while read -r image; do
+            echo "Pulling $image"
+            if ! podman pull "$image"; then
+                echo "⚠️  Failed to pull $image - continuing with existing image"
+            else
+                echo "✅ Successfully pulled $image"
+            fi
+        done
+    fi
+done
+
 # Collect all service files
 SERVICE_FILES=()
 for type in container network volume; do
