@@ -3,7 +3,7 @@ version: '3.8'
 services:
   nginx_proxy:
     depends_on:
-      - app_pxy6_com_shopify_deploy
+      - pxy6_app
     image: docker.io/jwilder/nginx-proxy
     container_name: nginx_proxy
     volumes:
