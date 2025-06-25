@@ -28,6 +28,8 @@ services:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     environment:
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
+    labels:
+      - "io.containers.autoupdate=registry"
     entrypoint: ["./entrypoints/entrypoint_shopify_config.sh"]
     restart: "no"
     secrets:
