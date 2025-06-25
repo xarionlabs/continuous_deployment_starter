@@ -195,7 +195,9 @@ jobs:
         with:
           context: ${{ steps.context.outputs.path }}
           push: true
-          tags: ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }}
+          tags: |
+            ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }}
+            ${{ steps.image_name.outputs.name }}:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-to: type=gha,mode=max
           cache-from: type=gha
