@@ -9,8 +9,16 @@ embedded = true
 [webhooks]
 api_version = "2025-04"
 
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update", "app/uninstalled" ]
+  uri = "/webhooks"
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+
+[access_scopes]
+scopes = "read_all_orders,read_customers,read_inventory,read_metaobjects,read_orders,read_product_listings,read_products,read_returns,write_metaobjects"
+
 [auth]
-redirect_urls = [ "https://app.pxy6.com/api/auth" ]
+redirect_urls = ["https://app.pxy6.com/auth/callback", "https://app.pxy6.com/auth/shopify/callback", "https://app.pxy6.com/api/auth/callback"]
 
 [pos]
 embedded = false

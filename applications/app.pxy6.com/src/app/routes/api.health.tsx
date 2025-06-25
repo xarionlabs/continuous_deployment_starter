@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import prisma from "~/db.server";
+import prisma from "../db.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   let dbStatus = "ok";
