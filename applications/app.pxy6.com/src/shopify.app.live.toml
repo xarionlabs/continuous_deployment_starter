@@ -1,8 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "f8a56cbc98336b82a48bbbacef7941a0"
-name = "pxy6-live"
-handle = "pxy6-live"
+name = "pxy6"
+handle = "pxy6"
 application_url = "https://app.pxy6.com/"
 embedded = true
 
