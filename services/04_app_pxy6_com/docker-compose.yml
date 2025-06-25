@@ -16,7 +16,7 @@ services:
       - proxy_network
     restart: unless-stopped
     secrets:
-      - PSQL_APP_PXY6_PASSWORD
+      - PSQL_PXY6_PASSWORD
       - SHOPIFY_API_KEY
       - SHOPIFY_API_SECRET
       - SHOPIFY_CLI_PARTNERS_TOKEN

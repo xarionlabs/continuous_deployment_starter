@@ -75,40 +75,52 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for comparison
       
-      - name: Find valid applications
+      - name: Find valid applications and utilities
         id: find_valid_apps
         run: |
           # Find all valid application directories (those with Dockerfiles)
           VALID_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///" | sort)
           echo "Valid applications found:"
           echo "$VALID_APPS"
-          echo "valid_apps=$(echo "$VALID_APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
+          
+          # Find all valid utility directories (those with Dockerfiles)
+          VALID_UTILITIES=$(find utilities -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/utilities\///" | sort)
+          echo "Valid utilities found:"
+          echo "$VALID_UTILITIES"
+          
+          # Combine applications and utilities
+          ALL_BUILDABLE=$(echo -e "$VALID_APPS\n$VALID_UTILITIES" | sed '/^$/d')
+          echo "All buildable items:"
+          echo "$ALL_BUILDABLE"
+          
+          echo "valid_apps=$(echo "$ALL_BUILDABLE" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
-      - name: Find changed applications
+      - name: Find changed applications and utilities
         id: find_applications
         run: |
-          # Get valid applications from previous step
-          VALID_APPS=$(echo '${{ steps.find_valid_apps.outputs.valid_apps }}' | jq -r '.[]')
+          # Get valid buildable items from previous step
+          VALID_ITEMS=$(echo '${{ steps.find_valid_apps.outputs.valid_apps }}' | jq -r '.[]')
           
           if [ "${{ needs.skip-check.outputs.force_build }}" = "true" ]; then
-            # If force_build is true, use all valid applications
-            CHANGED_APPS="$VALID_APPS"
+            # If force_build is true, use all valid items
+            CHANGED_ITEMS="$VALID_ITEMS"
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             # Get the list of changed files
             CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
             
-            # Find which valid applications have changes
-            CHANGED_APPS=""
-            for app in $VALID_APPS; do
-              if echo "$CHANGED_FILES" | grep -q "^applications/$app/"; then
-                CHANGED_APPS="$CHANGED_APPS$app"$'\n'
+            # Find which valid items have changes
+            CHANGED_ITEMS=""
+            for item in $VALID_ITEMS; do
+              # Check if item is in applications/ or utilities/
+              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/"; then
+                CHANGED_ITEMS="$CHANGED_ITEMS$item"$'\n'
               fi
             done
             
             # Remove trailing newline and check if we have changes
-            CHANGED_APPS=$(echo "$CHANGED_APPS" | sed '/^$/d')
-            if [ -n "$CHANGED_APPS" ]; then
+            CHANGED_ITEMS=$(echo "$CHANGED_ITEMS" | sed '/^$/d')
+            if [ -n "$CHANGED_ITEMS" ]; then
               echo "has_changes=true" >> $GITHUB_OUTPUT
             else
               echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -116,11 +128,11 @@ jobs:
           fi
           
           # Convert to JSON array
-          echo "applications=$(echo "$CHANGED_APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
+          echo "applications=$(echo "$CHANGED_ITEMS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
-      - name: Print applications to build
+      - name: Print applications and utilities to build
         run: |
-          echo "Applications to build:"
+          echo "Applications and utilities to build:"
           echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'
 
   build-application:
@@ -129,7 +141,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        APPLICATION: ${{ fromJSON(needs.find-changed-applications.outputs.applications) }}
+        ITEM: ${{ fromJSON(needs.find-changed-applications.outputs.applications) }}
       fail-fast: false
     permissions:
       contents: read
@@ -147,11 +159,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine context path
+        id: context
+        run: |
+          if [ -d "applications/${{ matrix.ITEM }}" ]; then
+            echo "path=applications/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          elif [ -d "utilities/${{ matrix.ITEM }}" ]; then
+            echo "path=utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          else
+            echo "Error: Could not find ${{ matrix.ITEM }} in applications or utilities"
+            exit 1
+          fi
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -160,21 +184,21 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: applications/${{ matrix.APPLICATION }}
+          context: ${{ steps.context.outputs.path }}
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}:${{ needs.define-tag.outputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-to: type=gha,mode=max
           cache-from: type=gha
 
       - name: Run tests on the Docker image
         id: test-images
-        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}:${{ needs.define-tag.outputs.tag }}
+        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}:${{ needs.define-tag.outputs.tag }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.APPLICATION }}
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
