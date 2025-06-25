@@ -1,6 +1,6 @@
 services:
   app_pxy6_com:
-    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:${APP_VERSION}"
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     depends_on:
       - db
       - app_pxy6_com_shopify_deploy
@@ -25,7 +25,7 @@ services:
 
 
   app_pxy6_com_shopify_deploy:
-    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:${APP_VERSION}"
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     environment:
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
     entrypoint: ["./entrypoints/entrypoint_shopify_config.sh"]
