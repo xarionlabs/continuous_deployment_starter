@@ -1,5 +1,5 @@
 services:
-  app_pxy6_com:
+  pxy6_app:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     depends_on:
       - db
@@ -25,7 +25,7 @@ services:
       - SHOPIFY_CLI_PARTNERS_TOKEN
 
 
-  migrate_db_pxy6:
+  pxy6_migrate_db:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     environment:
       NODE_ENV: production
@@ -39,7 +39,7 @@ services:
       - SHOPIFY_CLI_PARTNERS_TOKEN
       - SHOPIFY_API_KEY
 
-  shopify_deploy_pxy6:
+  pxy6_shopify_deploy:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     environment:
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
