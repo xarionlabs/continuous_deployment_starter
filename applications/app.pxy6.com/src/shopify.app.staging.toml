@@ -1,8 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "0d2687ceba3f91bcdd7c7a03b212175f"
-name = "pxy6-staging-changes-test"
-handle = "pxy6-staging-changes-test"
+name = "pxy6-staging"
+handle = "pxy6-staging"
 application_url = "https://staging.pxy6.com/"
 embedded = true
 
