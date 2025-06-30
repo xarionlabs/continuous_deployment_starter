@@ -19,6 +19,7 @@ RUN npm run build
 # Production stage - serve static files
 FROM busybox
 COPY --from=build /app/src/dist /usr/share/nginx/html
+COPY --from=build /app/entrypoints /app/entrypoints
 COPY src/nginx.conf /etc/nginx/conf.d/default.conf
 # This container just copies files and exits
 CMD ["true"]
