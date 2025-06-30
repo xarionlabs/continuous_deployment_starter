@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": __dirname,
+      src: '/src',
     },
   },
   preview: {
