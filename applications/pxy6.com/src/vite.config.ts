@@ -8,7 +8,7 @@ import autoprefixer from "autoprefixer";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   root: __dirname,
-  publicDir: path.resolve(__dirname, '../public'),
+  publicDir: path.resolve(__dirname, 'public'),
   server: {
     host: "::",
     port: 5173,
@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": __dirname,
+      src: '/src',
     },
   },
   preview: {

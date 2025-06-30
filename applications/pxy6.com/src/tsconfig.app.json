@@ -26,10 +26,9 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitAny": false,
-    "noFallthroughCasesInSwitch": false,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "noFallthroughCasesInSwitch": false
   },
-  "include": ["src"]
+  "include": [
+    "."
+  ]
 }

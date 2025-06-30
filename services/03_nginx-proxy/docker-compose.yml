@@ -4,6 +4,7 @@ services:
   nginx_proxy:
     depends_on:
       - pxy6_app
+      - pxy6_nginx
     image: docker.io/jwilder/nginx-proxy
     container_name: nginx_proxy
     volumes:
