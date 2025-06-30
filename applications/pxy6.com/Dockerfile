@@ -17,17 +17,9 @@ COPY . .
 # Build the application from the root directory
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
-
-# Copy built assets from build stage
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
+# Production stage - serve static files
+FROM busybox
+COPY --from=build /app/src/dist /usr/share/nginx/html
 COPY src/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# This container just copies files and exits
+CMD ["true"]

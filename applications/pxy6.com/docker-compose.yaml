@@ -1,17 +1,31 @@
 version: '3.8'
 
 services:
-  app:
+  # Build static files
+  build:
     build:
       context: .
-      dockerfile: skipped-Dockerfile
+      dockerfile: Dockerfile
+    container_name: pxy6-build
+    volumes:
+      - static_files:/usr/share/nginx/html
+      - nginx_config:/etc/nginx/conf.d
+
+  # Serve with nginx
+  app:
+    image: nginx:alpine
     container_name: pxy6-app
+    depends_on:
+      - build
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3030:80"
+    volumes:
+      - static_files:/usr/share/nginx/html:ro
+      - nginx_config:/etc/nginx/conf.d:ro
     environment:
       - NODE_ENV=production
-      - VITE_API_BASE_URL=http://pxy6_app:3000
+      - VITE_API_BASE_URL=http://localhost:3000
     networks:
       - pxy6-network
 
@@ -34,6 +48,10 @@ services:
     working_dir: /app/src
     networks:
       - pxy6-network
+
+volumes:
+  static_files:
+  nginx_config:
 
 networks:
   pxy6-network:

@@ -1,0 +1,33 @@
+services:
+  pxy6_com:
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/pxy6.com:latest"
+    restart: "no"
+    volumes:
+      - pxy6_static:/usr/share/nginx/html
+      - nginx_config:/etc/nginx/conf.d
+    labels:
+      - "io.containers.autoupdate=registry"
+
+  pxy6_nginx:
+    image: nginx:alpine
+    container_name: pxy6_nginx
+    depends_on:
+      - pxy6_com
+    environment:
+      VIRTUAL_HOST: ${PXY6_VIRTUAL_HOST}
+    volumes:
+      - pxy6_static:/usr/share/nginx/html:ro
+      - nginx_config:/etc/nginx/conf.d:ro
+    expose:
+      - "80"
+    networks:
+      - proxy_network
+    restart: unless-stopped
+
+volumes:
+  pxy6_static:
+  nginx_config:
+
+networks:
+  proxy_network:
+    driver: bridge
