@@ -14,7 +14,7 @@ services:
     depends_on:
       - pxy6_com
     environment:
-      VIRTUAL_HOST: ${PXY6_VIRTUAL_HOST}
+      VIRTUAL_HOST: ${PXY6_COM_VIRTUAL_HOST}
     volumes:
       - pxy6_static:/usr/share/nginx/html:ro
       - nginx_config:/etc/nginx/conf.d:ro
