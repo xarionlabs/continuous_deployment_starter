@@ -7,19 +7,19 @@ import autoprefixer from "autoprefixer";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  root: path.resolve(__dirname, 'src'),
-  publicDir: path.resolve(__dirname, 'src/public'),
+  root: __dirname,
+  publicDir: path.resolve(__dirname, 'public'),
   server: {
     host: "::",
     port: 5173,
     strictPort: true,
   },
   build: {
-    outDir: path.resolve(__dirname, 'src/dist'),
+    outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'src/index.html')
+        main: path.resolve(__dirname, 'index.html')
       }
     }
   },
@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      "@": __dirname,
     },
   },
   preview: {

@@ -4,17 +4,16 @@ FROM node:20-alpine AS build
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY bun.lockb ./
+# Copy source code first
+COPY . .
+
+# Set working directory to src where package.json is located
+WORKDIR /app/src
 
 # Install dependencies with legacy peer deps to handle peer dependency issues
 RUN npm install --legacy-peer-deps
 
-# Copy source code
-COPY . .
-
-# Build the application from the root directory
+# Build the application from the src directory
 RUN npm run build
 
 # Production stage - serve static files

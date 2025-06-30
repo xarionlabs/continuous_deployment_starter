@@ -16,7 +16,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "docker:build": "docker build -t pxy6-app .",
+    "docker:build": "docker build -t pxy6-app ..",
     "docker:run": "docker run -p 3000:80 pxy6-app",
     "docker:dev": "docker-compose up dev",
     "docker:down": "docker-compose down"
