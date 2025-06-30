@@ -1,73 +1,172 @@
-# Welcome to your Lovable project
+# pxy6.com
 
-## Project info
+A React application built with Vite and TypeScript that integrates with app.pxy6.com for backend services.
 
-**URL**: https://lovable.dev/projects/ce57c63b-078c-4c4d-af82-d60758d7b40d
+## Technologies
 
-## How can I edit this code?
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Framework**: Tailwind CSS, shadcn/ui components
+- **Backend**: API integration with app.pxy6.com (Remix application)
+- **Testing**: Jest, Playwright
+- **Build**: Vite with hot module reloading
 
-There are several ways of editing your application.
+## Development Setup
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ce57c63b-078c-4c4d-af82-d60758d7b40d) and start prompting.
+- Node.js 18+ and npm
+- Git
 
-Changes made via Lovable will be committed automatically to this repo.
+### Installation
 
-**Use your preferred IDE**
+```bash
+# Clone the repository
+git clone <repository-url>
+cd pxy6.com
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Install dependencies
+npm install
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Set up the database
+npm run setup
 ```
 
-**Edit a file directly in GitHub**
+## Available Scripts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Development Commands
 
-**Use GitHub Codespaces**
+```bash
+# Start development server with type checking and hot reload
+npm run dev
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Start development server in Docker container
+npm run docker:dev
+```
 
-## What technologies are used for this project?
+### Build Commands
 
-This project is built with:
+```bash
+# Build for production
+npm run build
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Build for development (with source maps)
+npm run build:dev
 
-## How can I deploy this project?
+# Preview production build locally
+npm run preview
+```
 
-Simply open [Lovable](https://lovable.dev/projects/ce57c63b-078c-4c4d-af82-d60758d7b40d) and click on Share -> Publish.
+### API Integration
 
-## Can I connect a custom domain to my Lovable project?
+This application uses app.pxy6.com as its backend API for data operations. No local database setup is required.
 
-Yes, you can!
+### Testing Commands
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```bash
+# Run unit tests
+npm run test
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run end-to-end tests
+npm run test:e2e
+
+# Run e2e tests with UI
+npm run test:e2e:ui
+
+# Debug e2e tests
+npm run test:e2e:debug
+```
+
+### Code Quality Commands
+
+```bash
+# Run TypeScript type checking
+npm run typecheck
+
+# Run ESLint
+npm run lint
+```
+
+### Docker Commands
+
+```bash
+# Build Docker image
+npm run docker:build
+
+# Run Docker container
+npm run docker:run
+
+# Start development environment with Docker Compose
+npm run docker:dev
+
+# Stop Docker Compose services
+npm run docker:down
+```
+
+## API Configuration
+
+### Local Development
+- Uses app.pxy6.com running on `http://localhost:3000`
+- Set `VITE_API_BASE_URL=http://localhost:3000` in `.env.local`
+
+### Production
+- Connects to app.pxy6.com backend service
+- Environment variable: `VITE_API_BASE_URL=http://pxy6_app:3000`
+
+### Available API Endpoints
+
+The application integrates with the following app.pxy6.com endpoints:
+
+- **POST /api/waitlist**: Submit waitlist email with source tracking
+- **POST /api/follow-up**: Submit additional user information from follow-up forms
+- **POST /api/loi-click**: Track letter of intent clicks
+
+## Environment Variables
+
+### Development
+- `VITE_API_BASE_URL`: API base URL (default: `http://localhost:3000`)
+
+### Production
+- `VITE_API_BASE_URL`: API base URL for app.pxy6.com backend
+- `NODE_ENV`: Set to `production`
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+├── services/           # API integration and business logic
+└── ...
+```
+
+## Development Workflow
+
+1. Start development server: `npm run dev`
+2. Make changes to code
+3. Run type checking: `npm run typecheck`
+4. Run tests: `npm run test`
+5. Build for production: `npm run build`
+
+## Deployment
+
+The application is configured for containerized deployment:
+
+1. Build Docker image: `npm run docker:build`
+2. Deploy with app.pxy6.com backend service connection
+3. Ensure app.pxy6.com is running and accessible
+
+## Testing
+
+- **Unit Tests**: Jest with React Testing Library
+- **E2E Tests**: Playwright for browser automation
+- **Type Checking**: TypeScript compiler
+- **Linting**: ESLint with React and TypeScript rules
+
+## Support
+
+For issues and questions, refer to the project documentation or contact the development team.

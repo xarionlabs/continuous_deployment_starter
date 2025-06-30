@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
+import { insertWaitingList } from "@/services/databaseService";
 import { getSourceSummary, trackWaitlistSignup } from "@/services/trackingService";
 import FollowUpModal from "./FollowUpModal";
 
@@ -77,13 +77,11 @@ const WaitingListModal = ({ open, onOpenChange, context = "login" }: WaitingList
         source: JSON.stringify(sourceData)
       });
       
-      // Insert email into Supabase waiting_list table with source
-      const { error } = await supabase
-        .from('waiting_list')
-        .insert([{ 
-          email: data.email,
-          source: JSON.stringify(sourceData)
-        }]);
+      // Insert email into waiting_list table with source
+      const { error } = await insertWaitingList(
+        data.email,
+        JSON.stringify(sourceData)
+      );
 
       if (error) {
         console.error("Error submitting to waiting list:", error);
