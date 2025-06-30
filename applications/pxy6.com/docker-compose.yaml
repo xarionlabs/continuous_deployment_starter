@@ -11,10 +11,9 @@ services:
       - "3000:80"
     environment:
       - NODE_ENV=production
+      - VITE_API_BASE_URL=http://pxy6_app:3000
     networks:
       - pxy6-network
-    depends_on:
-      - supabase
 
   # Development environment with hot-reload
   dev:
@@ -31,30 +30,11 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true # For better file watching in Docker
+      - VITE_API_BASE_URL=http://localhost:3000
     working_dir: /app/src
-    networks:
-      - pxy6-network
-    depends_on:
-      - supabase
-
-  # Supabase for local development
-  supabase:
-    image: supabase/postgres:15.1.0.118
-    container_name: pxy6-supabase
-    environment:
-      POSTGRES_PASSWORD: your-super-secret
-      POSTGRES_DB: pxy6
-    ports:
-      - "5432:5432"
-    volumes:
-      - supabase_data:/var/lib/postgresql/data
-      - ./src/supabase:/docker-entrypoint-initdb.d
     networks:
       - pxy6-network
 
 networks:
   pxy6-network:
     driver: bridge
-
-volumes:
-  supabase_data:

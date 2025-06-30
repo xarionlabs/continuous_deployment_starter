@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { insertFollowUpInfo, insertLoiClick } from "@/services/databaseService";
 import { FormValues } from "@/components/follow-up/schema";
 
 export const submitFollowUpInfo = async (email: string, data: FormValues) => {
@@ -17,17 +17,14 @@ export const submitFollowUpInfo = async (email: string, data: FormValues) => {
   });
   
   // Insert information into the follow_up_info table
-  const { error, data: responseData } = await supabase
-    .from('follow_up_info')
-    .insert({ 
-      email: email,
-      role: data.role,
-      role_other: roleData,
-      platforms: data.platforms,
-      monthly_traffic: data.monthlyTraffic,
-      website_name: data.websiteName
-    })
-    .select();
+  const { error, data: responseData } = await insertFollowUpInfo({
+    email: email,
+    role: data.role,
+    role_other: roleData,
+    platforms: data.platforms,
+    monthly_traffic: data.monthlyTraffic,
+    website_name: data.websiteName
+  });
   
   if (error) {
     console.error("Error submitting follow-up data:", error);
@@ -47,10 +44,7 @@ export const trackLOIClick = async (email: string) => {
   console.log("Tracking LOI click for email:", email);
   
   try {
-    const { error, data } = await supabase
-      .from('loi_clicks')
-      .insert({ email: email.trim() })
-      .select();
+    const { error, data } = await insertLoiClick(email.trim());
     
     if (error) {
       console.error("Error tracking LOI click:", error);

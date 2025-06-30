@@ -30,3 +30,35 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model WaitingList {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("waiting_list")
+}
+
+model FollowUpInfo {
+  id             String   @id @default(cuid())
+  email          String
+  role           String?
+  role_other     String?
+  platforms      String?
+  monthly_traffic String?
+  website_name   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("follow_up_info")
+}
+
+model LoiClicks {
+  id        String   @id @default(cuid())
+  email     String
+  createdAt DateTime @default(now())
+
+  @@map("loi_clicks")
+}
