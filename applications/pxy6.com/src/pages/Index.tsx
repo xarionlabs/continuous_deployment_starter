@@ -83,7 +83,7 @@ const Index = () => {
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                   <ul className="space-y-2">
                     <li>Free to install</li>
-                    <li className="font-semibold">€1,600 per month</li>
+                    <li className="font-semibold">€800 per month</li>
                     <li>Traffic-based multiplier</li>
                   </ul>
                 </div>
@@ -103,7 +103,7 @@ const Index = () => {
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                   <ul className="space-y-2">
                     <li>Free to install</li>
-                    <li className="font-semibold">€3,200 per month</li>
+                    <li className="font-semibold">€1,600 per month</li>
                     <li>Traffic-based multiplier</li>
                   </ul>
                 </div>
@@ -123,7 +123,7 @@ const Index = () => {
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                   <ul className="space-y-2">
                     <li>Free to install</li>
-                    <li className="font-semibold">€6,400 per month</li>
+                    <li className="font-semibold">€3,200 per month</li>
                     <li>Traffic-based multiplier</li>
                   </ul>
                 </div>
