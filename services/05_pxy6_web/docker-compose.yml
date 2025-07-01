@@ -9,7 +9,7 @@ services:
       - "io.containers.autoupdate=registry"
 
   pxy6_nginx:
-    image: nginx:alpine
+    image: docker.io/library/nginx:alpine
     container_name: pxy6_nginx
     depends_on:
       - pxy6_com
