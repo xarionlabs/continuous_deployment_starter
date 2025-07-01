@@ -3,8 +3,8 @@ version: '3.8'
 services:
   nginx_proxy:
     depends_on:
-      - pxy6_app
-      - pxy6_nginx
+      - app_pxy6_com
+      - pxy6_com_nginx
     image: docker.io/jwilder/nginx-proxy
     container_name: nginx_proxy
     volumes:

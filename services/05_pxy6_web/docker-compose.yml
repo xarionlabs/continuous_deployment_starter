@@ -2,15 +2,18 @@ services:
   pxy6_com:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/pxy6.com:latest"
     restart: "no"
+    environment:
+      API_BASE_URL: https://${APP_PXY6_VIRTUAL_HOST}
+      NODE_ENV: production
     volumes:
       - pxy6_static:/usr/share/nginx/html
       - nginx_config:/etc/nginx/conf.d
     labels:
       - "io.containers.autoupdate=registry"
 
-  pxy6_nginx:
+  pxy6_com_nginx:
     image: docker.io/library/nginx:alpine
-    container_name: pxy6_nginx
+    container_name: pxy6_com_nginx
     depends_on:
       - pxy6_com
     environment:

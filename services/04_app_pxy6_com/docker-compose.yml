@@ -1,5 +1,5 @@
 services:
-  pxy6_app:
+  app_pxy6_com:
     image: "ghcr.io/xarionlabs/continuous_deployment_starter/app.pxy6.com:latest"
     depends_on:
       - db
