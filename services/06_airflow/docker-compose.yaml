@@ -41,6 +41,8 @@ services:
     command: webserver
     ports:
       - "8080:8080"
+    environment:
+      VIRTUAL_HOST: ${AIRFLOW_WEB_VIRTUAL_HOST}
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
