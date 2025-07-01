@@ -2,3 +2,4 @@ username,database,role
 app_1,app_1,write
 app_1_migrations,app_1,admin
 pxy6,pxy6,admin
+airflow,airflow,admin
