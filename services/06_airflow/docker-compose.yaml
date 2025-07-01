@@ -22,7 +22,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ./entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+    - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -71,17 +71,13 @@ services:
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
+    restart: "no"
     command:
       - -c
       - |
         mkdir -p /opt/airflow/{logs,dags,plugins}
         chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/
-        # Read password from secret and set connection string
-        if [ -f /run/secrets/PSQL_AIRFLOW_PASSWORD ]; then
-          PSQL_AIRFLOW_PASSWORD=$(cat /run/secrets/PSQL_AIRFLOW_PASSWORD)
-          export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="postgresql+psycopg2://airflow:${PSQL_AIRFLOW_PASSWORD}@db/airflow"
-        fi
-        exec /entrypoint airflow db migrate
+        exec /opt/airflow/custom-entrypoint.sh airflow db migrate
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
