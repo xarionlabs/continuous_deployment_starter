@@ -112,11 +112,11 @@ npm run docker:down
 
 ### Local Development
 - Uses app.pxy6.com running on `http://localhost:3000`
-- Set `VITE_API_BASE_URL=http://localhost:3000` in `.env.local`
+- Set `API_BASE_URL=http://localhost:3000` in `.env.local`
 
 ### Production
 - Connects to app.pxy6.com backend service
-- Environment variable: `VITE_API_BASE_URL=http://pxy6_app:3000`
+- Environment variable: `API_BASE_URL=http://app_pxy6_com:3000`
 
 ### Available API Endpoints
 
@@ -129,10 +129,10 @@ The application integrates with the following app.pxy6.com endpoints:
 ## Environment Variables
 
 ### Development
-- `VITE_API_BASE_URL`: API base URL (default: `http://localhost:3000`)
+- `API_BASE_URL`: API base URL (default: `http://localhost:3000`)
 
 ### Production
-- `VITE_API_BASE_URL`: API base URL for app.pxy6.com backend
+- `API_BASE_URL`: API base URL for app.pxy6.com backend
 - `NODE_ENV`: Set to `production`
 
 ## Project Structure
