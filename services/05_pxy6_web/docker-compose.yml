@@ -19,7 +19,7 @@ services:
       VIRTUAL_HOST: ${PXY6_COM_VIRTUAL_HOST}
     volumes:
       - pxy6_static:/usr/share/nginx/html:ro
-      - ./pxy6_web_nginx.conf:/etc/nginx/conf.d:ro
+      - ./pxy6_web_nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
     expose:
       - "80"
     networks:
