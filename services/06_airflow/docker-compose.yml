@@ -76,7 +76,7 @@ services:
     image: docker.io/apache/airflow:3.0.2
     entrypoint: /bin/bash
     restart: "no"
-    command: exec /opt/airflow/custom-entrypoint.sh airflow db migrate
+    command: /opt/airflow/custom-entrypoint.sh airflow db migrate
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
