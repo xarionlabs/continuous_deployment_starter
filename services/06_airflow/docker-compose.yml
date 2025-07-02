@@ -1,48 +1,32 @@
 # Production-ready Airflow configuration with LocalExecutor
 # Uses PostgreSQL backend and simplified service architecture
 ---
-x-airflow-common:
-  &airflow-common
-  # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
-  image: apache/airflow:3.0.2
-  entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
-  environment:
-    &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__CORE__FERNET_KEY: ''
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    # yamllint disable rule:line-length
-    # Use simple http server on scheduler for health checks
-    # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
-    # yamllint enable rule:line-length
-    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-  volumes:
-    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
-    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
-  user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    &airflow-common-depends-on
-  secrets:
-    - PSQL_AIRFLOW_PASSWORD
-
-networks:
-  default:
-    external: true
-    name: services_db_network
-
 services:
 
   airflow-webserver:
-    <<: *airflow-common
+    image: apache/airflow:3.0.2
+    entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
     command: webserver
     ports:
       - "8080:8080"
     environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
       VIRTUAL_HOST: ${AIRFLOW_WEB_VIRTUAL_HOST}
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow
+      - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+      - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
+    secrets:
+      - PSQL_AIRFLOW_PASSWORD
+      - GOOGLE_OAUTH_CLIENT_SECRET
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -51,13 +35,29 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
+      - airflow-init
 
   airflow-scheduler:
-    <<: *airflow-common
+    image: apache/airflow:3.0.2
+    entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
     command: scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow
+      - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+      - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
+    secrets:
+      - PSQL_AIRFLOW_PASSWORD
+      - GOOGLE_OAUTH_CLIENT_SECRET
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
       interval: 30s
@@ -66,28 +66,42 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
+      - airflow-init
 
   airflow-init:
-    <<: *airflow-common
+    image: apache/airflow:3.0.2
     entrypoint: /bin/bash
     restart: "no"
     command:
       - -c
       - |
         mkdir -p /opt/airflow/{logs,dags,plugins}
-        chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/
         exec /opt/airflow/custom-entrypoint.sh airflow db migrate
     environment:
-      <<: *airflow-common-env
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
-    user: "0:0"
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow
+      - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+      - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
+    secrets:
+      - PSQL_AIRFLOW_PASSWORD
+      - GOOGLE_OAUTH_CLIENT_SECRET
 
 secrets:
   PSQL_AIRFLOW_PASSWORD:
     external: true
+  GOOGLE_OAUTH_CLIENT_SECRET:
+    external: true
+
