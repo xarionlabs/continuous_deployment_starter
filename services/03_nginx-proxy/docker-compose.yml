@@ -5,7 +5,6 @@ services:
     depends_on:
       - app_pxy6_com
       - pxy6_com_nginx
-      - airflow-webserver
     image: docker.io/jwilder/nginx-proxy
     container_name: nginx_proxy
     volumes:
