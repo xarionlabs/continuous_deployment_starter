@@ -114,7 +114,9 @@ def create_user_management_sql(csv_file=CSV_FILE, sql_dir=SQL_FILE):
                 role = user["role"].strip().lower()
 
                 password_env_var = f"PSQL_{username.upper()}_PASSWORD"
-                password = os.getenv(password_env_var, "defaultpassword")
+                password = os.getenv(password_env_var)
+                if not password:
+                    raise ValueError(f"Password environment variable {password_env_var} is required but not set")
 
                 sqlfile.write(f"""
                 DO $$ 
