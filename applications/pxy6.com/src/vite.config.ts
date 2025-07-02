@@ -7,6 +7,9 @@ import autoprefixer from "autoprefixer";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    'import.meta.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL),
+  },
   root: __dirname,
   publicDir: path.resolve(__dirname, 'public'),
   server: {

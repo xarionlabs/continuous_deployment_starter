@@ -1,4 +1,10 @@
 // API service for database operations via app.pxy6.com
+
+// Fail build in production if required env vars are missing
+if (import.meta.env.PROD && !import.meta.env.API_BASE_URL) {
+  throw new Error('API_BASE_URL is required in production');
+}
+
 const API_BASE_URL = import.meta.env.API_BASE_URL || 'http://localhost:3000';
 
 interface ApiResponse<T = any> {
