@@ -8,6 +8,6 @@ WORKDIR /app/src
 
 RUN npm install --legacy-peer-deps --include=dev
 
-RUN chmod +x entrypoints/entrypoint.sh
+RUN chmod +x /app/entrypoints/entrypoint.sh
 
-ENTRYPOINT ["entrypoints/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoints/entrypoint.sh"]
