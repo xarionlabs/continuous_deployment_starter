@@ -4,7 +4,7 @@
 services:
 
   airflow-webserver:
-    image: apache/airflow:3.0.2
+    image: docker.io/apache/airflow:3.0.2
     entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
     command: webserver
     ports:
@@ -21,7 +21,9 @@ services:
       GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
       VIRTUAL_HOST: ${AIRFLOW_WEB_VIRTUAL_HOST}
     volumes:
-      - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
       - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
@@ -38,7 +40,7 @@ services:
       - airflow-init
 
   airflow-scheduler:
-    image: apache/airflow:3.0.2
+    image: docker.io/apache/airflow:3.0.2
     entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
     command: scheduler
     environment:
@@ -52,7 +54,9 @@ services:
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
     volumes:
-      - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
       - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
@@ -69,7 +73,7 @@ services:
       - airflow-init
 
   airflow-init:
-    image: apache/airflow:3.0.2
+    image: docker.io/apache/airflow:3.0.2
     entrypoint: /bin/bash
     restart: "no"
     command:
@@ -89,15 +93,22 @@ services:
       GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-airflow}
     volumes:
-      - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
       - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
       - PSQL_AIRFLOW_PASSWORD
       - GOOGLE_OAUTH_CLIENT_SECRET
+
+volumes:
+  airflow_dags:
+  airflow_logs:
+  airflow_plugins:
 
 secrets:
   PSQL_AIRFLOW_PASSWORD:
