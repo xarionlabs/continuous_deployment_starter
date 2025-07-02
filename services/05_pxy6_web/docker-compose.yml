@@ -7,7 +7,6 @@ services:
       NODE_ENV: production
     volumes:
       - pxy6_static:/app/src/dist
-      - nginx_config:/app/src/nginx.conf
     labels:
       - "io.containers.autoupdate=registry"
 
@@ -20,7 +19,7 @@ services:
       VIRTUAL_HOST: ${PXY6_COM_VIRTUAL_HOST}
     volumes:
       - pxy6_static:/usr/share/nginx/html:ro
-      - nginx_config:/etc/nginx/conf.d:ro
+      - ./pxy6_web_nginx.conf:/etc/nginx/conf.d:ro
     expose:
       - "80"
     networks:
