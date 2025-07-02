@@ -1,25 +1,13 @@
-# Build stage
 FROM node:20-alpine AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy source code first
 COPY . .
 
-# Set working directory to src where package.json is located
 WORKDIR /app/src
 
-# Install dependencies with legacy peer deps to handle peer dependency issues
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --include=dev
 
-## Build the application from the src directory
-#RUN npm run build
-#
-## Production stage - serve static files
-#FROM busybox
-#COPY --from=build /app/src/dist /usr/share/nginx/html
-#COPY --from=build /app/ /usr/share/nginx/html
-#COPY src/nginx.conf /etc/nginx/conf.d/default.conf
-## This container just copies files and exits
-CMD ["true"]
+RUN chmod +x /app/entrypoints/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoints/entrypoint.sh"]
