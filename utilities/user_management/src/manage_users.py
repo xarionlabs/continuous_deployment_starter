@@ -123,6 +123,8 @@ def create_user_management_sql(csv_file=CSV_FILE, sql_dir=SQL_FILE):
                 BEGIN
                     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{username}') THEN
                         CREATE ROLE {username} WITH LOGIN PASSWORD '{password}';
+                    ELSE
+                        ALTER ROLE {username} WITH PASSWORD '{password}';
                     END IF;
 
                     -- Assign user to the appropriate group
