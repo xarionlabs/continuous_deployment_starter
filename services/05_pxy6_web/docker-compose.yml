@@ -6,8 +6,8 @@ services:
       API_BASE_URL: https://${APP_PXY6_VIRTUAL_HOST}
       NODE_ENV: production
     volumes:
-      - pxy6_static:/usr/share/nginx/html
-      - nginx_config:/etc/nginx/conf.d
+      - pxy6_static:/app/src/dist
+      - nginx_config:/app/src/nginx.conf
     labels:
       - "io.containers.autoupdate=registry"
 
