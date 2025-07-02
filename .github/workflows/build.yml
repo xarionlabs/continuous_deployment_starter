@@ -219,7 +219,7 @@ jobs:
       - define-tag
       - find-changed-applications
       - build-application
-    if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{always() && !needs.skip-check.outputs.skip}}
     permissions:
       contents: write
     steps:
