@@ -1,6 +1,6 @@
 services:
   pxy6_com:
-    image: "ghcr.io/xarionlabs/continuous_deployment_starter/pxy6.com:latest"
+    image: "ghcr.io/xarionlabs/continuous_deployment_starter/pxy6.com:${APP_VERSION}"
     restart: "no"
     environment:
       API_BASE_URL: https://${APP_PXY6_VIRTUAL_HOST}

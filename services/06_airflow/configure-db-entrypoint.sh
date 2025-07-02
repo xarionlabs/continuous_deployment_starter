@@ -10,5 +10,12 @@ else
     exit 1
 fi
 
+# Read Google OAuth client secret from Docker secret if available
+if [ -f /run/secrets/GOOGLE_OAUTH_CLIENT_SECRET ]; then
+    GOOGLE_OAUTH_CLIENT_SECRET=$(cat /run/secrets/GOOGLE_OAUTH_CLIENT_SECRET)
+    export GOOGLE_OAUTH_CLIENT_SECRET="${GOOGLE_OAUTH_CLIENT_SECRET}"
+    echo "Google OAuth client secret loaded from Docker secret"
+fi
+
 # Execute the original entrypoint with all arguments
 exec /entrypoint "$@"
