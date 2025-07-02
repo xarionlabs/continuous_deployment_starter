@@ -15,6 +15,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: build
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
 
