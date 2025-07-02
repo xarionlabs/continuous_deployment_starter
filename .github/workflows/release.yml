@@ -43,6 +43,8 @@ jobs:
             set +o allexport
             check-service-envs.sh
             generate_quadlets.sh
+            echo "Running quadlet dry-run to validate configurations..."
+            /usr/libexec/podman/quadlet --dryrun --user $XDG_CONFIG_HOME/containers/systemd/
             generate_meta_services.sh
             pull_latest_images.sh
             start_all_services.sh
