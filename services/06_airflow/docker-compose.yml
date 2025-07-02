@@ -38,6 +38,10 @@ services:
     restart: always
     depends_on:
       - airflow-init
+      - db
+    networks:
+      - db_network
+      - proxy_network
 
   airflow-scheduler:
     image: docker.io/apache/airflow:3.0.2
@@ -71,6 +75,9 @@ services:
     restart: always
     depends_on:
       - airflow-init
+      - db
+    networks:
+      - db_network
 
   airflow-init:
     image: docker.io/apache/airflow:3.0.2
@@ -100,6 +107,10 @@ services:
     secrets:
       - PSQL_AIRFLOW_PASSWORD
       - GOOGLE_OAUTH_CLIENT_SECRET
+    depends_on:
+      - db
+    networks:
+      - db_network
 
 volumes:
   airflow_dags:
@@ -112,3 +123,8 @@ secrets:
   GOOGLE_OAUTH_CLIENT_SECRET:
     external: true
 
+networks:
+  db_network:
+    driver: bridge
+  proxy_network:
+    driver: bridge
