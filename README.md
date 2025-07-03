@@ -89,20 +89,33 @@ The project includes GitHub Actions workflows for:
     - **Service Management**: It restarts the affected services and their dependents using `systemctl --user` commands and performs health checks.
 
    #### Workflow Overview:
-   The `release.yml` workflow now performs the following high-level steps for deployment:
-    1.  **Build Tool (If Changed)**: A preliminary job (or separate workflow) builds the Python release utility Docker image (`ghcr.io/your-org/your-repo/release-tool:latest`) if its source code in `utils/release_tool/` has changed, and pushes it to the container registry.
-    2.  **Determine Changes (GitHub Runner)**: The workflow checks out the main repository and uses `git diff` to identify changed files since the last deployment. This list of changes is used to determine which services might be affected.
-    3.  **Remote Execution (via SSH)**:
-        *   The latest `release-tool` Docker image is pulled on the remote server.
-        *   Host-level setup scripts are run (e.g., `refresh_podman_secrets.sh` to update Podman secrets from GitHub Actions secrets, `create_env_variables.sh` to set up a `.env` file from GitHub Actions variables).
-        *   The Python `release-tool` is invoked via `podman run` for its main tasks:
-            *   `release-tool determine-changes` (this is actually done on the runner before SSH, the result is passed to other commands).
-            *   `release-tool generate-units`: Generates systemd units for affected services. Requires mounts for service definitions and the systemd user unit directory. `VARS_JSON` (from GitHub `vars`) is passed to inject global environment variables.
-            *   `release-tool pull-images`: Pulls images for affected services. Requires mounting the Podman socket and the systemd unit directory.
-            *   `release-tool manage-services restart`: Restarts services. Requires mounting the Podman socket and the systemd user bus.
-        *   Other host-level scripts are run (e.g., `quadlet --dryrun`, `generate_meta_services.sh` for creating overall targets like `all-containers.target`, and `podman auto-update`).
+   The `release.yml` workflow orchestrates the deployment through these main stages:
+    1.  **Build Release Utility (Conditional)**: A dedicated job builds the Python `release-tool` Docker image (from `utils/release_tool/Dockerfile`) and pushes it to a container registry (e.g., GHCR). This job typically runs only if changes are detected in the `utils/release_tool/` directory.
+    2.  **Determine Affected Services (GitHub Runner)**: Before deploying, the workflow checks out the main repository and uses `git diff` to identify changed files. The output of `git diff` along with contextual flags (like whether it's a manual/scheduled run) are passed to the `release-tool determine-changes` command (itself run in Docker on the runner) to get a list of affected service names.
+    3.  **Execute Deployment on Remote Host (via SSH)**:
+        *   The `ssh-action` connects to the target server.
+        *   Its primary role is now to execute the `.github/workflows/scripts/deploy_on_host.sh` script located on the remote host (after being synced from the repository).
+        *   Necessary parameters like the list of affected services, `VARS_JSON` (GitHub Actions variables), and `SECRETS_JSON` (GitHub Actions secrets) are passed as arguments to `deploy_on_host.sh`.
 
-   This approach enhances the reliability, testability, and maintainability of the deployment process. For more details on the Python release utility itself, see `utils/release_tool/README.md`.
+   #### The `deploy_on_host.sh` Orchestrator Script
+   This Bash script, located at `.github/workflows/scripts/deploy_on_host.sh` within the repository, is the main orchestrator on the deployment target. Its key responsibilities include:
+    *   **Parameter Handling**: Accepts `AFFECTED_SERVICES`, `VARS_JSON_STR`, and `SECRETS_JSON_STR` from the `release.yml` workflow.
+    *   **Environment Setup**: Defines critical paths and pulls the latest `release-tool` Docker image.
+    *   **Host-Level Script Execution**: Runs essential Bash scripts directly on the host:
+        *   `refresh_podman_secrets.sh`: Updates Podman secrets using `SECRETS_JSON_STR`.
+        *   `create_env_variables.sh`: Creates the `.env` file (potentially using `VARS_JSON_STR`).
+        *   Sources `.env` files.
+        *   `check-service-envs.sh`: Validates environment setup.
+        *   `generate_meta_services.sh`: Creates overall systemd targets (e.g., `all-containers.target`).
+        *   `quadlet --dryrun`: Validates generated unit files.
+        *   `podman auto-update`: Checks for image updates for running containers.
+    *   **Python Release Tool Invocation**: Calls the containerized Python `release-tool` via `podman run` for its core tasks, ensuring necessary volumes (for service definitions, systemd unit paths, Podman socket, systemd bus) are mounted and arguments are passed:
+        *   `release-tool generate-units`: Generates systemd units for affected services.
+        *   `release-tool pull-images`: Pulls images for these services.
+        *   `release-tool manage-services restart`: Restarts the services and their dependents, and checks their status.
+    *   **Testability**: The script is designed to be testable by allowing critical paths (like script locations, unit directories, Quadlet executable path) to be overridden by `TEST_OVERRIDE_*` environment variables. End-to-end tests for this script are located in `tests/e2e_deploy_on_host/` and use the Bats-core framework with mocks.
+
+   This layered approach (GitHub Actions workflow -> `deploy_on_host.sh` -> Python `release-tool` in Docker) enhances local testability, modularity, and maintainability of the deployment process. For more details on the Python release utility itself, see `utils/release_tool/README.md`.
 
 ## 🏗️ Application Structure
 

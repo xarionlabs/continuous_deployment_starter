@@ -102,11 +102,19 @@ Tests are written using `pytest`.
 
 ## How it's Used in CI/CD
 
-The GitHub Actions workflow (`.github/workflows/release.yml`):
-1.  (Ideally) Builds and pushes the `release-tool` Docker image to a container registry if changes are detected in this `utils/release_tool/` directory.
-2.  The main deployment job on the remote server:
-    a.  Pulls the `release-tool` Docker image.
-    b.  Executes host-level Bash scripts for tasks like creating `.env` files (`create_env_variables.sh`) and refreshing Podman secrets (`refresh_podman_secrets.sh`).
-    c.  Invokes the `release-tool` commands (e.g., `generate-units`, `pull-images`, `manage-services restart`) via `podman run`, mounting necessary host directories (service definitions, systemd unit output paths, Podman socket, systemd bus) and passing configuration (affected services list, paths, `VARS_JSON`) as command-line arguments or environment variables.
-    d.  Executes other host-level Bash scripts for tasks like Quadlet dry-run and meta-service generation.
+The GitHub Actions workflow (`.github/workflows/release.yml`) uses this tool as part of a larger deployment process orchestrated on the remote host.
+
+1.  **Build Docker Image**: A dedicated job in the GitHub Actions workflow is responsible for building this Python utility into a Docker image (e.g., `ghcr.io/your-org/your-repo/release-tool:latest`) and pushing it to a container registry. This typically happens if changes are detected in the `utils/release_tool/` directory.
+2.  **Remote Host Orchestration**:
+    *   On the target deployment server, a Bash script named `deploy_on_host.sh` (located in `.github/workflows/scripts/`) is executed via SSH by the `release.yml` workflow.
+    *   This `deploy_on_host.sh` script manages the overall deployment sequence:
+        *   It pulls the latest `release-tool` Docker image.
+        *   It runs prerequisite host-level Bash scripts (e.g., for managing Podman secrets, creating `.env` files).
+        *   **It then invokes this Python `release-tool` via `podman run` commands for its core tasks:**
+            *   `generate-units`: To generate systemd unit files. Paths for service definitions and output unit files are volume-mounted into the container. Configuration like affected services, global variables (`VARS_JSON`), and meta-target names are passed as CLI arguments.
+            *   `pull-images`: To pull necessary container images. The Podman socket and the directory containing generated unit files are mounted.
+            *   `manage-services restart`: To restart services. The Podman socket and systemd user bus are mounted.
+        *   Finally, `deploy_on_host.sh` may run other host-level commands (e.g., `quadlet --dryrun`, `podman auto-update`).
+
+This containerized approach ensures that the Python tool runs in a consistent environment with all its dependencies, while `deploy_on_host.sh` handles the interaction with the specific host environment.
 ```
