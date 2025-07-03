@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "release-tool"
+version = "0.1.0"
+description = "Utility for managing selective service releases."
+authors = ["Your Name <you@example.com>"] # Placeholder, user can change
+readme = "README.md" # Will create this later if needed
+packages = [{include = "release_tool"}]
+
+[tool.poetry.dependencies]
+python = "^3.9" # Specify a compatible Python version, e.g., 3.9+
+typer = {extras = ["all"], version = "^0.9.0"} # For CLI
+pyyaml = "^6.0" # For parsing YAML (compose files)
+# Add other dependencies as we identify them, e.g., for specific cloud SDKs if ever needed
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"
+pytest-cov = "^4.0" # For test coverage
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+release-tool = "release_tool.main:app" # Entry point for the CLI (assuming Typer app)

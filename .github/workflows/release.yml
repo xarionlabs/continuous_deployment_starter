@@ -88,55 +88,128 @@ jobs:
           envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES
           script: |
             set -e
-            echo "Debug: Checking directories..."
-            ls -la ~/runtime || echo "Runtime directory missing"
-            ls -la ~/runtime/continuous_deployment_starter || echo "Project directory missing"
-            echo "Debug: Checking repository state..."
-            ls -la ~/runtime/continuous_deployment_starter/.git || echo "No git repository found"
-            
-            # The checkout and git operations are now done in the GitHub Actions runner directly.
-            # The remote host will receive the project files via ssh-action's workspace sync (if enabled and configured)
-            # or we need to ensure the remote host's copy is updated.
-            # For this setup, assuming the relevant scripts are part of the repo synced by ssh-action.
+            echo "--- Starting Remote Deployment Script ---"
 
-            cd ~/runtime/continuous_deployment_starter # Ensure we are in the project directory on the remote host
-            # The local git operations (checkout, pull, diff) are done above.
-            # The remote side just needs to execute the scripts with the AFFECTED_SERVICES info.
+            # Define user and project paths (ensure these are correct for your remote setup)
+            REMOTE_USER_HOME=$(eval echo ~$USER) # Gets current user's home dir
+            PROJECT_DIR="$REMOTE_USER_HOME/runtime/continuous_deployment_starter" # Main project directory
+            SERVICES_DEF_DIR="$PROJECT_DIR/services" # Service definitions
+            SCRIPTS_DIR="$PROJECT_DIR/.github/workflows/scripts" # Bash utility scripts
+            SYSTEMD_USER_UNITS_DIR="$REMOTE_USER_HOME/.config/containers/systemd" # Quadlet units
+            PODMAN_SOCKET="/run/user/$(id -u)/podman/podman.sock"
+            SYSTEMD_USER_BUS_SOCKET="/run/user/$(id -u)/bus" # Often needed for systemctl --user
 
-            export PATH=$PATH:$(pwd)/.github/workflows/scripts/
-            # The 'git checkout releases' and 'git pull' are now handled by the GitHub Actions runner
-            # to determine changed files *before* this SSH step.
+            # Release tool image - replace with your actual image path
+            RELEASE_TOOL_IMAGE="ghcr.io/${{ github.repository_owner }}/continuous_deployment_starter/release-tool:latest"
+            # Fallback for local testing if github.repository_owner is not set or you want to override
+            # RELEASE_TOOL_IMAGE_OWNER=${GITHUB_REPOSITORY_OWNER:-your_docker_hub_user_or_ghcr_org}
+            # RELEASE_TOOL_IMAGE="ghcr.io/$RELEASE_TOOL_IMAGE_OWNER/continuous_deployment_starter/release-tool:latest"
 
+
+            echo "Project Directory: $PROJECT_DIR"
+            echo "Services Definitions: $SERVICES_DEF_DIR"
+            echo "Systemd User Units: $SYSTEMD_USER_UNITS_DIR"
+            echo "Release Tool Image: $RELEASE_TOOL_IMAGE"
             echo "Affected services on remote: $AFFECTED_SERVICES"
 
-            refresh_podman_secrets.sh "$SECRETS_JSON"
-            create_env_variables.sh
-            set -o allexport
-            source .env
-            # source services/version.env # This should be sourced if it exists and is relevant
-            if [ -f "services/version.env" ]; then
-              source services/version.env
-            else
-              echo "Warning: services/version.env not found."
+            # Ensure critical directories exist
+            mkdir -p "$PROJECT_DIR"
+            mkdir -p "$SYSTEMD_USER_UNITS_DIR"
+            # The appleboy/ssh-action should sync the repo content to $PROJECT_DIR if `sync_files` is used
+            # or if the remote host already has the repo checked out at $PROJECT_DIR.
+            # For this script, we assume $PROJECT_DIR contains the latest code (including $SCRIPTS_DIR and $SERVICES_DEF_DIR).
+            cd "$PROJECT_DIR"
+
+            echo "Pulling latest release tool image..."
+            if ! podman pull "$RELEASE_TOOL_IMAGE"; then
+                echo "❌ Failed to pull release tool image: $RELEASE_TOOL_IMAGE. Deployment aborted."
+                exit 1
             fi
+
+            # 1. Refresh Podman Secrets (Bash script on host)
+            echo "--- Refreshing Podman Secrets ---"
+            if [ -f "$SCRIPTS_DIR/refresh_podman_secrets.sh" ]; then
+              "$SCRIPTS_DIR/refresh_podman_secrets.sh" "$SECRETS_JSON"
+            else
+              echo "Warning: refresh_podman_secrets.sh not found at $SCRIPTS_DIR"
+            fi
+
+            # 2. Create .env file (Bash script on host)
+            echo "--- Creating Environment Variables File ---"
+            if [ -f "$SCRIPTS_DIR/create_env_variables.sh" ]; then
+              # This script should ideally take VARS_JSON as input if it's complex
+              # For now, assuming it knows how to get vars or $VARS_JSON is available to it
+              # If it needs VARS_JSON, it should be passed: "$SCRIPTS_DIR/create_env_variables.sh" "$VARS_JSON"
+              "$SCRIPTS_DIR/create_env_variables.sh" # Assuming it generates .env in current dir ($PROJECT_DIR)
+            else
+              echo "Warning: create_env_variables.sh not found at $SCRIPTS_DIR"
+            fi
+
+            echo "--- Sourcing .env files ---"
+            set -o allexport
+            if [ -f ".env" ]; then source .env; else echo "Warning: $PROJECT_DIR/.env not found."; fi
+            if [ -f "services/version.env" ]; then source services/version.env; else echo "Warning: $PROJECT_DIR/services/version.env not found."; fi
             set +o allexport
-            check-service-envs.sh # This script might need to be aware of AFFECTED_SERVICES
 
-            # Pass AFFECTED_SERVICES to generate_quadlets.sh
-            generate_quadlets.sh "$AFFECTED_SERVICES"
+            # 3. Check Service Envs (Bash script on host, if still needed)
+            echo "--- Checking Service Environment Variables ---"
+            if [ -f "$SCRIPTS_DIR/check-service-envs.sh" ]; then
+              "$SCRIPTS_DIR/check-service-envs.sh"
+            else
+              echo "Warning: check-service-envs.sh not found at $SCRIPTS_DIR"
+            fi
 
-            echo "Running quadlet dry-run to validate configurations..."
-            # Dry run might still be useful for all generated files, or selectively for affected ones.
-            # For now, assume it runs on whatever is in the systemd user directory after generate_quadlets.sh
-            /usr/libexec/podman/quadlet --dryrun --user $XDG_CONFIG_HOME/containers/systemd/
+            # 4. Generate Quadlet Units (Python tool in Docker)
+            echo "--- Generating Quadlet Units ---"
+            # Ensure VARS_JSON is properly escaped for CLI argument if it contains spaces or special chars.
+            # Using single quotes around "$VARS_JSON" is generally safer.
+            podman run --rm \
+              -v "$SERVICES_DEF_DIR:/app/services:ro" \
+              -v "$SYSTEMD_USER_UNITS_DIR:/app/output_units:rw" \
+              "$RELEASE_TOOL_IMAGE" generate-units \
+                --affected-services "$AFFECTED_SERVICES" \
+                --services-dir "/app/services" \
+                --output-dir "/app/output_units" \
+                --meta-target "all-containers.target" \
+                --vars-json "$VARS_JSON"
 
-            generate_meta_services.sh # This might also need to be aware of AFFECTED_SERVICES or run if any service changed
+            # 5. Quadlet Dry Run (on host)
+            echo "--- Running Quadlet Dry Run ---"
+            if [ -x "/usr/libexec/podman/quadlet" ]; then
+              /usr/libexec/podman/quadlet --dryrun --user --no-header "$SYSTEMD_USER_UNITS_DIR"
+            else
+              echo "Warning: /usr/libexec/podman/quadlet not found. Skipping dry run."
+            fi
 
-            # Pass AFFECTED_SERVICES to pull_latest_images.sh
-            pull_latest_images.sh "$AFFECTED_SERVICES"
+            # 6. Generate Meta Services (e.g., all-containers.target) (Bash script on host)
+            echo "--- Generating Meta Services ---"
+            if [ -f "$SCRIPTS_DIR/generate_meta_services.sh" ]; then
+              "$SCRIPTS_DIR/generate_meta_services.sh"
+            else
+              echo "Warning: generate_meta_services.sh not found at $SCRIPTS_DIR"
+            fi
 
-            # Pass AFFECTED_SERVICES to start_all_services.sh
-            start_all_services.sh "$AFFECTED_SERVICES"
+            # 7. Pull Latest Images (Python tool in Docker)
+            echo "--- Pulling Container Images ---"
+            podman run --rm \
+              -v "$PODMAN_SOCKET:/var/run/podman/podman.sock:Z" \
+              -v "$SYSTEMD_USER_UNITS_DIR:/app/units:ro" \
+              "$RELEASE_TOOL_IMAGE" pull-images \
+                --affected-services "$AFFECTED_SERVICES" \
+                --units-dir "/app/units"
 
-            echo "Triggering container auto-update..."
-            podman auto-update || echo "Auto-update command failed, continuing..."
+            # 8. Restart Services (Python tool in Docker)
+            echo "--- Restarting Services ---"
+            podman run --rm \
+              -v "$PODMAN_SOCKET:/var/run/podman/podman.sock:Z" \
+              -v "$SYSTEMD_USER_BUS_SOCKET:/run/systemd/user/bus:Z" \
+              # Potentially other mounts if systemctl needs more context, e.g. /etc/machine-id:ro
+              "$RELEASE_TOOL_IMAGE" manage-services restart \
+                --affected-services "$AFFECTED_SERVICES"
+                # units_dir is not strictly needed by manage-services restart if systemd already loaded them
+
+            # 9. Podman Auto-Update (on host)
+            echo "--- Triggering Podman Auto-Update ---"
+            podman auto-update || echo "Podman auto-update command failed or found no updates, continuing..."
+
+            echo "--- Remote Deployment Script Finished ---"
