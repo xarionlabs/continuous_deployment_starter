@@ -27,12 +27,19 @@ A robust, containerized application deployment system with automated CI/CD pipel
 │   │   ├── src/            # Application source code
 │   │   ├── test/           # Unit and integration tests
 │   │   └── e2e_tests/      # End-to-end tests
-│   └── app_2/              # Example application 2
-│       └── ...
+│   ├── app.pxy6.com/       # Shopify frontend application (example)
+│   │   └── ...
+│   └── airflow_dags/       # Airflow DAGs for Shopify data integration
+│       ├── Dockerfile       # Dockerfile for custom Airflow image
+│       ├── dags/            # Airflow DAG definitions
+│       ├── plugins/         # Airflow plugins
+│       └── docker-compose.yaml # Local development setup for these DAGs
 └── services/              # Infrastructure services
     ├── 01_postgres/        # PostgreSQL service
     ├── 02_app_1/           # Application 1 service
-    └── 03_nginx-proxy/     # Nginx reverse proxy
+    ├── 03_nginx-proxy/     # Nginx reverse proxy
+    ├── 04_app_pxy6_com/    # Service definition for app.pxy6.com
+    └── 06_airflow/         # Main Airflow service (now includes Shopify DAGs)
 ```
 
 ## 🛠️ Getting Started
