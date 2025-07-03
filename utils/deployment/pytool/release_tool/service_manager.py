@@ -21,8 +21,8 @@ def _run_systemctl_command(args: List[str], check_return_code: bool = True) -> T
             print(f"Error running {' '.join(full_command)}. RC: {process.returncode}", flush=True)
             if process.stdout: print(f"  Stdout: {process.stdout.strip()}", flush=True) # .strip() is fine for display
             if process.stderr: print(f"  Stderr: {process.stderr.strip()}", flush=True)
-            return False, process.stdout, process.stderr.strip() # Return raw process.stdout
-        return True, process.stdout, process.stderr.strip() # Return raw process.stdout
+            return False, process.stdout, process.stderr.strip() # Return raw process.stdout for stdout
+        return True, process.stdout, process.stderr.strip() # Return raw process.stdout for stdout
     except FileNotFoundError:
         print("Error: 'systemctl' command not found. Is systemd running in user mode?", flush=True)
         return False, "", "systemctl command not found"

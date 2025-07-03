@@ -1,6 +1,7 @@
 # release_tool/main.py
 import typer
 from typing_extensions import Annotated
+import os # Added for environment variable access for VARS_JSON default
 
 from release_tool import __version__
 
@@ -57,38 +58,42 @@ def generate_units(
     services_dir: Annotated[str, typer.Option("--services-dir", help="Path to the services definition directory.")] = "./services",
     output_dir: Annotated[str, typer.Option("--output-dir", help="Path to output generated unit files.")] = "~/.config/containers/systemd",
     meta_target: Annotated[str, typer.Option("--meta-target", help="Optional systemd target name to make services PartOf (e.g., all-containers.target).")] = "",
-    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).")] = "{}"
+    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).")] = os.environ.get("VARS_JSON_STR", "{}") # Read from env if not passed as option
 ):
     """
     Generates systemd unit files for affected services from compose definitions.
     """
-    typer.echo(f"Placeholder: generate-units called.")
-    typer.echo(f"Affected services: '{affected_services}'")
-    typer.echo(f"Services directory: {services_dir}")
-    typer.echo(f"Output directory: {output_dir}")
-    # Actual logic will be implemented in step 5
-    from release_tool import unit_generator # Import the new module
+    from release_tool import unit_generator
     from pathlib import Path
 
     typer.echo("Executing generate-units...", err=True)
+    # If vars_json_str was taken from env, it's already set. If passed as CLI, CLI takes precedence.
+    # Typer handles this priority. If --vars-json is provided, it overrides the default (which reads from env).
+    typer.echo(f"Input - Affected services: '{affected_services}'", err=True)
+    typer.echo(f"Input - Services directory: {services_dir}", err=True)
+    typer.echo(f"Input - Output directory: {output_dir}", err=True)
+    typer.echo(f"Input - Meta target: '{meta_target}'", err=True)
+    typer.echo(f"Input - Vars JSON string: '{vars_json_str[:100]}{'...' if len(vars_json_str) > 100 else ''}'", err=True)
+
+
     affected_services_list = [s for s in affected_services.split(' ') if s]
 
     if not affected_services_list:
         typer.echo("No affected services provided. Nothing to generate.", err=True)
-        raise typer.Exit(code=0) # Not an error, just nothing to do
+        raise typer.Exit(code=0)
 
     services_dir_path = Path(services_dir)
-    output_dir_path = Path(output_dir).expanduser() # Handles ~
+    output_dir_path = Path(output_dir).expanduser()
 
-    typer.echo(f"Affected services for generation: {affected_services_list}", err=True)
-    typer.echo(f"Services definition directory: {services_dir_path}", err=True)
-    typer.echo(f"Output directory for units: {output_dir_path}", err=True)
+    typer.echo(f"Resolved services definition directory: {services_dir_path}", err=True)
+    typer.echo(f"Resolved output directory for units: {output_dir_path}", err=True)
 
     success = unit_generator.generate_all_quadlet_files(
         affected_services=affected_services_list,
         services_dir_path=services_dir_path,
         output_dir_path=output_dir_path,
-        meta_target_name=meta_target if meta_target else None # Pass None if empty string
+        meta_target_name=meta_target if meta_target else None,
+        vars_json_string=vars_json_str
     )
 
     if success:
@@ -106,11 +111,7 @@ def pull_images(
     """
     Pulls container images for the affected services.
     """
-    typer.echo(f"Placeholder: pull-images called.")
-    typer.echo(f"Affected services: '{affected_services}'")
-    typer.echo(f"Units directory: {units_dir}")
-    # Actual logic will be implemented in step 6
-    from release_tool import image_manager # Import the new module
+    from release_tool import image_manager
     from pathlib import Path
 
     typer.echo("Executing pull-images...", err=True)
@@ -143,35 +144,26 @@ manage_app = typer.Typer(name="manage-services", help="Manages services (restart
 @manage_app.command("restart")
 def services_restart(
     affected_services: Annotated[str, typer.Option("--affected-services", help="Space-separated string of affected service names.")] = "",
-    units_dir: Annotated[str, typer.Option("--units-dir", help="Path to the generated unit files directory (contextual, not directly used by restart logic).")] = "~/.config/containers/systemd",
+    units_dir: Annotated[str, typer.Option("--units-dir", help="Path to the generated unit files directory (contextual, not directly used by restart logic).")] = "~/.config/containers/systemd", # Kept for CLI consistency
 ):
     """
     Restarts affected services and their dependents.
     """
-    # Actual logic will be implemented in step 7
-    from release_tool import service_manager # Import the new module
-    from pathlib import Path
+    from release_tool import service_manager
+    # from pathlib import Path # Not needed for units_dir here
 
     typer.echo("Executing manage-services restart...", err=True)
     affected_services_list = [s for s in affected_services.split(' ') if s]
 
-    # The units_dir is not directly used by service_manager.manage_services_restart,
-    # as systemctl operates on loaded units. It's kept as an option for consistency
-    # or if future enhancements need it.
-    # units_dir_path = Path(units_dir).expanduser()
-
     if not affected_services_list:
         typer.echo("No affected services provided for restart. Triggering daemon-reload only.", err=True)
-        # Call daemon-reload directly, or have manage_services_restart handle empty list
         service_manager.manage_services_restart(affected_services_names=[])
         raise typer.Exit(code=0)
 
     typer.echo(f"Affected services for restart: {affected_services_list}", err=True)
-    # typer.echo(f"Units directory (context): {units_dir_path}", err=True)
 
     success = service_manager.manage_services_restart(
         affected_services_names=affected_services_list
-        # Potentially pass max_retries, check_interval from CLI options here
     )
 
     if success:
@@ -184,7 +176,7 @@ def services_restart(
 @manage_app.command("status")
 def services_status(
     services_to_check: Annotated[str, typer.Option("--services-to-check", help="Space-separated string of service names to check.")] = "",
-    units_dir: Annotated[str, typer.Option("--units-dir", help="Path to the generated unit files directory (contextual).")] = "~/.config/containers/systemd",
+    units_dir: Annotated[str, typer.Option("--units-dir", help="Path to the generated unit files directory (contextual).")] = "~/.config/containers/systemd", # Kept for CLI consistency
 ):
     """
     Checks the status of specified services.
@@ -192,7 +184,7 @@ def services_status(
     typer.echo(f"Placeholder: manage-services status called.")
     typer.echo(f"Services to check: '{services_to_check}'")
     typer.echo(f"Units directory: {units_dir}")
-    # Actual logic will be implemented in step 7 (or as part of restart)
+    # Actual logic will be implemented later if needed, using service_manager.check_one_service_status
 
 app.add_typer(manage_app)
 
@@ -206,5 +198,5 @@ def example_command(name: str):
     typer.echo(f"Hello {name}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     app()
