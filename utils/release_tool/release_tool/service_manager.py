@@ -19,10 +19,10 @@ def _run_systemctl_command(args: List[str], check_return_code: bool = True) -> T
         )
         if check_return_code and process.returncode != 0:
             print(f"Error running {' '.join(full_command)}. RC: {process.returncode}", flush=True)
-            if process.stdout: print(f"  Stdout: {process.stdout.strip()}", flush=True)
+            if process.stdout: print(f"  Stdout: {process.stdout.strip()}", flush=True) # .strip() is fine for display
             if process.stderr: print(f"  Stderr: {process.stderr.strip()}", flush=True)
-            return False, process.stdout.strip(), process.stderr.strip()
-        return True, process.stdout.strip(), process.stderr.strip()
+            return False, process.stdout, process.stderr.strip() # Return raw process.stdout
+        return True, process.stdout, process.stderr.strip() # Return raw process.stdout
     except FileNotFoundError:
         print("Error: 'systemctl' command not found. Is systemd running in user mode?", flush=True)
         return False, "", "systemctl command not found"
@@ -104,18 +104,27 @@ def get_service_properties(service_unit_name: str, properties: List[str]) -> Dic
 
     success, stdout, _ = _run_systemctl_command(args, check_return_code=False) # show can fail if service just died
 
-    prop_values: Dict[str, str] = {}
-    if success: # Command ran, even if some properties are empty
+    prop_values: Dict[str, str] = {prop: "unknown" for prop in properties} # Initialize with default
+
+    if success: # Command ran
         lines = stdout.splitlines()
-        if len(lines) == len(properties):
-            for i, prop_name in enumerate(properties):
+        # systemctl show --value prints one property per line.
+        # If a property is empty, it prints an empty line.
+        # If a property doesn't exist for the unit, it might omit the line or print specific error marker (less common for --value).
+        # We expect as many lines as properties requested if all are valid and found.
+
+        # Populate found values
+        for i, prop_name in enumerate(properties):
+            if i < len(lines):
                 prop_values[prop_name] = lines[i].strip()
-        else: # Mismatch, likely service disappeared or props not found
-             print(f"Warning: Could not retrieve all properties for {service_unit_name}. Got: {lines}", flush=True)
-             for prop_name in properties: # Ensure all keys exist, even if empty
-                 prop_values[prop_name] = "unknown" # Or None, or specific error value
+            else:
+                # This case means systemctl didn't output enough lines for the requested properties.
+                # It might happen if a property is not applicable to a unit type and systemctl omits it.
+                # Defaulting to "unknown" is already done by initialization.
+                print(f"Warning: Property '{prop_name}' may be missing from 'systemctl show' output for {service_unit_name}. Output lines: {len(lines)}, Properties requested: {len(properties)}", flush=True)
+                # prop_values[prop_name] remains "unknown"
     else: # systemctl show command itself failed
-        print(f"Warning: 'systemctl show' command failed for {service_unit_name}.", flush=True)
+        print(f"Warning: 'systemctl show' command failed for {service_unit_name}. All requested properties marked as 'unknown_command_failed'.", flush=True)
         for prop_name in properties:
             prop_values[prop_name] = "unknown_command_failed"
 

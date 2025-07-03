@@ -110,8 +110,11 @@ def test_get_service_properties_success(mock_systemctl_runner: MockSystemctl):
 def test_get_service_properties_some_missing(mock_systemctl_runner: MockSystemctl):
     service = "propsvc2.service"
     props_to_get = ["Type", "Result"] # Result might be empty if not oneshot or not finished
-    stdout_props = "simple\n" # Result is empty, systemctl show outputs newline for empty value
-    mock_systemctl_runner.set_output(["show", service, "-p", "Type", "-p", "Result", "--value"], 0, stdout_props, "")
+    # If systemctl show --value for 'Result' is empty, it prints a newline.
+    # So, for Type=simple and Result="", the output is "simple\n\n" (or "simple\n \n" if space)
+    # Let's assume it's "simple\n\n" which splitlines makes ['simple', '']
+    stdout_props = "simple\n" # This was the original problematic mock
+    mock_systemctl_runner.set_output(["show", service, "-p", "Type", "-p", "Result", "--value"], 0, "simple\n\n", "") # Corrected mock output
 
     props = service_manager.get_service_properties(service, props_to_get)
     assert props == {"Type": "simple", "Result": ""}
@@ -123,36 +126,100 @@ def test_check_one_service_status_active_immediately(mock_sleep, mock_systemctl_
     service = "good.service"
     mock_systemctl_runner.set_output(
         ["show", service, "-p", "Type", "-p", "ActiveState", "-p", "SubState", "-p", "Result", "--value"],
-        0, "simple\nactive\nrunning\n", ""
+        0, "simple\nactive\nrunning\n\n", "" # Added newline for empty Result
     )
     assert service_manager.check_one_service_status(service, max_retries=1, check_interval=1) is True
 
 @mock.patch("time.sleep", return_value=None)
-def test_check_one_service_status_becomes_active(mock_sleep, mock_systemctl_runner: MockSystemctl):
+def test_check_one_service_status_becomes_active(mock_sleep, mock_systemctl_runner: MockSystemctl, mocker): # Added mocker
     service = "delayed.service"
     # First call: activating, Second call: active
     show_cmd_args = ["show", service, "-p", "Type", "-p", "ActiveState", "-p", "SubState", "-p", "Result", "--value"]
-    mock_systemctl_runner.mock_outputs = {
-        tuple(["systemctl", "--user"] + show_cmd_args): (0, "simple\nactivating\nstarting\n", "") # Initial state
-    }
+    # This direct mock_outputs assignment won't work well with the side_effect logic below.
+    # The side_effect_call should handle all mocked responses for this command.
+    # mock_systemctl_runner.mock_outputs = {
+    #     tuple(["systemctl", "--user"] + show_cmd_args): (0, "simple\nactivating\nstarting\n\n", "") # Initial state
+    # }
 
     # This setup makes subsequent calls to the same command return different things
     call_count = 0
-    original_call = mock_systemctl_runner.__call__
-    def side_effect_call(cmd_list, capture_output, text, check):
-        nonlocal call_count
-        call_count += 1
-        if tuple(cmd_list) == tuple(["systemctl", "--user"] + show_cmd_args):
-            if call_count == 1: # First call for this specific command
-                 return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactivating\nstarting\n", stderr="")
-            else: # Subsequent calls
-                 return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactive\nrunning\n", stderr="")
-        return original_call(cmd_list, capture_output, text, check) # Fallback to original mock for other commands
 
-    mock_systemctl_runner.__call__ = side_effect_call
+    # Use mocker to specifically patch subprocess.run for this test
+    m = mock.MagicMock()
+    # We need monkeypatch here to undo the autouse fixture's patch for this test's scope if we use mocker
+    # This is getting messy. Let's stick to making the MockSystemctl instance's __call__ behave.
+    # The issue must be simpler.
+
+    # Let's ensure the `expected_cmd_tuple` is exactly what `_run_systemctl_command` will produce.
+    # `_run_systemctl_command` calls `["systemctl", "--user"] + args`
+    # `get_service_properties` calls `_run_systemctl_command` with `args` =
+    # `["show", service_unit_name] + ["-p", p1, "-p", p2, ...] + ["--value"]`
+
+    # Redefine side_effect_call to be simpler and check what's happening
+    # This test is the only one that needs stateful mock return based on call count for the same command.
+
+    # Store the original __call__ method from the instance provided by the autouse fixture
+    original_mock_call_method = mock_systemctl_runner.__call__
+
+    def stateful_side_effect(cmd_list, capture_output, text, check):
+        nonlocal call_count
+        # Always record the call using the instance's method for appending
+        mock_systemctl_runner.calls.append(cmd_list) # Use the instance from fixture
+
+        # Ensure both are tuples for comparison, to be absolutely safe.
+        actual_cmd_tuple = tuple(cmd_list)
+        expected_cmd_for_show_tuple = tuple(["systemctl", "--user"] + show_cmd_args)
+
+        if actual_cmd_tuple == expected_cmd_for_show_tuple:
+            call_count += 1
+            if call_count == 1:
+                return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactivating\nstarting\n\n", stderr="")
+            else:
+                return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactive\nrunning\n\n", stderr="")
+
+        # If it's not the specific command we're sequencing, fall back to the mock's default behavior
+        # by looking up in its mock_outputs or returning default values.
+        cmd_tuple = tuple(cmd_list)
+        rc, stdout, stderr = mock_systemctl_runner.mock_outputs.get(
+            cmd_tuple,
+            (mock_systemctl_runner.default_rc, mock_systemctl_runner.default_stdout, mock_systemctl_runner.default_stderr)
+        )
+        return subprocess.CompletedProcess(args=cmd_list, returncode=rc, stdout=stdout, stderr=stderr)
+
+    # Instead of modifying mock_systemctl_runner.__call__,
+    # let's use pytest-mock's mocker for this specific test's subprocess.run.
+    # This requires the test function to take 'mocker' as an argument.
+    # The auto_mock_subprocess_run fixture might conflict or be overridden.
+    # For simplicity, let's assume we can directly patch subprocess.run here.
+    # This means the `mock_systemctl_runner` fixture isn't used for `subprocess.run` in this test.
+
+    mock_subprocess_run = mocker.patch("subprocess.run")
+
+    def side_effect_for_subprocess_run(cmd_list, capture_output, text, check):
+        nonlocal call_count
+        # We still want to record calls if other parts of the test infrastructure expect it,
+        # but mock_systemctl_runner.calls won't be populated by this specific patch.
+        # This test is now self-contained for mocking subprocess.run.
+
+        expected_cmd_for_show_tuple = tuple(["systemctl", "--user"] + show_cmd_args)
+        actual_cmd_tuple = tuple(cmd_list)
+
+        if actual_cmd_tuple == expected_cmd_for_show_tuple:
+            call_count += 1
+            if call_count == 1:
+                return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactivating\nstarting\n\n", stderr="")
+            else:
+                return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactive\nrunning\n\n", stderr="")
+
+        # Fallback for any other unexpected calls if necessary
+        return subprocess.CompletedProcess(args=cmd_list, returncode=1, stdout="", stderr="Unexpected call in stateful test")
+
+    mock_subprocess_run.side_effect = side_effect_for_subprocess_run
 
     assert service_manager.check_one_service_status(service, max_retries=2, check_interval=1) is True
     assert mock_sleep.call_count == 1
+    assert mock_subprocess_run.call_count == 2 # Ensure it was called twice for the show command
+
 
 @mock.patch("time.sleep", return_value=None)
 def test_check_one_service_status_oneshot_success(mock_sleep, mock_systemctl_runner: MockSystemctl):
@@ -186,7 +253,7 @@ def test_manage_services_restart_simple_success(mock_systemctl_runner: MockSyste
     mock_systemctl_runner.set_output(["restart", app1_service], 0, "", "")
     mock_systemctl_runner.set_output(
         ["show", app1_service, "-p", "Type", "-p", "ActiveState", "-p", "SubState", "-p", "Result", "--value"],
-        0, "simple\nactive\nrunning\n", ""
+        0, "simple\nactive\nrunning\n\n", "" # Added newline
     )
 
     with mock.patch("time.sleep", return_value=None): # Mock sleep during status checks
@@ -211,20 +278,23 @@ def test_manage_services_restart_with_dependents(mock_systemctl_runner: MockSyst
 
     mock_systemctl_runner.set_output(
         ["show", app1_service, "-p", "Type", "-p", "ActiveState", "-p", "SubState", "-p", "Result", "--value"],
-        0, "simple\nactive\nrunning\n", ""
+        0, "simple\nactive\nrunning\n\n", "" # Added newline
     )
     mock_systemctl_runner.set_output(
         ["show", dep_service, "-p", "Type", "-p", "ActiveState", "-p", "SubState", "-p", "Result", "--value"],
-        0, "simple\nactive\nrunning\n", ""
+        0, "simple\nactive\nrunning\n\n", "" # Added newline
     )
 
     with mock.patch("time.sleep", return_value=None):
         assert service_manager.manage_services_restart(["app1"]) is True
 
     # Check that restart was called for both
-    restart_calls = [call[0] for call in mock_systemctl_runner.calls if call[0][2] == "restart"]
-    assert any(app1_service in call_args for call_args in restart_calls)
-    assert any(dep_service in call_args for call_args in restart_calls)
+    # mock_systemctl_runner.calls contains list of lists, e.g., [['systemctl', '--user', 'restart', 'app1.service'], ...]
+    actual_restart_commands = [cmd_list for cmd_list in mock_systemctl_runner.calls if len(cmd_list) >= 4 and cmd_list[2] == "restart"]
+
+    restarted_services_found = {cmd_list[3] for cmd_list in actual_restart_commands} # Get the service name from the command
+    assert app1_service in restarted_services_found
+    assert dep_service in restarted_services_found
 
 
 def test_manage_services_restart_one_fails_status_check(mock_systemctl_runner: MockSystemctl):

@@ -26,9 +26,9 @@ from release_tool import changed_services # Import the new module
 
 @app.command()
 def determine_changes(
-    changed_files_input: Annotated[str, typer.Option("--changed-files", help="Space-separated string of changed files.", RichHelpPanel="Inputs")] = "",
-    assume_value_changes: Annotated[bool, typer.Option("--assume-values-changed", help="Assume potential value changes if no code changes.", RichHelpPanel="Inputs")] = False,
-    services_dir: Annotated[str, typer.Option("--services-dir", help="Path to the services definition directory.", RichHelpPanel="Inputs")] = "./services",
+    changed_files_input: Annotated[str, typer.Option("--changed-files", help="Space-separated string of changed files.")] = "",
+    assume_value_changes: Annotated[bool, typer.Option("--assume-values-changed", help="Assume potential value changes if no code changes.")] = False,
+    services_dir: Annotated[str, typer.Option("--services-dir", help="Path to the services definition directory.")] = "./services",
 ):
     """
     Determines which services are affected by changes.
@@ -53,11 +53,11 @@ def determine_changes(
 
 @app.command()
 def generate_units(
-    affected_services: Annotated[str, typer.Option("--affected-services", help="Space-separated string of affected service names.", RichHelpPanel="Inputs")] = "",
-    services_dir: Annotated[str, typer.Option("--services-dir", help="Path to the services definition directory.", RichHelpPanel="Inputs")] = "./services",
-    output_dir: Annotated[str, typer.Option("--output-dir", help="Path to output generated unit files.", RichHelpPanel="Inputs")] = "~/.config/containers/systemd",
-    meta_target: Annotated[str, typer.Option("--meta-target", help="Optional systemd target name to make services PartOf (e.g., all-containers.target).", RichHelpPanel="Config")] = "",
-    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).", RichHelpPanel="Inputs")] = "{}"
+    affected_services: Annotated[str, typer.Option("--affected-services", help="Space-separated string of affected service names.")] = "",
+    services_dir: Annotated[str, typer.Option("--services-dir", help="Path to the services definition directory.")] = "./services",
+    output_dir: Annotated[str, typer.Option("--output-dir", help="Path to output generated unit files.")] = "~/.config/containers/systemd",
+    meta_target: Annotated[str, typer.Option("--meta-target", help="Optional systemd target name to make services PartOf (e.g., all-containers.target).")] = "",
+    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).")] = "{}"
 ):
     """
     Generates systemd unit files for affected services from compose definitions.
@@ -100,8 +100,8 @@ def generate_units(
 
 @app.command()
 def pull_images(
-    affected_services: Annotated[str, typer.Option(help="Space-separated string of affected service names.")] = "",
-    units_dir: Annotated[str, typer.Option(help="Path to the generated unit files directory.")] = "~/.config/containers/systemd", # Needs expansion
+    affected_services: Annotated[str, typer.Option("--affected-services", help="Space-separated string of affected service names.")] = "",
+    units_dir: Annotated[str, typer.Option("--units-dir", help="Path to the generated unit files directory.")] = "~/.config/containers/systemd",
 ):
     """
     Pulls container images for the affected services.
@@ -142,8 +142,8 @@ manage_app = typer.Typer(name="manage-services", help="Manages services (restart
 
 @manage_app.command("restart")
 def services_restart(
-    affected_services: Annotated[str, typer.Option(help="Space-separated string of affected service names.")] = "",
-    units_dir: Annotated[str, typer.Option(help="Path to the generated unit files directory.")] = "~/.config/containers/systemd", # Needs expansion
+    affected_services: Annotated[str, typer.Option("--affected-services", help="Space-separated string of affected service names.")] = "",
+    units_dir: Annotated[str, typer.Option("--units-dir", help="Path to the generated unit files directory (contextual, not directly used by restart logic).")] = "~/.config/containers/systemd",
 ):
     """
     Restarts affected services and their dependents.
@@ -183,8 +183,8 @@ def services_restart(
 
 @manage_app.command("status")
 def services_status(
-    services_to_check: Annotated[str, typer.Option(help="Space-separated string of service names to check.")] = "",
-    units_dir: Annotated[str, typer.Option(help="Path to the generated unit files directory.")] = "~/.config/containers/systemd", # Needs expansion
+    services_to_check: Annotated[str, typer.Option("--services-to-check", help="Space-separated string of service names to check.")] = "",
+    units_dir: Annotated[str, typer.Option("--units-dir", help="Path to the generated unit files directory (contextual).")] = "~/.config/containers/systemd",
 ):
     """
     Checks the status of specified services.

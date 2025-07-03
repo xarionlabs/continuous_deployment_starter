@@ -676,7 +676,7 @@ Description=Service for {sane_service_name} container
             from .secret_handler import apply_secret_injection # Import locally to avoid circular if moved
             # Secret handling: Replicating add_secrets_to_env.sh logic
             # This function will modify container_unit by adding Environment= or Secret= lines
-            apply_secret_injection(container_unit, compose_service_def, all_compose_config)
+            apply_secret_injection(container_unit, compose_service_def, compose_config) # Corrected variable name
 
 
             try:

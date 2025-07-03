@@ -10,11 +10,22 @@ def get_image_from_container_file(container_file_path: Path) -> Optional[str]:
         return None
 
     try:
+        in_container_section = False
         with open(container_file_path, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
-                if line.startswith("Image="):
-                    return line.split("=", 1)[1]
+                if line.startswith("[") and line.endswith("]"):
+                    in_container_section = (line == "[Container]")
+
+                if in_container_section and line.startswith("Image="):
+                    parts = line.split("=", 1)
+                    if len(parts) == 2 and parts[1].strip(): # Ensure there is a value
+                        return parts[1].strip()
+                    else:
+                        print(f"Warning: Malformed Image= line in {container_file_path}: '{line}'", flush=True)
+                        return None # Malformed or empty Image value
+        # If loop finishes and Image= not found in [Container] or no [Container] section
+        return None
     except Exception as e:
         print(f"Error reading or parsing container file {container_file_path}: {e}", flush=True)
     return None
