@@ -96,3 +96,60 @@ The `services/06_airflow/docker-compose.yml` and its associated `Dockerfile` hav
 
 Refer to the `README.md` in `services/06_airflow/` for detailed deployment instructions for that Airflow service, now including these Shopify DAGs.
 The local development setup described above in this README remains a valid way to test and develop these Shopify DAGs in isolation.
+
+## Testing
+
+This project uses `pytest` for testing DAG integrity and custom logic within DAG tasks and helper modules.
+
+### Prerequisites for Testing
+
+1.  **Python Environment**: Ensure you have a Python environment (e.g., a virtual environment) with Python 3.8+ (matching Airflow's supported versions).
+2.  **Install Dependencies**:
+    *   Install main dependencies: `pip install -r requirements.txt`
+    *   Install development/test dependencies: `pip install -r requirements-dev.txt`
+
+### Running Tests
+
+Navigate to the `applications/airflow_dags` directory in your terminal. Then, run `pytest`:
+
+```bash
+cd applications/airflow_dags
+pytest
+```
+
+Or, to run specific test files:
+
+```bash
+pytest tests/test_dag_integrity.py
+pytest tests/test_shopify_common.py
+# etc.
+```
+
+The tests are located in the `applications/airflow_dags/tests/` directory and include:
+-   `test_dag_integrity.py`: Checks that DAGs can be imported and have basic structural validity.
+-   `test_shopify_common.py`: Unit tests for helper functions in `dags/shopify_common.py`.
+-   `test_shopify_get_past_purchases_dag.py`: Integration-style tests for tasks in the past purchases DAG, mocking external Shopify and DB interactions.
+-   `test_shopify_get_store_metadata_dag.py`: Integration-style tests for tasks in the store metadata DAG, mocking external Shopify and DB interactions.
+
+### Testing within Docker (Optional)
+
+You can also run tests inside the Docker container built by `Dockerfile` if you prefer, especially to ensure the environment is identical.
+1.  Build the Docker image with development dependencies:
+    ```bash
+    # In applications/airflow_dags/
+    docker-compose build --build-arg INSTALL_DEV_DEPS=true airflow-webserver
+    # (or any service that uses the base airflow image like airflow-scheduler)
+    # Or, if building manually:
+    # docker build --build-arg INSTALL_DEV_DEPS=true -t airflow-shopify-dags-dev-testable .
+    ```
+2.  Run pytest inside the container:
+    ```bash
+    # Using docker-compose to run a one-off command in a service container (e.g., webserver)
+    docker-compose run --rm airflow-webserver pytest /opt/airflow/tests
+    # (This assumes you COPY your tests into /opt/airflow/tests in Dockerfile or mount them)
+
+    # Alternatively, if you built manually and have tests copied into the image:
+    # docker run --rm airflow-shopify-dags-dev-testable pytest /opt/airflow/tests
+    ```
+    **Note**: For the `docker-compose run` approach, you might need to adjust volume mounts or `COPY` instructions in the `Dockerfile` to ensure the `tests/` directory is accessible within the container at `/opt/airflow/tests`. The current `Dockerfile` does not copy the `tests` directory. You would need to add:
+    `COPY tests/ /opt/airflow/tests/` to the `Dockerfile`.

@@ -22,6 +22,21 @@ ENV AIRFLOW_HOME=/opt/airflow
 COPY requirements.txt /requirements.txt
 RUN pip install --no-cache-dir -r /requirements.txt
 
+# --- Development/Testing Dependencies (Optional) ---
+# Argument to control installation of development dependencies
+ARG INSTALL_DEV_DEPS=false
+# Copy dev requirements if they exist and INSTALL_DEV_DEPS is true
+COPY requirements-dev.txt /requirements-dev.txt
+RUN if [ "$INSTALL_DEV_DEPS" = "true" ]; then \
+        pip install --no-cache-dir -r /requirements-dev.txt && \
+        echo "Development dependencies installed."; \
+    else \
+        echo "Skipping installation of development dependencies."; \
+    fi
+# Clean up requirements files if they were copied, to keep image clean
+RUN rm -f /requirements.txt /requirements-dev.txt
+
+
 # Copy DAGs, plugins, and any other custom scripts/configs into the image
 # Note: docker-compose.yaml also mounts ./dags and ./plugins as volumes for development,
 # which will override these COPY instructions if the paths are the same.
