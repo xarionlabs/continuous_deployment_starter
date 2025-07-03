@@ -1,163 +1,200 @@
 #!/bin/bash
-set -euo pipefail
-
 echo "::group::$(basename "$0") log"
+trap 'EXIT_CODE=$?; echo -n "::endgroup::"; if [ $EXIT_CODE -ne 0 ]; then echo "❌ $(basename "$0") failed with exit code $EXIT_CODE!"; else echo "✅ $(basename "$0") succeeded!"; fi' EXIT
+set -euo pipefail # Exit on error, undefined variable, or pipe failure
 
-SYSTEMD_DIR="$HOME/.config/systemd/user"
-UNITS_DIR="$HOME/.config/containers/systemd"
+AFFECTED_SERVICES_STRING="$1"
+SERVICES_TO_RESTART_ARRAY=()
+UNITS_DIR="$HOME/.config/containers/systemd" # Base directory for Quadlet-generated units
 
-# Function to check if a service exists
-service_exists() {
-    systemctl --user list-unit-files | grep -q "^$1"
-}
+# Convert space-separated string of service names to an array
+IFS=' ' read -r -a AFFECTED_SERVICES_INPUT <<< "$AFFECTED_SERVICES_STRING"
 
-# Function to get service dependencies
-get_service_dependencies() {
-    systemctl --user list-dependencies "$1" --plain | grep -v "^$1$" || true
-}
-
-# Function to check service status
-check_service_status() {
-    local service="$1"
-    local type=$(systemctl --user show -p Type --value "$service" || true)
-    local status
-    local max_retries=3
-    local retry_count=0
-
-    if [ "$type" == "oneshot" ]; then
-        status=$(systemctl --user show -p Result --value "$service" || true)
-        if [ "$status" != "success" ]; then
-            echo "❌ $service failed to execute successfully (Status: $status)"
-            echo "⏳ Waiting 5 seconds to allow for potential recovery..."
-            sleep 5
-            # Check status again after wait
-            status=$(systemctl --user show -p Result --value "$service" || true)
-            if [ "$status" != "success" ]; then
-                return 1
-            fi
-            echo "✅ $service recovered after wait"
-        fi
-    else
-        while true; do
-            status=$(systemctl --user show -p ActiveState --value "$service" || true)
-            
-            case "$status" in
-                "active")
-                    echo "✅ $service is running successfully"
-                    return 0
-                    ;;
-                "deactivating"|"activating")
-                    if [ $retry_count -ge $max_retries ]; then
-                        echo "❌ $service is stuck in $status state after $max_retries retries"
-                        return 1
-                    fi
-                    echo "⏳ $service is $status, waiting 5 seconds (attempt $((retry_count + 1))/$max_retries)..."
-                    sleep 5
-                    retry_count=$((retry_count + 1))
-                    ;;
-                *)
-                    if [ $retry_count -ge $max_retries ]; then
-                        echo "❌ $service is not running (Status: $status)"
-                        return 1
-                    fi
-                    echo "⏳ $service is not running (Status: $status), waiting 5 seconds (attempt $((retry_count + 1))/$max_retries)..."
-                    sleep 5
-                    retry_count=$((retry_count + 1))
-                    ;;
-            esac
-        done
-    fi
-    return 0
-}
-
-echo "Reloading systemd..."
-systemctl --user daemon-reload
-
-# Pull latest container images
-echo "Pulling latest container images..."
-for service_dir in services/*/; do
-    if [[ -f "$service_dir/docker-compose.yml" ]]; then
-        echo "Checking images in $service_dir"
-        # Extract image names from docker-compose.yml and pull them
-        grep -o 'image: [^"]*' "$service_dir/docker-compose.yml" | sed 's/image: //' | while read -r image; do
-            echo "Pulling $image"
-            if ! podman pull "$image"; then
-                echo "⚠️  Failed to pull $image - continuing with existing image"
-            else
-                echo "✅ Successfully pulled $image"
-            fi
-        done
-    fi
-done
-
-# Collect all service files
-SERVICE_FILES=()
-for type in container network volume; do
-    for file in "$UNITS_DIR"/*."$type"; do
-        [ -e "$file" ] || continue
-        base_name="$(basename "$file" ."$type")"
-
-        case "$type" in
-            container) service_name="$base_name.service" ;;
-            network) service_name="$base_name-network.service" ;;
-            volume) service_name="$base_name-volume.service" ;;
-        esac
-
-        if service_exists "$service_name"; then
-            SERVICE_FILES+=("$service_name")
-        fi
-    done
-done
-
-echo "Starting all services via all-containers.service..."
-if ! systemctl --user start all-containers.service; then
-    echo "❌ Failed to start all-containers.service"
-    echo "🔻 Service logs:"
-    journalctl --user -u all-containers.service --no-pager --lines=20 | tail -n 20
-    exit 1
+if [ ${#AFFECTED_SERVICES_INPUT[@]} -eq 0 ]; then
+  echo "No services passed as affected. Skipping service restarts."
+  # It's important to still run daemon-reload if quadlet files *might* have changed,
+  # e.g. by generate_quadlets.sh running due to a global script change but resulting in no *specific* services.
+  # However, if generate_quadlets.sh itself skips all actions because AFFECTED_SERVICES was empty there too,
+  # then daemon-reload might not be strictly necessary.
+  # For safety, and because it's usually quick:
+  echo "Reloading systemd daemon just in case global unit files were touched..."
+  systemctl --user daemon-reload
+  echo "Service restart script finished (no specific services to restart)."
+  exit 0
 fi
 
-echo "Checking service statuses in dependency order..."
-echo "::endgroup::"
+echo "Affected services for potential restart: ${AFFECTED_SERVICES_INPUT[@]}"
 
-# Get the dependency order for all services
-DEPENDENCY_ORDER=()
-for service in "${SERVICE_FILES[@]}"; do
-    if ! service_exists "$service"; then
-        continue
-    fi
-    # Get dependencies and add them to the order if not already present
-    while read -r dep; do
-        if [[ ! " ${DEPENDENCY_ORDER[@]} " =~ " ${dep} " ]]; then
-            DEPENDENCY_ORDER+=("$dep")
+# Function to check if a systemd user service unit exists
+service_exists() {
+    systemctl --user list-unit-files --no-legend --quiet "$1.service" > /dev/null 2>&1
+    return $?
+}
+
+# Function to get all reverse dependencies for a service
+# Systemd unit names here should be the full unit name (e.g., myapp.service)
+get_reverse_dependencies() {
+    local service_unit="$1"
+    local rev_deps=()
+    # `systemctl list-dependencies --reverse` lists units that depend on the given unit.
+    # We want the plain list, filter out the original service itself, and ensure they are actual service units.
+    while IFS= read -r dep_unit; do
+        # Ensure it's a service and not the service itself or a target/slice etc.
+        if [[ "$dep_unit" == *.service ]] && [[ "$dep_unit" != "$service_unit" ]]; then
+            # Check if the dependency actually exists as a manageable unit
+            if systemctl --user list-units --quiet --no-legend "$dep_unit" > /dev/null 2>&1; then
+                 rev_deps+=("$dep_unit")
+            fi
         fi
-    done < <(get_service_dependencies "$service")
-    # Add the service itself if not already present
-    if [[ ! " ${DEPENDENCY_ORDER[@]} " =~ " ${service} " ]]; then
-        DEPENDENCY_ORDER+=("$service")
+    done < <(systemctl --user list-dependencies "$service_unit" --reverse --plain | sed 's/^\s*//' | grep -v "^$service_unit\$" || true)
+    # Remove duplicates that might arise from different dependency paths
+    echo "${rev_deps[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '
+}
+
+
+echo "Determining full list of services to restart (including dependents)..."
+TEMP_RESTART_LIST=("${AFFECTED_SERVICES_INPUT[@]}") # Start with directly affected services (base names)
+
+# Convert base names to full .service names for systemd operations and add to final list
+for service_basename in "${AFFECTED_SERVICES_INPUT[@]}"; do
+    service_unit_name="$service_basename.service" # Assuming .service, adjust if other types like .target are primary
+
+    # Check if the primary service unit file exists (generated by Quadlet for a .container)
+    # This ensures we only try to operate on services that have a corresponding systemd unit.
+    if [ ! -f "$UNITS_DIR/$service_basename.container" ] && [ ! -f "$UNITS_DIR/$service_basename.network" ] && [ ! -f "$UNITS_DIR/$service_basename.volume" ]; then
+        echo "Warning: No Quadlet source file (.container, .network, .volume) found for affected service '$service_basename' in $UNITS_DIR. It might not be a directly manageable service or was removed."
+        # We still keep it in TEMP_RESTART_LIST in case it's a meta-service or its definition changed in a way that doesn't involve these files.
+        # The service_exists check later will filter it if it's not a real systemd unit.
+    fi
+
+    if service_exists "$service_basename"; then # Checks for .service implicitly
+        if [[ ! " ${SERVICES_TO_RESTART_ARRAY[@]} " =~ " ${service_unit_name} " ]]; then
+            SERVICES_TO_RESTART_ARRAY+=("$service_unit_name")
+        fi
+
+        echo "Finding reverse dependencies for $service_unit_name..."
+        reverse_deps_str=$(get_reverse_dependencies "$service_unit_name")
+        IFS=' ' read -r -a reverse_deps_arr <<< "$reverse_deps_str"
+        for dep in "${reverse_deps_arr[@]}"; do
+            if [[ ! " ${SERVICES_TO_RESTART_ARRAY[@]} " =~ " ${dep} " ]]; then
+                echo "Adding reverse dependency '$dep' to restart list."
+                SERVICES_TO_RESTART_ARRAY+=("$dep")
+            fi
+        done
+    else
+        echo "Warning: Affected service '$service_basename' (as $service_unit_name) does not seem to exist as a systemd unit. Skipping its restart and dependent search."
     fi
 done
 
-FAILED_SERVICES=()
-for service in "${DEPENDENCY_ORDER[@]}"; do
-    if ! service_exists "$service"; then
-        continue
-    fi
 
-    if ! check_service_status "$service"; then
-        FAILED_SERVICES+=("$service")
+if [ ${#SERVICES_TO_RESTART_ARRAY[@]} -eq 0 ]; then
+  echo "No actual systemd services identified for restart (possibly all affected items were not valid services or had no units)."
+  echo "Reloading systemd daemon just in case..."
+  systemctl --user daemon-reload
+  exit 0
+fi
+
+echo "Final list of services to restart: ${SERVICES_TO_RESTART_ARRAY[@]}"
+
+echo "Reloading systemd daemon..."
+systemctl --user daemon-reload
+
+# Stop and Start the services
+# It's generally better to stop all first, then start all, to handle dependencies correctly.
+# However, `systemctl restart` handles this for individual services.
+# For a group, if there are complex interdependencies, stopping then starting might be safer.
+# Let's try `restart` first. If issues arise, switch to stop-then-start.
+echo "Restarting services..."
+for service_unit in "${SERVICES_TO_RESTART_ARRAY[@]}"; do
+    echo "Attempting to restart $service_unit..."
+    if ! systemctl --user restart "$service_unit"; then
+        echo "❌ Failed to issue restart for $service_unit. Checking status and logs..."
+        systemctl --user status "$service_unit" --no-pager || true
+        journalctl --user -u "$service_unit" --no-pager --lines=20 | tail -n 20 || true
+        # Decide if this should be a fatal error for the whole script
+    else
+        echo "✅ Restart command issued for $service_unit."
     fi
 done
 
-if [ ${#FAILED_SERVICES[@]} -gt 0 ]; then
-    echo -e "\n🔴 Some services failed to start properly:"
-    for service in "${FAILED_SERVICES[@]}"; do
-        echo -e "\n🔻 Detailed logs for $service:"
-        journalctl --user -u "$service" --no-pager --lines=50 | tail -n 50
+echo "Waiting a few seconds for services to settle..."
+sleep 5
+
+
+# Function to check service status (adapted from original)
+check_service_status() {
+    local service_unit="$1"
+    echo "Checking status for $service_unit..."
+    local type
+    type=$(systemctl --user show -p Type --value "$service_unit" 2>/dev/null || echo "unknown") # Get service type
+
+    local status_value
+    local max_retries=5 # Increased retries slightly
+    local retry_count=0
+    local check_interval=5 # seconds
+
+    if [ "$type" == "oneshot" ]; then
+        # For oneshot services, check the Result property.
+        while [ $retry_count -lt $max_retries ]; do
+            status_value=$(systemctl --user show -p Result --value "$service_unit" 2>/dev/null || echo "unknown")
+            if [ "$status_value" == "success" ]; then
+                echo "✅ $service_unit (oneshot) completed successfully."
+                return 0
+            fi
+            echo "⏳ $service_unit (oneshot) not successful yet (Result: $status_value). Retry $((retry_count+1))/$max_retries in $check_interval s..."
+            sleep $check_interval
+            retry_count=$((retry_count + 1))
+        done
+        echo "❌ $service_unit (oneshot) did not complete successfully after $max_retries retries (Final Result: $status_value)."
+        return 1
+    else
+        # For other services, check the ActiveState property.
+        while [ $retry_count -lt $max_retries ]; do
+            status_value=$(systemctl --user show -p ActiveState --value "$service_unit" 2>/dev/null || echo "unknown")
+            sub_status=$(systemctl --user show -p SubState --value "$service_unit" 2>/dev/null || echo "unknown")
+            if [ "$status_value" == "active" ]; then
+                echo "✅ $service_unit is active (SubState: $sub_status)."
+                return 0
+            elif [ "$status_value" == "failed" ]; then
+                 echo "❌ $service_unit is in a failed state (SubState: $sub_status)."
+                 return 1
+            fi
+            echo "⏳ $service_unit not active yet (State: $status_value, SubState: $sub_status). Retry $((retry_count+1))/$max_retries in $check_interval s..."
+            sleep $check_interval
+            retry_count=$((retry_count + 1))
+        done
+        echo "❌ $service_unit did not become active after $max_retries retries (Final State: $status_value, SubState: $sub_status)."
+        return 1
+    fi
+}
+
+echo "Checking statuses of restarted services..."
+FAILED_SERVICES_LOG=()
+SUCCESS_COUNT=0
+TOTAL_CHECKED=${#SERVICES_TO_RESTART_ARRAY[@]}
+
+for service_unit in "${SERVICES_TO_RESTART_ARRAY[@]}"; do
+    if ! check_service_status "$service_unit"; then
+        FAILED_SERVICES_LOG+=("$service_unit")
+        echo "🔻 Detailed logs for $service_unit:"
+        journalctl --user -u "$service_unit" --no-pager --lines=50 | tail -n 50 || true # Journal might not have much for very new/failed units
+    else
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+    fi
+done
+
+echo "::endgroup::" # End main log group before summary
+
+echo -e "\n--- Service Restart Summary ---"
+if [ ${#FAILED_SERVICES_LOG[@]} -gt 0 ]; then
+    echo "🔴 $SUCCESS_COUNT/$TOTAL_CHECKED services confirmed running. Some services failed to start/complete properly:"
+    for service_unit in "${FAILED_SERVICES_LOG[@]}"; do
+        echo "  - $service_unit"
     done
+    # Optionally, re-print logs here or point to find them
     exit 1
 else
-    echo "🎉 All services are running correctly!"
+    echo "🎉 All $TOTAL_CHECKED restarted services are running/completed correctly!"
     exit 0
 fi
 

@@ -12,16 +12,80 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history to enable accurate diff
+
+      - name: Determine Changed Files and Affected Services
+        id: determine_changes
+        run: |
+          # Ensure we are on the releases branch or the correct base for diffing
+          # This assumes the workflow is triggered on the 'releases' branch or a branch that merges into it.
+          # If triggered on a different event/branch, this logic might need adjustment.
+          git checkout releases
+          git pull origin releases # Ensure local 'releases' is up-to-date with remote for diffing against previous state
+
+          # Get the previous commit on the releases branch.
+          # If this is the very first commit, git diff HEAD^ will fail.
+          # A more robust way would be to diff against a specific tag of the last successful release.
+          # For now, we use HEAD^, which works if there's at least one prior commit.
+          PREVIOUS_COMMIT=$(git rev-parse HEAD^) # TODO: Handle case where HEAD^ doesn't exist (e.g. first commit on branch)
+          echo "Previous commit (for diff): $PREVIOUS_COMMIT"
+
+          # If PREVIOUS_COMMIT is empty (e.g. first commit in repo/branch), diff against an empty tree.
+          # This will list all files as changed.
+          if [ -z "$PREVIOUS_COMMIT" ]; then
+            echo "No previous commit found (likely first commit on branch), diffing against empty tree (4b825dc642cb6eb9a060e54bf8d69288fbee4904)."
+            # 4b825dc642cb6eb9a060e54bf8d69288fbee4904 is the magic number for an empty tree in Git
+            CHANGED_FILES=$(git diff --name-only 4b825dc642cb6eb9a060e54bf8d69288fbee4904 HEAD)
+          else
+            CHANGED_FILES=$(git diff --name-only $PREVIOUS_COMMIT HEAD)
+          fi
+
+          echo "Changed files since $PREVIOUS_COMMIT:"
+          echo "$CHANGED_FILES"
+
+          ASSUME_VALUE_CHANGES="false"
+          # Heuristic: if the trigger was a schedule or workflow_dispatch (manual), and no files changed, assume value changes.
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Check if CHANGED_FILES is empty or only whitespace
+            if [[ -z "${CHANGED_FILES// }" ]]; then
+              echo "Workflow triggered by schedule or dispatch with no detected file changes. Assuming potential value changes for environment or secrets."
+              ASSUME_VALUE_CHANGES="true"
+            fi
+          fi
+          echo "ASSUME_VALUE_CHANGES flag set to: $ASSUME_VALUE_CHANGES"
+
+          # Ensure the script is executable
+          chmod +x .github/workflows/scripts/determine_affected_services.sh
+
+          AFFECTED_SERVICES=$(.github/workflows/scripts/determine_affected_services.sh "$CHANGED_FILES" "$ASSUME_VALUE_CHANGES")
+          echo "Affected services determined: $AFFECTED_SERVICES"
+          echo "affected_services_list=$AFFECTED_SERVICES" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Notify User of Affected Services
+        run: |
+          echo "Based on the changes, the following services (and their dependents) will be updated:"
+          if [ -z "${{ steps.determine_changes.outputs.affected_services_list }}" ]; then
+            echo "No specific services were directly affected by code changes. The release might proceed due to other reasons (e.g., manual trigger, environment changes not tracked by git diff)."
+          else
+            echo "${{ steps.determine_changes.outputs.affected_services_list }}"
+          fi
+        shell: bash
+
       - name: executing remote ssh commands using ssh key
         uses: appleboy/ssh-action@v1.2.0
         env:
           VARS_JSON: ${{ toJson(vars) }}
           SECRETS_JSON: ${{ toJson(secrets) }}
+          AFFECTED_SERVICES: ${{ steps.determine_changes.outputs.affected_services_list }}
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          envs: VARS_JSON, SECRETS_JSON
+          envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES
           script: |
             set -e
             echo "Debug: Checking directories..."
@@ -29,24 +93,50 @@ jobs:
             ls -la ~/runtime/continuous_deployment_starter || echo "Project directory missing"
             echo "Debug: Checking repository state..."
             ls -la ~/runtime/continuous_deployment_starter/.git || echo "No git repository found"
-            cd ~/runtime/continuous_deployment_starter
-            git status || echo "Git status failed"
             
+            # The checkout and git operations are now done in the GitHub Actions runner directly.
+            # The remote host will receive the project files via ssh-action's workspace sync (if enabled and configured)
+            # or we need to ensure the remote host's copy is updated.
+            # For this setup, assuming the relevant scripts are part of the repo synced by ssh-action.
+
+            cd ~/runtime/continuous_deployment_starter # Ensure we are in the project directory on the remote host
+            # The local git operations (checkout, pull, diff) are done above.
+            # The remote side just needs to execute the scripts with the AFFECTED_SERVICES info.
+
             export PATH=$PATH:$(pwd)/.github/workflows/scripts/
-            git checkout releases
-            git pull origin releases
+            # The 'git checkout releases' and 'git pull' are now handled by the GitHub Actions runner
+            # to determine changed files *before* this SSH step.
+
+            echo "Affected services on remote: $AFFECTED_SERVICES"
+
             refresh_podman_secrets.sh "$SECRETS_JSON"
             create_env_variables.sh
             set -o allexport
             source .env
-            source services/version.env
+            # source services/version.env # This should be sourced if it exists and is relevant
+            if [ -f "services/version.env" ]; then
+              source services/version.env
+            else
+              echo "Warning: services/version.env not found."
+            fi
             set +o allexport
-            check-service-envs.sh
-            generate_quadlets.sh
+            check-service-envs.sh # This script might need to be aware of AFFECTED_SERVICES
+
+            # Pass AFFECTED_SERVICES to generate_quadlets.sh
+            generate_quadlets.sh "$AFFECTED_SERVICES"
+
             echo "Running quadlet dry-run to validate configurations..."
+            # Dry run might still be useful for all generated files, or selectively for affected ones.
+            # For now, assume it runs on whatever is in the systemd user directory after generate_quadlets.sh
             /usr/libexec/podman/quadlet --dryrun --user $XDG_CONFIG_HOME/containers/systemd/
-            generate_meta_services.sh
-            pull_latest_images.sh
-            start_all_services.sh
+
+            generate_meta_services.sh # This might also need to be aware of AFFECTED_SERVICES or run if any service changed
+
+            # Pass AFFECTED_SERVICES to pull_latest_images.sh
+            pull_latest_images.sh "$AFFECTED_SERVICES"
+
+            # Pass AFFECTED_SERVICES to start_all_services.sh
+            start_all_services.sh "$AFFECTED_SERVICES"
+
             echo "Triggering container auto-update..."
-            podman auto-update || echo "Auto-update command failed, continuing..." 
+            podman auto-update || echo "Auto-update command failed, continuing..."
