@@ -92,3 +92,12 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Deployment Information
 - **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments
+
+### Git Hooks
+- **Pre-commit hook**: Automatically runs quality checks on app.pxy6.com when changes are committed
+  - TypeScript type checking (`npm run typecheck`)
+  - ESLint linting (`npm run lint`)
+  - Jest tests (`npm run test`)
+  - Build process (`npm run build`)
+- Hook only runs when files in `applications/app.pxy6.com/` are being committed
+- All checks must pass for commit to succeed
