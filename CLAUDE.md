@@ -7,10 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### General Repository Commands
 - `docker-compose -f applications/[app_name]/docker-compose.yaml up --build` - Build and run an application locally
 - `find applications -type d -exec test -e '{}'/Dockerfile \; -print` - Find all applications with Dockerfiles
+- `./utilities/github-automation/see_workflow_logs.sh` - Check latest GitHub Actions workflow status and logs
 
 ### Application-Specific Commands
 
 #### app.pxy6.com (Shopify Remix App)
+- `cd applications/app.pxy6.com/src` - Navigate to application source
 - `npm run dev` - Start development server with Shopify CLI
 - `npm run build` - Build for production
 - `npm run setup` - Generate Prisma client and run migrations
@@ -21,6 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `shopify app dev` - Start Shopify app development
 
 #### pxy6.com (React/Vite App)
+- `cd applications/pxy6.com/src` - Navigate to application source
 - `npm run dev` - Start development server with type checking
 - `npm run build` - Build for production
 - `npm run typecheck` - TypeScript type checking
@@ -31,14 +34,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run docker:run` - Run Docker container
 
 #### app_1 (Python FastAPI/Streamlit)
+- `cd applications/app_1` - Navigate to application directory
 - `pytest` - Run Python tests
 - `python -m src.api.main` - Run FastAPI server
 - `python -m src.app.main` - Run Streamlit app
-- `alembic upgrade head` - Run database migrations
+- `cd src/data/db/migrations && alembic upgrade head` - Run database migrations
 
-#### app_2 (Python Application)
-- `pytest` - Run Python tests
-- `python src/application.py` - Run the application
+#### Release Tool (Python CLI)
+- `cd release-tooling/pytool` - Navigate to release tool directory
+- `poetry install` - Install dependencies
+- `poetry run pytest` - Run tests
+- `poetry run release-tool --help` - Show CLI help
 
 ## Architecture
 
@@ -52,9 +58,9 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Application Types
 1. **app.pxy6.com**: Shopify app built with Remix, TypeScript, Prisma ORM, and Polaris UI
-2. **pxy6.com**: React/Vite frontend with Tailwind CSS, shadcn/ui components, and Supabase integration
+2. **pxy6.com**: React/Vite frontend with Tailwind CSS, shadcn/ui components, and analytics tracking
 3. **app_1**: Python backend with FastAPI API and Streamlit frontend, using SQLAlchemy and PostgreSQL
-4. **app_2**: Simple Python application
+4. **release-tooling**: Python CLI tool for managing selective service deployments
 
 ### CI/CD Pipeline Flow
 1. **Build Workflow**: Detects changed applications, builds Docker images, runs tests, pushes to GHCR
@@ -87,3 +93,12 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Deployment Information
 - **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments
+
+### Git Hooks
+- **Pre-commit hook**: Automatically runs quality checks on app.pxy6.com when changes are committed
+  - TypeScript type checking (`npm run typecheck`)
+  - ESLint linting (`npm run lint`)
+  - Jest tests (`npm run test`)
+  - Build process (`npm run build`)
+- Hook only runs when files in `applications/app.pxy6.com/` are being committed
+- All checks must pass for commit to succeed
