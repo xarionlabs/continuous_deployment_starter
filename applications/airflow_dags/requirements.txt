@@ -1,18 +1,11 @@
-# Base Airflow (apache/airflow:3.0.2) already includes postgres, celery, redis extras.
-# List only ADDITIONAL Python packages needed by your DAGs or plugins,
-# or if you need to override a version that comes with the base image.
+# Since we're using python:3.9-slim instead of apache/airflow image,
+# we need to install Airflow and its dependencies for DAG testing
 
-# For DAGs:
-psycopg2-binary # For PostgreSQL connection to the APP DB. Airflow itself uses its own.
+# Core Airflow with extras for PostgreSQL, Celery, and Redis
+apache-airflow[postgres,celery,redis]==3.0.2
+
+# Additional packages needed by DAGs:
+psycopg2-binary # For PostgreSQL connection to the APP DB
 ShopifyAPI>=11.0.0 # Official Shopify Python library
 pandas # For data handling and date parsing assistance in DAGs
 requests # General HTTP requests, if needed by DAGs directly
-
-# Example of pinning versions for reproducibility:
-# psycopg2-binary==2.9.9
-# ShopifyAPI==11.0.1
-# pandas==2.0.3
-# requests==2.31.0
-
-# If you were NOT using an official Airflow image that includes extras, you'd need:
-# apache-airflow[postgres,celery,redis]==3.0.2
