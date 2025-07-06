@@ -13,9 +13,6 @@ A robust, containerized application deployment system with automated CI/CD pipel
 
 ## 📁 Project Structure
 
-```
-.
-├── .github/
 │   └── workflows/
 │       ├── build-mock-applications.yml # Builds mock application images for testing
 │       ├── build-release-tool.yml    # Builds the Python release-tool image
@@ -54,7 +51,7 @@ A robust, containerized application deployment system with automated CI/CD pipel
 ├── tests/                          # Top-level directory for application E2E/integration tests
 │                                   # (distinct from release tooling tests)
 └── utils/                          # Other general utilities (if any, now excludes deployment utils)
-```
+
 
 ## 🛠️ Getting Started
 

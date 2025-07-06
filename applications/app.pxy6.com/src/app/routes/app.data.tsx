@@ -1,5 +1,64 @@
 import {Page, Layout, Card, BlockStack, Text, Button, InlineStack} from "@shopify/polaris";
 import {TitleBar} from "@shopify/app-bridge-react";
+import { ActionFunctionArgs, json } from "@remix-run/node"; // For server-side action
+import { useFetcher, useNavigation } from "@remix-run/react"; // For client-side interaction
+import { useState, useEffect } from "react";
+
+// Helper to create Basic Auth header - this will be called within the action
+const getServerSideAirflowAuthHeader = (user: string, pass: string) => {
+  const credentials = `${user}:${pass}`;
+  // btoa is not available in Node.js server environment by default, use Buffer
+  return `Basic ${Buffer.from(credentials).toString('base64')}`;
+};
+
+
+export async function action({ request }: ActionFunctionArgs) {
+  // Access environment variables securely within the server-side action
+  const AIRFLOW_API_BASE_URL = process.env.AIRFLOW_API_BASE_URL || "http://localhost:8081/api/v1";
+  const AIRFLOW_API_USER = process.env.AIRFLOW_API_USER || "admin";
+  const AIRFLOW_API_PASSWORD = process.env.AIRFLOW_API_PASSWORD || "admin";
+
+  const formData = await request.formData();
+  const actionType = formData.get("actionType");
+
+  if (actionType === "triggerDag") {
+    const dagId = formData.get("dagId") as string;
+    if (!dagId) {
+      return json({ success: false, error: "DAG ID is required." }, { status: 400 });
+    }
+
+    const airflowUrl = `${AIRFLOW_API_BASE_URL}/dags/${dagId}/dagRuns`;
+    console.log(`Attempting to trigger DAG: ${dagId} at ${airflowUrl}`);
+
+    try {
+      const response = await fetch(airflowUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": getServerSideAirflowAuthHeader(AIRFLOW_API_USER, AIRFLOW_API_PASSWORD),
+        },
+        body: JSON.stringify({
+          // Optionally pass configuration to the DAG run
+          // conf: { shop_id: "your-shop-id" },
+        }),
+      });
+
+      console.log(`Airflow API response status for ${dagId}: ${response.status}`);
+      const responseData = await response.json();
+      console.log(`Airflow API response data for ${dagId}:`, responseData);
+
+      if (!response.ok) {
+        return json({ success: false, error: `Failed to trigger DAG ${dagId}. Status: ${response.status}. Message: ${responseData.detail || response.statusText}` }, { status: response.status });
+      }
+      return json({ success: true, message: `Successfully triggered DAG ${dagId}. Run ID: ${responseData.dag_run_id}` });
+    } catch (error: any) {
+      console.error(`Error triggering DAG ${dagId}:`, error);
+      return json({ success: false, error: `Network or other error triggering DAG ${dagId}: ${error.message}` }, { status: 500 });
+    }
+  }
+  return json({ success: false, error: "Invalid action type." }, { status: 400 });
+}
+
 
 // Use a fallback icon as RefreshMajor is not available
 const RefreshIcon = () => (
@@ -26,21 +85,78 @@ const RefreshIcon = () => (
 );
 
 function DataInsightsSection() {
+  const fetcher = useFetcher<typeof action>();
+  const navigation = useNavigation();
+  const [lastRefreshStatus, setLastRefreshStatus] = useState<string | null>(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState<string>("July 26, 2024, 10:35 AM"); // Initial placeholder
+
+  const isLoading = navigation.state !== "idle" && navigation.formAction === "/app/data"; // Check if our specific action is loading
+
+  const handleReloadData = async () => {
+    setLastRefreshStatus("Reloading data...");
+
+    // Trigger Past Purchases DAG
+    const purchasesFormData = new FormData();
+    purchasesFormData.append("actionType", "triggerDag");
+    purchasesFormData.append("dagId", "shopify_fetch_past_purchases"); // Ensure this matches your DAG ID
+    fetcher.submit(purchasesFormData, { method: "post", action: "/app/data" });
+    // No 'await' here, let it run. We'll check fetcher.data for results.
+
+    // Trigger Store Metadata DAG - can be done sequentially or in parallel if backend handles it
+    // For simplicity, let's assume we want to show status after the first one,
+    // or combine them if the UI needs to reflect both.
+    // To trigger both and get combined feedback, the action would need to handle multiple DAG triggers
+    // or this client-side logic would need to make two fetcher calls and manage their states.
+    // For now, this button press will trigger one DAG via the fetcher.
+    // If you want to trigger both, you might need two buttons or a more complex action.
+  };
+
+  useEffect(() => {
+    if (fetcher.data) {
+      if (fetcher.data.success) {
+        setLastRefreshStatus(`Success: ${fetcher.data.message}`);
+        setLastRefreshTime(new Date().toLocaleString()); // Update time on success
+      } else {
+        setLastRefreshStatus(`Error: ${fetcher.data.error}`);
+      }
+    }
+  }, [fetcher.data]);
+
   return (
     <Layout.Section>
       <Card>
         <BlockStack gap="300">
-          <InlineStack align="space-between" blockAlign="center">
+          <InlineStack align="space-between" blockAlign="center" gap="400">
             <div>
               <Text variant="headingMd" as="h3">Data Insights</Text>
               <Text as="p" variant="bodySm" tone="subdued">
-                Summary of available data.
+                Summary of available data. Click "Reload Purchases" to refresh order data or "Reload Metadata" for catalog info.
               </Text>
             </div>
-            <Button icon={<RefreshIcon/>} variant="secondary">
-              Reload Data
-            </Button>
+            <InlineStack gap="200">
+              <fetcher.Form method="post" action="/app/data" onSubmit={(e) => setLastRefreshStatus("Reloading purchases...")}>
+                <input type="hidden" name="actionType" value="triggerDag" />
+                <input type="hidden" name="dagId" value="shopify_fetch_past_purchases" />
+                <Button submit icon={<RefreshIcon/>} variant="secondary" loading={isLoading && navigation.formData?.get("dagId") === "shopify_fetch_past_purchases"}>
+                  Reload Purchases
+                </Button>
+              </fetcher.Form>
+              <fetcher.Form method="post" action="/app/data" onSubmit={(e) => setLastRefreshStatus("Reloading metadata...")}>
+                <input type="hidden" name="actionType" value="triggerDag" />
+                <input type="hidden" name="dagId" value="shopify_fetch_store_metadata" />
+                <Button submit icon={<RefreshIcon/>} variant="primary" loading={isLoading && navigation.formData?.get("dagId") === "shopify_fetch_store_metadata"}>
+                  Reload Metadata
+                </Button>
+              </fetcher.Form>
+            </InlineStack>
           </InlineStack>
+
+          {lastRefreshStatus && (
+            <Text as="p" tone={fetcher.data?.success ? "success" : "critical"}>
+              {lastRefreshStatus}
+            </Text>
+          )}
+
           <div style={{display: 'flex', gap: 32, flexWrap: 'wrap'}}>
             <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
               <Card background="bg-surface-secondary" padding="400">
