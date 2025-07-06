@@ -16,8 +16,9 @@ COPY dags/ ./dags/
 COPY tests/ ./tests/
 COPY plugins/ ./plugins/
 
-# Create entrypoints directory
-RUN mkdir -p /app/entrypoints
+# Copy entrypoints
+COPY entrypoints/ ./entrypoints/
+RUN chmod +x ./entrypoints/*.sh
 
 # Default working directory for tests
 WORKDIR /app
