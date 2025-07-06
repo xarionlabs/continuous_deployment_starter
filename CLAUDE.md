@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### General Repository Commands
 - `docker-compose -f applications/[app_name]/docker-compose.yaml up --build` - Build and run an application locally
 - `find applications -type d -exec test -e '{}'/Dockerfile \; -print` - Find all applications with Dockerfiles
-- `cd utilities/github-automation && ./see_workflow_logs.sh` - Check latest GitHub Actions workflow status and logs
+- `./utilities/github-automation/see_workflow_logs.sh` - Check latest GitHub Actions workflow status and logs
 
 ### Application-Specific Commands
 
