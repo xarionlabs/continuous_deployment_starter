@@ -62,4 +62,5 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Echo image URL
-        run: echo "Pushed image: ${{ steps.meta.outputs.tags }}"
+        run: |
+          echo "Pushed image: ${{ steps.meta.outputs.tags }}"
