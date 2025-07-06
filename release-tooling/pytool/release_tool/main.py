@@ -1,7 +1,6 @@
-# release_tool/main.py
 import typer
 from typing_extensions import Annotated
-import os # Added for environment variable access for VARS_JSON default
+import os
 
 from release_tool import __version__
 
@@ -19,11 +18,9 @@ def main(
     """
     Main entry point for the release tool.
     """
-    # This callback is good for global options like version, context settings, etc.
-    # Specific command logic will go into the command functions themselves.
     pass
 
-from release_tool import changed_services # Import the new module
+from release_tool import changed_services
 
 @app.command()
 def determine_changes(
@@ -35,7 +32,7 @@ def determine_changes(
     Determines which services are affected by changes.
     Outputs a space-separated list of affected service names to STDOUT.
     """
-    typer.echo(f"Executing determine-changes...", err=True) # Log to stderr
+    typer.echo(f"Executing determine-changes...", err=True)
     typer.echo(f"Input - Changed files string: '{changed_files_input}'", err=True)
     typer.echo(f"Input - Assume value changes: {assume_value_changes}", err=True)
     typer.echo(f"Input - Services directory: {services_dir}", err=True)
@@ -49,7 +46,6 @@ def determine_changes(
     output_string = " ".join(affected_service_list)
     typer.echo(f"Output - Affected services string: '{output_string}'", err=True)
 
-    # Print the space-separated list to stdout, which can be captured by other processes
     print(output_string)
 
 @app.command()
@@ -58,7 +54,7 @@ def generate_units(
     services_dir: Annotated[str, typer.Option("--services-dir", help="Path to the services definition directory.")] = "./services",
     output_dir: Annotated[str, typer.Option("--output-dir", help="Path to output generated unit files.")] = "~/.config/containers/systemd",
     meta_target: Annotated[str, typer.Option("--meta-target", help="Optional systemd target name to make services PartOf (e.g., all-containers.target).")] = "",
-    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).")] = os.environ.get("VARS_JSON_STR", "{}") # Read from env if not passed as option
+    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).")] = os.environ.get("VARS_JSON_STR", "{}")
 ):
     """
     Generates systemd unit files for affected services from compose definitions.
@@ -67,8 +63,6 @@ def generate_units(
     from pathlib import Path
 
     typer.echo("Executing generate-units...", err=True)
-    # If vars_json_str was taken from env, it's already set. If passed as CLI, CLI takes precedence.
-    # Typer handles this priority. If --vars-json is provided, it overrides the default (which reads from env).
     typer.echo(f"Input - Affected services: '{affected_services}'", err=True)
     typer.echo(f"Input - Services directory: {services_dir}", err=True)
     typer.echo(f"Input - Output directory: {output_dir}", err=True)
@@ -138,7 +132,6 @@ def pull_images(
         raise typer.Exit(code=1)
 
 
-# Create a Typer app for service management subcommands
 manage_app = typer.Typer(name="manage-services", help="Manages services (restart, status, etc.).")
 
 @manage_app.command("restart")
@@ -150,7 +143,6 @@ def services_restart(
     Restarts affected services and their dependents.
     """
     from release_tool import service_manager
-    # from pathlib import Path # Not needed for units_dir here
 
     typer.echo("Executing manage-services restart...", err=True)
     affected_services_list = [s for s in affected_services.split(' ') if s]
@@ -187,15 +179,6 @@ def services_status(
     # Actual logic will be implemented later if needed, using service_manager.check_one_service_status
 
 app.add_typer(manage_app)
-
-
-# Remove the example_command if no longer needed, or keep for testing
-@app.command()
-def example_command(name: str):
-    """
-    An example command (can be removed later).
-    """
-    typer.echo(f"Hello {name}")
 
 
 if __name__ == "__main__": # pragma: no cover

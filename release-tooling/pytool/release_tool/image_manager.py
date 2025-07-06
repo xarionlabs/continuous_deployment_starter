@@ -1,4 +1,3 @@
-# release_tool/image_manager.py
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -19,12 +18,11 @@ def get_image_from_container_file(container_file_path: Path) -> Optional[str]:
 
                 if in_container_section and line.startswith("Image="):
                     parts = line.split("=", 1)
-                    if len(parts) == 2 and parts[1].strip(): # Ensure there is a value
+                    if len(parts) == 2 and parts[1].strip():
                         return parts[1].strip()
                     else:
                         print(f"Warning: Malformed Image= line in {container_file_path}: '{line}'", flush=True)
-                        return None # Malformed or empty Image value
-        # If loop finishes and Image= not found in [Container] or no [Container] section
+                        return None
         return None
     except Exception as e:
         print(f"Error reading or parsing container file {container_file_path}: {e}", flush=True)
@@ -34,16 +32,14 @@ def pull_image(image_name: str) -> bool:
     """Pulls a container image using Podman. Returns True on success, False on failure."""
     print(f"Attempting to pull image: {image_name}...", flush=True)
     try:
-        # Using shell=False is safer, command and args as a list
         process = subprocess.run(
             ["podman", "pull", image_name],
             capture_output=True,
             text=True,
-            check=False  # Don't raise exception on non-zero exit, we'll check manually
+            check=False
         )
         if process.returncode == 0:
             print(f"✅ Successfully pulled image: {image_name}", flush=True)
-            # print(process.stdout, flush=True) # Optional: print podman output
             return True
         else:
             print(f"⚠️ Failed to pull image: {image_name}. Return code: {process.returncode}", flush=True)
@@ -71,7 +67,7 @@ def pull_images_for_services(
     """
     if not affected_services:
         print("No affected services provided for image pulling. Nothing to do.", flush=True)
-        return True # No services, so trivially successful
+        return True
 
     if not units_dir_path.is_dir():
         print(f"Error: Units directory '{units_dir_path}' does not exist. Cannot find .container files.", flush=True)
@@ -81,19 +77,18 @@ def pull_images_for_services(
     overall_success = True
 
     for service_name in affected_services:
-        sane_service_name = service_name # Assuming service_name is already sanitized if needed for filenames
-        container_file = units_dir_path / f"{sane_service_name}.container"
+        container_file = units_dir_path / f"{service_name}.container"
 
         image_to_pull = get_image_from_container_file(container_file)
 
         if image_to_pull:
             if not pull_image(image_to_pull):
-                overall_success = False # Continue pulling other images, but mark overall as failed
+                overall_success = False
                 print(f"Continuing with other services despite failure to pull {image_to_pull} for {service_name}.", flush=True)
         else:
             print(f"No image found or could not read container file for service '{service_name}'. Skipping image pull for it.", flush=True)
-            # Not finding an image for an affected service might be an issue, but script replicates original behavior of just warning.
-            # Depending on strictness, this could set overall_success = False
+            # Failure to find an image for an *affected* service might be an issue.
+            # Current behavior is to warn and continue; overall_success is not impacted by this specific case.
 
     if overall_success:
         print("Image pulling process completed for all relevant services.", flush=True)

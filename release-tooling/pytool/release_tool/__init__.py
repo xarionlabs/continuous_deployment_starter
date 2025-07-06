@@ -1,4 +1,3 @@
-# release_tool/__init__.py
 """
 Release Tool Package
 """

@@ -35,8 +35,6 @@ SCRIPT_SECRETS_JSON_STR="${3:-{\}}"
 
 # --- Main Function ---
 main() {
-    # Use script-global variables for parameters
-
     # --- Configuration (adjust these paths if your remote setup differs) ---
     REMOTE_USER_HOME_REAL=$(eval echo "~$USER") # Actual home dir of the user running the script
     PROJECT_DIR_ON_HOST_DEFAULT="$REMOTE_USER_HOME_REAL/runtime/continuous_deployment_starter"
@@ -49,9 +47,8 @@ main() {
     # Allow overriding paths for testing
     PROJECT_DIR_ON_HOST="${TEST_OVERRIDE_PROJECT_DIR_ON_HOST:-$PROJECT_DIR_ON_HOST_DEFAULT}"
     SERVICES_DEF_DIR_ON_HOST="${TEST_OVERRIDE_SERVICES_DEF_DIR:-$SERVICES_DEF_DIR_ON_HOST_DEFAULT}"
-    # HOST_SCRIPTS_DIR is now primarily where this script itself resides, and other scripts are called relative to it.
-    # The TEST_OVERRIDE_HOST_SCRIPTS_DIR can still be used by tests to place mock scripts if needed,
-    # but the script's internal calls will use `$(dirname "$0")/script.sh`.
+    # HOST_SCRIPTS_DIR determines the location of helper scripts.
+    # It defaults to this script's directory but can be overridden by TEST_OVERRIDE_HOST_SCRIPTS_DIR for testing.
     HOST_SCRIPTS_DIR="${TEST_OVERRIDE_HOST_SCRIPTS_DIR:-$(dirname "$0")}"
     SYSTEMD_USER_UNITS_DIR_ON_HOST="${TEST_OVERRIDE_SYSTEMD_USER_UNITS_DIR:-$SYSTEMD_USER_UNITS_DIR_ON_HOST_DEFAULT}"
     QUADLET_EXEC="${TEST_OVERRIDE_QUADLET_PATH:-$QUADLET_EXEC_DEFAULT}"
@@ -83,14 +80,14 @@ main() {
     fi
 
     log_step "Initializing Deployment on Host"
-    log_info "Affected Services: '$SCRIPT_AFFECTED_SERVICES'" # Use global var
+    log_info "Affected Services: '$SCRIPT_AFFECTED_SERVICES'"
 log_info "Project Directory on Host: $PROJECT_DIR_ON_HOST"
 log_info "Services Definitions on Host: $SERVICES_DEF_DIR_ON_HOST"
 log_info "Systemd User Units Directory on Host: $SYSTEMD_USER_UNITS_DIR_ON_HOST"
 log_info "Release Tool Image: $RELEASE_TOOL_FULL_IMAGE_NAME"
 # Avoid logging full VARS_JSON_STR and SECRETS_JSON_STR for security, just acknowledge receipt
-    log_info "VARS_JSON_STR received: $(if [ -z "$SCRIPT_VARS_JSON_STR" ] || [ "$SCRIPT_VARS_JSON_STR" == "{}" ]; then echo "false"; else echo "true"; fi)" # Use global var
-    log_info "SECRETS_JSON_STR received: $(if [ -z "$SCRIPT_SECRETS_JSON_STR" ] || [ "$SCRIPT_SECRETS_JSON_STR" == "{}" ]; then echo "false"; else echo "true"; fi)" # Use global var
+    log_info "VARS_JSON_STR received: $(if [ -z "$SCRIPT_VARS_JSON_STR" ] || [ "$SCRIPT_VARS_JSON_STR" == "{}" ]; then echo "false"; else echo "true"; fi)"
+    log_info "SECRETS_JSON_STR received: $(if [ -z "$SCRIPT_SECRETS_JSON_STR" ] || [ "$SCRIPT_SECRETS_JSON_STR" == "{}" ]; then echo "false"; else echo "true"; fi)"
 
 
 # Ensure critical directories exist on the host

@@ -1,4 +1,3 @@
-# tests/test_service_manager.py
 import pytest
 import subprocess
 from unittest import mock

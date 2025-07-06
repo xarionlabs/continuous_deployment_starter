@@ -1,4 +1,3 @@
-# release_tool/unit_generator.py
 import os
 import re
 import yaml
@@ -6,12 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 # --- Constants for Quadlet Generation ---
-# These would be equivalent to settings or conventions used by the add_*.sh scripts
-
-# Example: Default network if not specified, or how to handle host networking
 DEFAULT_NETWORK_SETTINGS = {"driver": "bridge"}
-
-# Example: Prefix or convention for volume names
 VOLUME_NAME_PREFIX = "podman_vol_"
 
 # --- Data Structures for Quadlet Units (Simple representations) ---
@@ -19,15 +13,14 @@ VOLUME_NAME_PREFIX = "podman_vol_"
 class QuadletUnit:
     """Base class for a Quadlet unit file representation."""
     def __init__(self, unit_type: str, service_name: str):
-        self.unit_type = unit_type # e.g., "container", "network", "volume"
+        self.unit_type = unit_type
         self.service_name = service_name
-        self.sections: Dict[str, Dict[str, Any]] = {} # E.g. {"Unit": {"Description": ...}, "Service": {}, "X-Container": {}}
+        self.sections: Dict[str, Dict[str, Any]] = {}
 
     def add_entry(self, section: str, key: str, value: Any):
         if section not in self.sections:
             self.sections[section] = {}
 
-        # Handle multi-value keys by converting to list if needed
         if key in self.sections[section]:
             current_value = self.sections[section][key]
             if isinstance(current_value, list):
@@ -36,14 +29,13 @@ class QuadletUnit:
                 else:
                     self.sections[section][key].append(value)
             else:
-                # Convert existing single value to list and add new value(s)
                 new_list = [current_value]
                 if isinstance(value, list):
                     new_list.extend(value)
                 else:
                     new_list.append(value)
                 self.sections[section][key] = new_list
-        else: # New key
+        else:
             self.sections[section][key] = value
 
     def generate_file_content(self) -> str:
@@ -58,7 +50,7 @@ class QuadletUnit:
                     content.append(f"{key}={'true' if value else 'false'}")
                 else:
                     content.append(f"{key}={value}")
-            content.append("") # Blank line after section
+            content.append("")
         return "\n".join(content)
 
     def get_filename(self) -> str:
@@ -68,8 +60,8 @@ class ContainerUnit(QuadletUnit):
     def __init__(self, service_name: str):
         super().__init__("container", service_name)
         self.add_entry("Unit", "Description", f"Podman container for {service_name}")
-        self.add_entry("Unit", "DefaultDependencies", "false") # Common default
-        self.add_entry("Install", "WantedBy", "default.target") # Common default
+        self.add_entry("Unit", "DefaultDependencies", "false")
+        self.add_entry("Install", "WantedBy", "default.target")
 
 class VolumeUnit(QuadletUnit):
     def __init__(self, volume_name: str, service_name: Optional[str] = None):
@@ -109,7 +101,6 @@ def parse_compose_file(file_path: Path) -> Optional[Dict[str, Any]]:
 
 def sanitize_service_name_for_filename(service_name: str) -> str:
     """Sanitizes a service name to be used in a filename (e.g. for systemd)."""
-    # Replace problematic characters with underscores or remove them
     # This is a basic example; more robust sanitization might be needed.
     name = re.sub(r'[^a-zA-Z0-9_.-]+', '_', service_name)
     return name
@@ -157,9 +148,9 @@ def convert_compose_service_to_container_unit(
             # Quadlet prefers: Port=hostport:containerport
             if isinstance(port_mapping, (str, int)):
                 parts = str(port_mapping).split(':')
-                if len(parts) == 1: # "CONTAINER"
+                if len(parts) == 1:
                     container_unit.add_entry("Container", "Port", parts[0])
-                elif len(parts) == 2: # "HOST:CONTAINER"
+                elif len(parts) == 2:
                      container_unit.add_entry("Container", "Port", f"{parts[0]}:{parts[1]}")
                 else: # More complex, add as raw Podman arg for now
                     container_unit.add_entry("Container", "PodmanArgs", f"--publish={port_mapping}")
@@ -173,17 +164,15 @@ def convert_compose_service_to_container_unit(
     # 2. Global environment variables from VARS_JSON
     # Service-specific will override global if keys conflict.
 
-    # Start with a copy of global env vars if provided
     final_env: Dict[str, Optional[str]] = {}
     if global_env_vars:
         final_env.update(global_env_vars)
 
-    # Then apply/override with service-specific env vars from compose
     if 'environment' in compose_service_config:
         compose_env_vars = compose_service_config['environment']
         if isinstance(compose_env_vars, dict):
-            final_env.update(compose_env_vars) # Dict update handles overrides
-        elif isinstance(compose_env_vars, list): # List of "KEY=VALUE" or "KEY"
+            final_env.update(compose_env_vars)
+        elif isinstance(compose_env_vars, list):
             for item in compose_env_vars:
                 if '=' in item:
                     key, value = item.split('=', 1)
@@ -192,7 +181,6 @@ def convert_compose_service_to_container_unit(
                     # Per user feedback, key-only variables are not supported. Log a warning.
                     print(f"Warning: Service '{service_name}' environment list contains key-only entry '{item}'. This is not supported and will be ignored.", flush=True)
 
-    # Add the combined environment variables to the container unit
     for key, value in final_env.items():
          container_unit.add_entry("Container", "Environment", f"{key}={value if value is not None else ''}")
 
@@ -230,7 +218,6 @@ def convert_compose_service_to_container_unit(
     # apply_oneshot_config(container_unit, compose_service_config)
     # apply_partof_config(container_unit, compose_service_config) # This might be on a .service wrapper
 
-    # Add common autoupdate label
     container_unit.add_entry("Container", "Label", "io.containers.autoupdate=image")
 
     # Handle 'cap_add' and 'security_opt' (simplified)
@@ -247,25 +234,20 @@ def convert_compose_service_to_container_unit(
     if 'secrets' in compose_service_config:
         for secret_entry in compose_service_config['secrets']:
             secret_name = ""
-            target_path = "" # For Quadlet, target is often same as source name if not specified
-            if isinstance(secret_entry, str): # Simple form: "mysecret"
+            target_path = ""
+            if isinstance(secret_entry, str):
                 secret_name = secret_entry
-                target_path = secret_name # Or some default path convention if needed
-            elif isinstance(secret_entry, dict): # Long form: {source: mysecret, target: /path/in/container}
+                target_path = secret_name
+            elif isinstance(secret_entry, dict):
                 secret_name = secret_entry.get('source')
-                target_path = secret_entry.get('target', secret_name) # If target is omitted, it's often the secret name itself
+                target_path = secret_entry.get('target', secret_name)
 
             if secret_name:
                 # Quadlet format: Secret=mysecret[,target=/path/in/container]
                 secret_quadlet_value = secret_name
-                if target_path and target_path != secret_name : # Only add target if different and specified
-                     # Quadlet usually expects target to be a filename if source is a secret name.
-                     # If target is a dir, it might need different handling or podman args.
-                     # For simplicity, let's assume target is the name it will have in the default secrets dir (/run/secrets)
-                     # Or if an absolute path is given for target, that's more direct.
-                     # This might need refinement based on how add_secrets_to_env.sh worked.
-                     # If it was about env vars: Environment=MY_VAR=secret:mysecret
-                    pass # Current add_secrets_to_env.sh likely does more, this is a placeholder
+                if target_path and target_path != secret_name :
+                    pass
+                    # Current add_secrets_to_env.sh likely does more, this is a placeholder
                     # For now, let's assume `add_secrets_to_env.sh` logic is complex and will be
                     # a separate function that modifies the container_unit or adds Env variables.
                     # This is a placeholder for direct Secret= mapping if that's desired.
@@ -277,7 +259,7 @@ def convert_compose_service_to_container_unit(
         if isinstance(sysctls, dict):
             for key, value in sysctls.items():
                 container_unit.add_entry("Container", "PodmanArgs", f"--sysctl={key}={value}")
-        elif isinstance(sysctls, list): # list of "key=value"
+        elif isinstance(sysctls, list):
             for item in sysctls:
                 container_unit.add_entry("Container", "PodmanArgs", f"--sysctl={item}")
 
@@ -289,16 +271,14 @@ def convert_compose_service_to_container_unit(
                 parts = vol_entry.split(':')
                 source = parts[0]
                 target = parts[1] if len(parts) > 1 else None
-                mode = parts[2] if len(parts) > 2 else None # ro, rw
+                mode = parts[2] if len(parts) > 2 else None
 
                 options = []
                 if mode: options.append(mode)
 
-                # Is it a host bind or a named volume?
-                if source.startswith('/') or source.startswith('.'): # Likely a host path
+                if source.startswith('/') or source.startswith('.'):
                     container_unit.add_entry("Container", "Volume", f"{Path(source).resolve()}:{target}{(':' + ':'.join(options)) if options else ''}")
-                else: # Named volume
-                    # Check if this named volume is defined in the global 'volumes' section
+                else:
                     is_globally_defined = source in all_compose_config.get('volumes', {})
 
                     # If not globally defined, or if defined but simple (no external settings),
@@ -309,10 +289,9 @@ def convert_compose_service_to_container_unit(
                         # Check if we already created such a volume unit for this service to avoid duplicates if referenced multiple times.
                         if not any(isinstance(u, VolumeUnit) and u.volume_name_on_host == source for u in auxiliary_units):
                             # Create a simple VolumeUnit. More complex definitions (driver, opts) would need parsing all_compose_config['volumes'][source]
-                            simple_vol_unit = VolumeUnit(volume_name=source, service_name=vol_unit_name) # Name the .volume file uniquely
+                            simple_vol_unit = VolumeUnit(volume_name=source, service_name=vol_unit_name)
                             auxiliary_units.append(simple_vol_unit)
 
-                    # Add to container unit
                     # Quadlet Volume=named_volume:/path/in/container[:options]
                     container_unit.add_entry("Container", "Volume", f"{source}:{target}{(':' + ':'.join(options)) if options else ''}")
 
@@ -322,9 +301,9 @@ def convert_compose_service_to_container_unit(
                 source = vol_entry.get('source')
                 target = vol_entry.get('target')
                 readonly = vol_entry.get('read_only', False)
-                options = ['ro'] if readonly else ['rw'] # 'rw' is often default but can be explicit
+                options = ['ro'] if readonly else ['rw']
 
-                if not target: # Target is required
+                if not target:
                     print(f"Warning: Volume entry for service '{service_name}' is missing 'target'. Skipping: {vol_entry}", flush=True)
                     continue
 
@@ -346,7 +325,7 @@ def convert_compose_service_to_container_unit(
                         container_unit.add_entry("Container", "Volume", f"{source}:{target}{(':' + ':'.join(options)) if options else ''}")
                 elif vol_type == 'tmpfs':
                      # Quadlet uses Tmpfs= /path/in/container[:options]
-                    tmpfs_opts = vol_entry.get('tmpfs', {}).get('size') # e.g. size: 100m
+                    tmpfs_opts = vol_entry.get('tmpfs', {}).get('size')
                     opt_str = f":size={tmpfs_opts}" if tmpfs_opts else ""
                     container_unit.add_entry("Container", "Tmpfs", f"{target}{opt_str}")
                 else:
@@ -356,15 +335,14 @@ def convert_compose_service_to_container_unit(
     # This is simplified. Assumes networks are either predefined or simple bridge networks.
     if 'networks' in compose_service_config:
         networks_to_join = []
-        if isinstance(compose_service_config['networks'], list): # simple list of network names
+        if isinstance(compose_service_config['networks'], list):
             networks_to_join = compose_service_config['networks']
-        elif isinstance(compose_service_config['networks'], dict): # dictionary form with aliases etc.
+        elif isinstance(compose_service_config['networks'], dict):
             networks_to_join = list(compose_service_config['networks'].keys())
             # TODO: Handle aliases, ipv4_address etc. from the dict values if needed via PodmanArgs
             # For now, just connect to the network by name.
 
         for net_name in networks_to_join:
-            # Check if this network is defined in the global 'networks' section
             # If not globally defined, Quadlet might create a default bridge or we might need a .network file.
             # For now, we assume simple named networks. If it's not 'host' or 'none', add Network=
             if net_name.lower() == "host":
@@ -390,8 +368,8 @@ def generate_all_quadlet_files(
     affected_services: List[str],
     services_dir_path: Path,
     output_dir_path: Path,
-    meta_target_name: Optional[str] = None, # e.g., "all-containers.target"
-    vars_json_string: Optional[str] = None # JSON string from GitHub vars
+    meta_target_name: Optional[str] = None,
+    vars_json_string: Optional[str] = None
 ) -> bool:
     """
     Generates all necessary Quadlet files for the affected services.
@@ -403,7 +381,7 @@ def generate_all_quadlet_files(
         print(f"Error: Services directory '{services_dir_path}' does not exist.", flush=True)
         return False
 
-    output_dir_path = Path(os.path.expanduser(str(output_dir_path))) # Expand ~
+    output_dir_path = Path(os.path.expanduser(str(output_dir_path)))
     output_dir_path.mkdir(parents=True, exist_ok=True)
 
     all_ok = True
@@ -421,8 +399,7 @@ def generate_all_quadlet_files(
 
     for service_name in affected_services:
         sane_service_name = sanitize_service_name_for_filename(service_name)
-        service_compose_file = services_dir_path / service_name / f"{service_name}.compose.yml" # Common convention
-        # Or look for any *.compose.yml or docker-compose.yml
+        service_compose_file = services_dir_path / service_name / f"{service_name}.compose.yml"
         if not service_compose_file.is_file():
              service_compose_file = services_dir_path / service_name / "docker-compose.yml"
              if not service_compose_file.is_file():
@@ -434,7 +411,6 @@ def generate_all_quadlet_files(
 
         print(f"Processing service '{service_name}' from '{service_compose_file}'...", flush=True)
 
-        # Clean up existing files for this service first
         for old_file in output_dir_path.glob(f"{sane_service_name}.*"):
             try:
                 old_file.unlink()
@@ -453,25 +429,23 @@ def generate_all_quadlet_files(
         # or taking the first service if multiple are defined (less ideal).
         # A better approach might be to iterate if multiple services are in one file,
         # but current bash scripts seem to imply one service definition per directory.
-        primary_compose_service_name = service_name # Assume compose service name matches directory name
+        primary_compose_service_name = service_name
         if primary_compose_service_name not in compose_config['services']:
-            # Fallback: try to find if there's a service with the same name as the file (without .compose.yml)
-            # Or just take the first service defined in the YAML.
             available_yaml_services = list(compose_config['services'].keys())
             if not available_yaml_services:
                 print(f"Error: No services defined in compose file '{service_compose_file}'. Skipping.", flush=True)
                 all_ok = False
                 continue
-            if service_name in available_yaml_services: # If a service is named like the folder
+            if service_name in available_yaml_services:
                 primary_compose_service_name = service_name
-            else: # Take the first one
+            else:
                 primary_compose_service_name = available_yaml_services[0]
                 print(f"Warning: Service name '{service_name}' (from dir) not found in its compose file. Using first service found: '{primary_compose_service_name}'.", flush=True)
 
         compose_service_def = compose_config['services'][primary_compose_service_name]
 
         container_unit, aux_units = convert_compose_service_to_container_unit(
-            service_name, # Use the directory name as the logical service name
+            service_name,
             compose_service_def,
             compose_config,
             global_env_vars=global_env_vars_dict
@@ -502,19 +476,16 @@ def generate_all_quadlet_files(
         # that simply refers to it, if one doesn't exist or needs update.
         # This .service file is where systemd dependencies (Requires, After, PartOf) go.
         service_unit_file = output_dir_path / f"{sane_service_name}.service"
-        if container_unit: # Only if a container was actually generated
+        if container_unit:
             service_unit_content = f"""[Unit]
 Description=Service for {sane_service_name} container
 """
-            # Create a QuadletUnit for the .service file to manage its content
             service_unit_wrapper = QuadletUnit("service", sane_service_name)
             service_unit_wrapper.add_entry("Unit", "Description", f"Service for {sane_service_name} container")
 
-            # DefaultDependencies for .service can be true, unlike .container
             # service_unit_wrapper.add_entry("Unit", "DefaultDependencies", "true")
 
 
-            # Handle depends_on for Requires/After
             if 'depends_on' in compose_service_def:
                 dependencies = compose_service_def['depends_on']
                 # depends_on can be a list or a dictionary (for conditions)
@@ -522,7 +493,7 @@ Description=Service for {sane_service_name} container
                 if isinstance(dependencies, list):
                     dep_names = dependencies
                 elif isinstance(dependencies, dict):
-                    dep_names = list(dependencies.keys()) # Basic: just use service names
+                    dep_names = list(dependencies.keys())
                     # TODO: Handle conditions like service_healthy, service_started if needed
 
                 for dep_name in dep_names:
@@ -539,11 +510,9 @@ Description=Service for {sane_service_name} container
                     # as it might involve a meta-service that isn't known at this individual service level.
 
 
-            # Determine container name for ExecStart/Stop
-            # Try to find a --name arg in PodmanArgs
             podman_args_list = container_unit.sections.get("Container", {}).get("PodmanArgs", [])
-            container_exec_name = sane_service_name # Default
-            if isinstance(podman_args_list, str): # If it became a single string somehow
+            container_exec_name = sane_service_name
+            if isinstance(podman_args_list, str):
                 podman_args_list = [podman_args_list]
 
             for arg in podman_args_list:
@@ -557,11 +526,10 @@ Description=Service for {sane_service_name} container
 
             # Handle Type (oneshot or typical service)
             # This is where add_oneshot_services.sh logic would come in.
-            # Let's assume a compose label like 'com.example.systemd.type=oneshot'
             service_type = "forking" # Default for podman start/stop
             remain_after_exit = "yes"
             if compose_service_def.get('labels', {}).get('com.centOS.systemd.type', '').lower() == 'oneshot' or \
-               compose_service_def.get('labels', {}).get('com.example.systemd.type', '').lower() == 'oneshot': # Example label
+               compose_service_def.get('labels', {}).get('com.example.systemd.type', '').lower() == 'oneshot':
                 service_type = "oneshot"
                 remain_after_exit = "no" # Typically 'no' for oneshot unless it's setting up something persistent
                 # For oneshot, ExecStart might be different (e.g. podman run --rm ... for a task)
@@ -585,14 +553,12 @@ Description=Service for {sane_service_name} container
                     # Let's build a more comprehensive run command.
                     podman_run_cmd_parts = ["/usr/bin/podman", "run", "--rm"]
 
-                    # Name (usually for long-running, but can be useful for logs of oneshot)
-                    if container_exec_name != sane_service_name: # if a custom name was set
+                    if container_exec_name != sane_service_name:
                         podman_run_cmd_parts.append(f"--name={container_exec_name}")
                     else: # Use a unique name for the run to avoid clashes if not cleaned up, though --rm helps
                         podman_run_cmd_parts.append(f"--name={sane_service_name}-oneshot-$(uuidgen --random)")
 
 
-                    # Environment Variables
                     env_vars = container_unit.sections.get("Container", {}).get("Environment", [])
                     if isinstance(env_vars, str): env_vars = [env_vars]
                     for env_var in env_vars:
@@ -608,14 +574,11 @@ Description=Service for {sane_service_name} container
                     # or environment variables are passed.
                     # For now, this example assumes env var secrets are already in the Environment list.
 
-                    # Volumes
                     volumes = container_unit.sections.get("Container", {}).get("Volume", [])
                     if isinstance(volumes, str): volumes = [volumes]
                     for vol in volumes:
                         podman_run_cmd_parts.extend(["--volume", vol])
 
-                    # Networks
-                    # Podman run uses --network. If multiple Network= lines, how to translate?
                     # Typically, a container joins networks listed.
                     # For simplicity, if a specific network other than host/none is set, use it.
                     networks = container_unit.sections.get("Container", {}).get("Network", [])
@@ -627,7 +590,6 @@ Description=Service for {sane_service_name} container
                              podman_run_cmd_parts.extend([f"--network={net}"])
 
 
-                    # Other PodmanArgs (excluding --name as it's handled)
                     raw_podman_args = container_unit.sections.get("Container", {}).get("PodmanArgs", [])
                     if isinstance(raw_podman_args, str): raw_podman_args = [raw_podman_args]
                     for arg in raw_podman_args:
@@ -636,7 +598,6 @@ Description=Service for {sane_service_name} container
 
                     podman_run_cmd_parts.append(image_name)
 
-                    # Command / Entrypoint from compose (if any)
                     # TODO: Add compose_service_def.get('command') and compose_service_def.get('entrypoint')
 
                     service_unit_wrapper.add_entry("Service", "ExecStart", " ".join(podman_run_cmd_parts))
@@ -646,29 +607,22 @@ Description=Service for {sane_service_name} container
 
                 # Oneshot services typically don't remain after exit unless they are setting up something.
                 # And they usually don't have an ExecStop unless it's for cleanup.
-                service_unit_wrapper.sections["Service"].pop("ExecStop", None) # Remove default ExecStop
-                service_unit_wrapper.sections["Service"].pop("RemainAfterExit", None) # Remove default RemainAfterExit
-            else: # Not oneshot
+                service_unit_wrapper.sections["Service"].pop("ExecStop", None)
+                service_unit_wrapper.sections["Service"].pop("RemainAfterExit", None)
+            else:
                  service_unit_wrapper.add_entry("Service", "RemainAfterExit", remain_after_exit)
 
 
             service_unit_wrapper.add_entry("Install", "WantedBy", "default.target")
 
-            # Apply PartOf logic (simplified from add_partof_services.sh)
-            # Assumes a convention: if a service is part of "default.target" (most are),
-            # and if a specific meta-target like "all-containers.target" exists or is configured,
-            # it should be part of that.
-            # This could be passed as an argument or discovered.
-            # For now, let's assume a global 'main_target' could be 'default.target' or a custom one.
-            # The original add_partof_services.sh might have more complex logic to determine this.
-            # A common pattern is to make services PartOf= a specific target that groups them.
-            # If a global 'app_target_name' (e.g., "my-app.target") is provided, use it.
-            # This is a placeholder for where that logic would integrate.
-            # Example: if a global_meta_target = "all-containers.target" is passed to generate_all_quadlet_files:
-            #   service_unit_wrapper.add_entry("Unit", "PartOf", global_meta_target)
-            # This makes them stop when 'all-containers.target' stops.
-            # Example: if a global_meta_target = "all-containers.target" is passed to generate_all_quadlet_files:
-            #   service_unit_wrapper.add_entry("Unit", "PartOf", global_meta_target)
+            # PartOf is often used for grouping and ensuring dependent services are stopped/started together
+            # For a typical "all services" meta-service (e.g. all-containers.target or similar)
+            # we would add PartOf=all-containers.target here.
+            # The original add_partof_services.sh might have specific logic for this.
+            # For now, let's assume a general PartOf= default.target or a passed-in meta target.
+            # This needs to align with how generate_meta_services.sh works.
+            # Let's assume for now that PartOf is handled by a dedicated function or step,
+            # as it might involve a meta-service that isn't known at this individual service level.
             # This is now handled by a parameter to generate_all_quadlet_files.
             if meta_target_name:
                 service_unit_wrapper.add_entry("Unit", "PartOf", meta_target_name)
@@ -676,7 +630,7 @@ Description=Service for {sane_service_name} container
             from .secret_handler import apply_secret_injection # Import locally to avoid circular if moved
             # Secret handling: Replicating add_secrets_to_env.sh logic
             # This function will modify container_unit by adding Environment= or Secret= lines
-            apply_secret_injection(container_unit, compose_service_def, compose_config) # Corrected variable name
+            apply_secret_injection(container_unit, compose_service_def, compose_config)
 
 
             try:

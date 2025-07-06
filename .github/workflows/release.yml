@@ -15,7 +15,7 @@ jobs:
       image_tag: latest # Or you can use a dynamic tag e.g., ${{ github.sha }}
     secrets: inherit # Pass secrets like GITHUB_TOKEN if needed by the reusable workflow
 
-  deploy_services: # Renamed from 'release' for clarity
+  deploy_services:
     name: Deploy Services to ${{ inputs.environment }}
     needs: build_pytool
     runs-on: ubuntu-latest
@@ -117,7 +117,6 @@ jobs:
             fi
             cd "$PROJECT_DIR_ON_HOST"
 
-            # Updated path to the deploy script
             DEPLOY_SCRIPT_PATH="release-tooling/scripts/deploy_on_host.sh"
 
             if [ ! -f "$DEPLOY_SCRIPT_PATH" ]; then

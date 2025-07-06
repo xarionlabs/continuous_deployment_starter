@@ -1,4 +1,3 @@
-# tests/test_image_manager.py
 import pytest
 import subprocess
 from pathlib import Path

@@ -53,7 +53,7 @@ jobs:
       - name: Build and push release-tool image
         uses: docker/build-push-action@v5
         with:
-          context: ./release-tooling/pytool # Updated context path
+          context: ./release-tooling/pytool
           file: ./release-tooling/pytool/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}

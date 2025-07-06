@@ -1,4 +1,3 @@
-# release_tool/service_manager.py
 import subprocess
 import time
 from pathlib import Path
@@ -15,14 +14,14 @@ def _run_systemctl_command(args: List[str], check_return_code: bool = True) -> T
             full_command,
             capture_output=True,
             text=True,
-            check=False # Manual check for more context
+            check=False
         )
         if check_return_code and process.returncode != 0:
             print(f"Error running {' '.join(full_command)}. RC: {process.returncode}", flush=True)
-            if process.stdout: print(f"  Stdout: {process.stdout.strip()}", flush=True) # .strip() is fine for display
+            if process.stdout: print(f"  Stdout: {process.stdout.strip()}", flush=True)
             if process.stderr: print(f"  Stderr: {process.stderr.strip()}", flush=True)
-            return False, process.stdout, process.stderr.strip() # Return raw process.stdout for stdout
-        return True, process.stdout, process.stderr.strip() # Return raw process.stdout for stdout
+            return False, process.stdout, process.stderr.strip()
+        return True, process.stdout, process.stderr.strip()
     except FileNotFoundError:
         print("Error: 'systemctl' command not found. Is systemd running in user mode?", flush=True)
         return False, "", "systemctl command not found"
@@ -33,7 +32,6 @@ def _run_systemctl_command(args: List[str], check_return_code: bool = True) -> T
 def service_exists(service_unit_name: str) -> bool:
     """Checks if a systemd user service unit exists (e.g., myapp.service)."""
     # list-unit-files will output the file and its state, or nothing if not found (after filtering)
-    # We add ".service" if not present, as systemctl usually expects it for services
     if not service_unit_name.endswith(".service"):
         service_unit_name_with_ext = f"{service_unit_name}.service"
     else:
@@ -58,7 +56,7 @@ def get_reverse_dependencies(service_unit_name: str) -> Set[str]:
         ["list-dependencies", service_unit_name, "--reverse", "--plain"],
         check_return_code=False # Can return non-zero if service has no deps or does not exist
     )
-    if success: # Command itself ran, even if no deps found
+    if success:
         for line in stdout.splitlines():
             dep_unit = line.strip()
             if dep_unit and dep_unit.endswith(".service") and dep_unit != service_unit_name:
@@ -100,30 +98,27 @@ def get_service_properties(service_unit_name: str, properties: List[str]) -> Dic
     args = ["show", service_unit_name]
     for prop in properties:
         args.extend(["-p", prop])
-    args.append("--value") # Get only values
+    args.append("--value")
 
     success, stdout, _ = _run_systemctl_command(args, check_return_code=False) # show can fail if service just died
 
-    prop_values: Dict[str, str] = {prop: "unknown" for prop in properties} # Initialize with default
+    prop_values: Dict[str, str] = {prop: "unknown" for prop in properties}
 
-    if success: # Command ran
+    if success:
         lines = stdout.splitlines()
         # systemctl show --value prints one property per line.
         # If a property is empty, it prints an empty line.
         # If a property doesn't exist for the unit, it might omit the line or print specific error marker (less common for --value).
         # We expect as many lines as properties requested if all are valid and found.
 
-        # Populate found values
         for i, prop_name in enumerate(properties):
             if i < len(lines):
                 prop_values[prop_name] = lines[i].strip()
             else:
                 # This case means systemctl didn't output enough lines for the requested properties.
                 # It might happen if a property is not applicable to a unit type and systemctl omits it.
-                # Defaulting to "unknown" is already done by initialization.
                 print(f"Warning: Property '{prop_name}' may be missing from 'systemctl show' output for {service_unit_name}. Output lines: {len(lines)}, Properties requested: {len(properties)}", flush=True)
-                # prop_values[prop_name] remains "unknown"
-    else: # systemctl show command itself failed
+    else:
         print(f"Warning: 'systemctl show' command failed for {service_unit_name}. All requested properties marked as 'unknown_command_failed'.", flush=True)
         for prop_name in properties:
             prop_values[prop_name] = "unknown_command_failed"
@@ -155,11 +150,10 @@ def check_one_service_status(service_unit_name: str, max_retries: int = 5, check
                 print(f"✅ {service_unit_name} (oneshot) completed successfully.", flush=True)
                 return True
             # Oneshot might be 'activating' then 'deactivating' then result is set.
-            # If it's already failed, no point retrying.
-            if result_state not in ["unknown", "unknown_command_failed"] and result_state != "success": # e.g. failed, exited, etc.
+            if result_state not in ["unknown", "unknown_command_failed"] and result_state != "success":
                  print(f"❌ {service_unit_name} (oneshot) is in final state '{result_state}'.", flush=True)
                  return False
-        else: # Not oneshot
+        else:
             if active_state == "active":
                 print(f"✅ {service_unit_name} is active (SubState: {sub_state}).", flush=True)
                 return True
@@ -170,10 +164,10 @@ def check_one_service_status(service_unit_name: str, max_retries: int = 5, check
         if attempt < max_retries - 1:
             print(f"⏳ {service_unit_name} (Type: {service_type}, ActiveState: {active_state}, SubState: {sub_state}, Result: {result_state}). Retrying in {check_interval}s... ({attempt+1}/{max_retries})", flush=True)
             time.sleep(check_interval)
-        else: # Last attempt
+        else:
             print(f"❌ {service_unit_name} did not reach desired state after {max_retries} retries. Final state: Type: {service_type}, ActiveState: {active_state}, SubState: {sub_state}, Result: {result_state}", flush=True)
             return False
-    return False # Should be unreachable if loop completes
+    return False
 
 
 # --- Main Orchestration Logic for Service Restarts ---
@@ -200,10 +194,8 @@ def manage_services_restart(
     print(f"Starting service management for restart. Affected base services: {affected_services_names}", flush=True)
 
     services_to_restart_final: Set[str] = set()
-    processed_for_deps: Set[str] = set() # To avoid reprocessing for deps
+    processed_for_deps: Set[str] = set()
 
-    # Initial list to check for existence and gather dependencies
-    # Convert base names (e.g., "myapp") to full unit names ("myapp.service")
     current_services_to_process: List[str] = [
         f"{name}.service" if not name.endswith(".service") else name for name in affected_services_names
     ]
@@ -227,9 +219,9 @@ def manage_services_restart(
         if rev_deps:
             print(f"Found reverse dependencies for {service_unit}: {rev_deps}", flush=True)
             for dep in rev_deps:
-                if dep not in processed_for_deps: # Add to process list only if not already processed
-                    services_to_restart_final.add(dep) # Add to final restart list
-                    current_services_to_process.append(dep) # And process it for its own dependents
+                if dep not in processed_for_deps:
+                    services_to_restart_final.add(dep)
+                    current_services_to_process.append(dep)
         else:
             print(f"No reverse dependencies found for {service_unit}.", flush=True)
 
@@ -249,7 +241,7 @@ def manage_services_restart(
     # Systemd handles dependency order for restarts if they are properly defined.
     # Restarting one by one.
     all_restarts_issued_successfully = True
-    for service_unit in sorted(list(services_to_restart_final)): # Sort for consistent order
+    for service_unit in sorted(list(services_to_restart_final)):
         if not restart_systemd_service(service_unit):
             all_restarts_issued_successfully = False
             # Continue trying to restart others, but overall operation will be marked as failed if any issue arises here.
@@ -261,16 +253,14 @@ def manage_services_restart(
     print(f"Waiting {status_check_interval} seconds for services to settle after restart commands...", flush=True)
     time.sleep(status_check_interval)
 
-    # Check statuses
     failed_service_checks: List[str] = []
     print("\n--- Checking Service Statuses ---", flush=True)
     for service_unit in sorted(list(services_to_restart_final)):
         if not check_one_service_status(service_unit, max_retries=max_status_retries, check_interval=status_check_interval):
             failed_service_checks.append(service_unit)
-            # Get more detailed logs for failed services immediately
             print(f"🔻 Detailed logs for failed service {service_unit}:", flush=True)
-            _run_systemctl_command(["status", "--no-pager", "-n", "50", service_unit], check_return_code=False) # Show status
-            _run_systemctl_command(["journalctl", "--user", "-u", service_unit, "--no-pager", "--lines=50"], check_return_code=False) # Show journal
+            _run_systemctl_command(["status", "--no-pager", "-n", "50", service_unit], check_return_code=False)
+            _run_systemctl_command(["journalctl", "--user", "-u", service_unit, "--no-pager", "--lines=50"], check_return_code=False)
 
     if failed_service_checks:
         print("\n🔴 Service checks summary: Some services failed to start/complete properly after restart:", flush=True)

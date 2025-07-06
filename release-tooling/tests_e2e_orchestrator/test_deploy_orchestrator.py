@@ -1,8 +1,7 @@
-# tests/e2e_orchestrator/test_deploy_orchestrator.py
 import pytest
 import subprocess
 import os
-import yaml # Added for create_dummy_compose_file
+import yaml
 from pathlib import Path
 from typing import Dict, Any, List
 from unittest import mock
@@ -105,7 +104,7 @@ def test_deploy_orchestrator_basic_run_no_services(temp_test_env: Dict[str, Path
     Test a basic run of deploy_on_host.sh with no affected services.
     """
     env_vars = os.environ.copy()
-    env_vars["PYTHON_RELEASE_TOOL_IMAGE"] = "ghcr.io/test-owner/test-release-tool:e2e" # Added this line
+    env_vars["PYTHON_RELEASE_TOOL_IMAGE"] = "ghcr.io/test-owner/test-release-tool:e2e"
     env_vars["AFFECTED_SERVICES"] = ""
     env_vars["VARS_JSON_STR"] = '{"GLOBAL_VAR":"global_value"}'
     env_vars["SECRETS_JSON_STR"] = '{"SECRET_KEY":"secret_val"}'
@@ -154,7 +153,7 @@ def test_deploy_orchestrator_basic_run_no_services(temp_test_env: Dict[str, Path
     host_log_content = host_script_calls_log.read_text()
     quadlet_log_content = quadlet_calls_log.read_text()
 
-    assert "MOCK_PODMAN_CALLED: pull ghcr.io/test-owner/test-release-tool:e2e" in podman_log_content # Adjusted assertion
+    assert "MOCK_PODMAN_CALLED: pull ghcr.io/test-owner/test-release-tool:e2e" in podman_log_content
     assert "MOCK_SCRIPT_CALLED: refresh_podman_secrets.sh {\"SECRET_KEY\":\"secret_val\"}" in host_log_content
     assert "MOCK_SCRIPT_CALLED: create_env_variables.sh" in host_log_content
     assert "MOCK_PODMAN_CALLED: run --rm --security-opt label=disable" in podman_log_content
@@ -193,7 +192,7 @@ def test_deploy_single_affected_service(temp_test_env: Dict[str, Path], mock_exe
     create_dummy_compose_file(temp_test_env["services_def"], service_name)
 
     env_vars = os.environ.copy()
-    env_vars["PYTHON_RELEASE_TOOL_IMAGE"] = "ghcr.io/test-owner/test-release-tool:e2e" # Added this line
+    env_vars["PYTHON_RELEASE_TOOL_IMAGE"] = "ghcr.io/test-owner/test-release-tool:e2e"
     env_vars["AFFECTED_SERVICES"] = service_name
     env_vars["VARS_JSON_STR"] = '{}'
     env_vars["SECRETS_JSON_STR"] = '{}'
@@ -237,13 +236,13 @@ def print_outputs(result: subprocess.CompletedProcess): # pragma: no cover
 def test_deploy_multiple_affected_services(temp_test_env: Dict[str, Path], mock_executables, capsys):
     service_alpha = "service_alpha"
     service_beta = "service_beta"
-    create_dummy_compose_file(temp_test_env["services_def"], service_alpha) # Corrected path
-    create_dummy_compose_file(temp_test_env["services_def"], service_beta)   # Corrected path
+    create_dummy_compose_file(temp_test_env["services_def"], service_alpha)
+    create_dummy_compose_file(temp_test_env["services_def"], service_beta)
 
     affected_services_str = f"{service_alpha} {service_beta}"
 
     env_vars = os.environ.copy()
-    env_vars["PYTHON_RELEASE_TOOL_IMAGE"] = "ghcr.io/test-owner/test-release-tool:e2e" # Added this line
+    env_vars["PYTHON_RELEASE_TOOL_IMAGE"] = "ghcr.io/test-owner/test-release-tool:e2e"
     env_vars["AFFECTED_SERVICES"] = affected_services_str
     env_vars["VARS_JSON_STR"] = '{"MULTI":"yes"}'
     env_vars["SECRETS_JSON_STR"] = '{}'

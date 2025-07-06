@@ -1,11 +1,10 @@
-# release_tool/secret_handler.py
 from typing import Dict, Any
-from .unit_generator import ContainerUnit # Use a forward reference if in the same file, or import
+from .unit_generator import ContainerUnit
 
 def apply_secret_injection(
     container_unit: ContainerUnit,
     compose_service_config: Dict[str, Any],
-    all_compose_config: Dict[str, Any] # Full compose for context if needed (e.g. top-level secrets)
+    all_compose_config: Dict[str, Any]
 ):
     """
     Processes the 'secrets' section from a Docker Compose service definition
@@ -17,31 +16,30 @@ def apply_secret_injection(
     if 'secrets' not in compose_service_config:
         return
 
-    # Check for top-level 'secrets' definitions in the compose file, which might define external secrets
     global_secrets_config = all_compose_config.get('secrets', {})
 
     for secret_entry in compose_service_config['secrets']:
-        secret_name_in_compose = "" # Name used in the service's 'secrets' list
-        podman_secret_name = ""   # Actual name of the secret in Podman's secret store
-        target_in_container = ""  # Target path/filename inside the container
+        secret_name_in_compose = ""
+        podman_secret_name = ""
+        target_in_container = ""
         # uid = None
         # gid = None
         # mode = None
 
-        if isinstance(secret_entry, str): # Simple form: "my_secret_alias"
+        if isinstance(secret_entry, str):
             secret_name_in_compose = secret_entry
-            podman_secret_name = secret_name_in_compose # Assume alias is the podman secret name if not defined globally
-            target_in_container = secret_name_in_compose # Default target is the secret name
-        elif isinstance(secret_entry, dict): # Long form: {source: actual_podman_secret, target: /path/secret_file, ...}
+            podman_secret_name = secret_name_in_compose
+            target_in_container = secret_name_in_compose
+        elif isinstance(secret_entry, dict):
             secret_name_in_compose = secret_entry.get('source')
             if not secret_name_in_compose:
                 print(f"Warning: Secret entry for service '{container_unit.service_name}' is missing 'source'. Skipping: {secret_entry}", flush=True)
                 continue
-            podman_secret_name = secret_name_in_compose # Initially assume source is the podman secret name
-            target_in_container = secret_entry.get('target', secret_name_in_compose) # Default target to source name
+            podman_secret_name = secret_name_in_compose
+            target_in_container = secret_entry.get('target', secret_name_in_compose)
             # uid = secret_entry.get('uid')
             # gid = secret_entry.get('gid')
-            # mode = secret_entry.get('mode') # e.g. '0400'
+            # mode = secret_entry.get('mode')
         else:
             print(f"Warning: Invalid secret entry format for service '{container_unit.service_name}'. Skipping: {secret_entry}", flush=True)
             continue
@@ -74,7 +72,7 @@ def apply_secret_injection(
         # Format: Secret=mysecret[,target=targetname][,uid=val][,gid=val][,mode=val]
         secret_directive_value = podman_secret_name
         options = []
-        if target_in_container and target_in_container != podman_secret_name: # Only add if target is different & specified
+        if target_in_container and target_in_container != podman_secret_name:
             options.append(f"target={target_in_container}")
         # if uid is not None: options.append(f"uid={uid}")
         # if gid is not None: options.append(f"gid={gid}")
