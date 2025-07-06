@@ -128,7 +128,8 @@ This is a containerized multi-application deployment system with automated CI/CD
     - Prevents commits if Docker builds fail
     - Helps catch Docker build issues early
   - **YAML validation** (when any .yaml/.yml file is modified):
-    - Validates YAML syntax using yq or python3
+    - Validates YAML syntax using Docker with mikefarah/yq
     - Prevents commits with invalid YAML syntax
     - Helps catch configuration errors early
+    - No local dependencies required
 - All checks must pass for commit to succeed
