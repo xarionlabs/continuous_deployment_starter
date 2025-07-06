@@ -19,6 +19,12 @@ concurrency:
   group: build
   cancel-in-progress: true
 
+permissions:
+  packages: write
+  contents: write
+  attestations: write
+  id-token: write
+
 env:
   REGISTRY: ghcr.io
 
