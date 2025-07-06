@@ -40,6 +40,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `python -m src.app.main` - Run Streamlit app
 - `cd src/data/db/migrations && alembic upgrade head` - Run database migrations
 
+#### airflow_dags (Airflow DAGs Package)
+- `cd applications/airflow_dags` - Navigate to DAGs directory
+- `pytest tests/` - Run DAG tests
+- `python -c "from dags.shopify_get_past_purchases_dag import dag"` - Validate DAG import
+- Note: This packages DAGs and dependencies for the Airflow service in `services/06_airflow/`
+
 #### Release Tool (Python CLI)
 - `cd release-tooling/pytool` - Navigate to release tool directory
 - `poetry install` - Install dependencies
@@ -52,15 +58,18 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Project Structure
 - `applications/` - Individual containerized applications
-- `services/` - Infrastructure service configurations (PostgreSQL, Nginx proxy)
+- `services/` - Infrastructure service configurations (PostgreSQL, Nginx proxy, Airflow)
 - `utilities/` - Helper tools and automation scripts
 - `.github/workflows/` - CI/CD pipeline definitions
+
+**Note**: The `applications/airflow_dags/` directory contains DAG definitions that get packaged and deployed to the Airflow service defined in `services/06_airflow/`.
 
 ### Application Types
 1. **app.pxy6.com**: Shopify app built with Remix, TypeScript, Prisma ORM, and Polaris UI
 2. **pxy6.com**: React/Vite frontend with Tailwind CSS, shadcn/ui components, and analytics tracking
 3. **app_1**: Python backend with FastAPI API and Streamlit frontend, using SQLAlchemy and PostgreSQL
-4. **release-tooling**: Python CLI tool for managing selective service deployments
+4. **airflow_dags**: Apache Airflow DAGs package for Shopify data integration, contains workflow definitions and dependencies that get deployed to the Airflow service
+5. **release-tooling**: Python CLI tool for managing selective service deployments
 
 ### CI/CD Pipeline Flow
 1. **Build Workflow**: Detects changed applications, builds Docker images, runs tests, pushes to GHCR
@@ -73,6 +82,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 - **Registry**: GitHub Container Registry (ghcr.io)
 - **Reverse Proxy**: Nginx for external access and SSL termination
 - **Database**: PostgreSQL with migrations via Prisma (app.pxy6.com) and Alembic (app_1)
+- **Workflow Orchestration**: Apache Airflow for data pipelines and Shopify integration
 - **Testing**: Jest/Playwright for frontend, pytest for Python, containerized e2e tests
 
 ### Development Patterns
@@ -85,11 +95,20 @@ This is a containerized multi-application deployment system with automated CI/CD
 ### Service Communication
 - Internal services communicate through Docker networks
 - External access routed through Nginx reverse proxy
-- Services numbered for startup order (01_postgres, 02_app_1, 03_nginx-proxy)
+- Services numbered for startup order (01_postgres, 02_app_1, 03_nginx-proxy, 04_app_pxy6_com, 05_pxy6_web, 06_airflow)
+- Airflow connects to PostgreSQL for metadata and main application database for Shopify data
 
 ### Database Migrations
 - **app.pxy6.com**: Use `prisma migrate deploy` or `npm run setup`
 - **app_1**: Use `alembic upgrade head` in the data/db/migrations directory
+
+### Airflow Integration
+- **Service Location**: `services/06_airflow/` - Apache Airflow infrastructure service
+- **DAGs Location**: `applications/airflow_dags/` - DAG definitions and Python dependencies
+- **Architecture**: The service builds a custom Airflow image that incorporates DAGs from applications/airflow_dags
+- **Purpose**: Orchestrates Shopify data integration workflows (past purchases, store metadata)
+- **Database**: Uses PostgreSQL for Airflow metadata; connects to main application database for data storage
+- **Components**: Webserver (UI), Scheduler (task execution), Init (database setup)
 
 ### Deployment Information
 - **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments
