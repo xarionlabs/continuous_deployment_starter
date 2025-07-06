@@ -41,10 +41,12 @@ jobs:
 
       - name: skip-workflow
         id: skip-workflow
-        uses: saulmaldonado/skip-workflow@v1
-        with:
-          phrase: /\[.*skip-build.*\]/i
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git log -1 --pretty=%B | grep -i "\[.*skip-build.*\]" > /dev/null; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: check-force-build
         id: force-build-check
