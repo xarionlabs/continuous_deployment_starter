@@ -1,11 +1,10 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.utils.dates import days_ago
+from airflow.providers.standard.operators.python import PythonOperator
+from datetime import datetime, timedelta
 from airflow.models import Variable
 from airflow.exceptions import AirflowSkipException
 
 import logging
-from datetime import datetime, timedelta
 from shopify_common import get_shopify_session, bulk_insert_to_app_db, APP_DB_CONN_ID, get_app_db_hook
 
 logger = logging.getLogger(__name__)
@@ -301,8 +300,8 @@ def fetch_and_load_collections_task(collection_type, **kwargs):
 with DAG(
     dag_id=DAG_ID,
     default_args=DEFAULT_ARGS,
-    schedule_interval=SCHEDULE_INTERVAL,
-    start_date=days_ago(1), # Adjust as needed, esp. if catchup=True
+    schedule=SCHEDULE_INTERVAL,
+    start_date=datetime.now() - timedelta(days=1), # Adjust as needed, esp. if catchup=True
     catchup=CATCHUP,
     tags=TAGS,
     doc_md=f"""

@@ -4,6 +4,9 @@
 # Core Airflow with extras for PostgreSQL, Celery, and Redis
 apache-airflow[postgres,celery,redis]==3.0.2
 
+# Standard operators provider
+apache-airflow-providers-standard
+
 # Additional packages needed by DAGs:
 psycopg2-binary # For PostgreSQL connection to the APP DB
 ShopifyAPI>=11.0.0 # Official Shopify Python library

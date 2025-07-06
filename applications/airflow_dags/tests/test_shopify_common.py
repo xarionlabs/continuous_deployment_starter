@@ -4,7 +4,7 @@ import os
 
 # Import the module to be tested
 # conftest.py should have added 'dags' directory to sys.path
-from dags import shopify_common
+import shopify_common
 
 # Since shopify_common uses airflow.models.Variable and airflow.providers.postgres.hooks.postgres
 # we need to mock these if Airflow context is not available or desired during unit tests.
@@ -13,7 +13,7 @@ from dags import shopify_common
 @pytest.fixture(autouse=True)
 def mock_airflow_variables(mocker):
     """Auto-mock Airflow Variables for all tests in this module."""
-    mock_variable_get = mocker.patch("dags.shopify_common.Variable.get")
+    mock_variable_get = mocker.patch("shopify_common.Variable.get")
     # Default behavior: if a variable is requested, return a specific mock value or raise KeyError
     def side_effect(key, default_var=None):
         if key == "shopify_store_domain":
@@ -36,7 +36,7 @@ def mock_airflow_variables(mocker):
 def mock_shopify_api(mocker):
     """Mocks the shopify library."""
     mock_shopify_lib = MagicMock()
-    mocker.patch("dags.shopify_common.shopify", mock_shopify_lib)
+    mocker.patch("shopify_common.shopify", mock_shopify_lib)
 
     # Mock shopify.Shop.current() to return a mock shop object
     mock_shop = MagicMock()
@@ -48,7 +48,7 @@ def mock_shopify_api(mocker):
 def mock_postgres_hook(mocker):
     """Mocks the PostgresHook."""
     mock_pg_hook_instance = MagicMock()
-    mock_pg_hook_class = mocker.patch("dags.shopify_common.PostgresHook")
+    mock_pg_hook_class = mocker.patch("shopify_common.PostgresHook")
     mock_pg_hook_class.return_value = mock_pg_hook_instance
     return mock_pg_hook_instance, mock_pg_hook_class
 
@@ -72,7 +72,7 @@ def test_get_shopify_session_uses_env_vars_first(mock_shopify_api, mocker):
         "SHOPIFY_API_PASSWORD": "env_api_password",
     })
     # Mock Variable.get to ensure it's NOT called for these overridden vars
-    mock_variable_get = mocker.patch("dags.shopify_common.Variable.get")
+    mock_variable_get = mocker.patch("shopify_common.Variable.get")
     mock_variable_get.side_effect = lambda key, default_var=None: "2024-01" if key == "shopify_api_version" else default_var
 
     with shopify_common.get_shopify_session():
@@ -132,7 +132,7 @@ def test_get_app_db_hook_uses_default_conn_id(mock_postgres_hook, mock_airflow_v
 def test_execute_query_on_app_db_no_params(mock_postgres_hook, mocker):
     """Test execute_query_on_app_db with a SQL query without parameters."""
     mock_pg_instance, _ = mock_postgres_hook
-    mocker.patch("dags.shopify_common.get_app_db_hook", return_value=mock_pg_instance) # Mock the getter
+    mocker.patch("shopify_common.get_app_db_hook", return_value=mock_pg_instance) # Mock the getter
 
     sql_query = "SELECT * FROM test_table;"
     shopify_common.execute_query_on_app_db(sql_query)
@@ -142,7 +142,7 @@ def test_execute_query_on_app_db_no_params(mock_postgres_hook, mocker):
 def test_execute_query_on_app_db_with_params(mock_postgres_hook, mocker):
     """Test execute_query_on_app_db with a SQL query and parameters."""
     mock_pg_instance, _ = mock_postgres_hook
-    mocker.patch("dags.shopify_common.get_app_db_hook", return_value=mock_pg_instance)
+    mocker.patch("shopify_common.get_app_db_hook", return_value=mock_pg_instance)
 
     sql_query = "INSERT INTO test_table (name) VALUES (%s);"
     params = ("test_name",)
@@ -153,7 +153,7 @@ def test_execute_query_on_app_db_with_params(mock_postgres_hook, mocker):
 def test_execute_query_on_app_db_raises_error(mock_postgres_hook, mocker):
     """Test that execute_query_on_app_db propagates errors from hook.run."""
     mock_pg_instance, _ = mock_postgres_hook
-    mocker.patch("dags.shopify_common.get_app_db_hook", return_value=mock_pg_instance)
+    mocker.patch("shopify_common.get_app_db_hook", return_value=mock_pg_instance)
     mock_pg_instance.run.side_effect = Exception("DB Error")
 
     with pytest.raises(Exception, match="DB Error"):
@@ -164,7 +164,7 @@ def test_execute_query_on_app_db_raises_error(mock_postgres_hook, mocker):
 def test_bulk_insert_to_app_db_success(mock_postgres_hook, mocker):
     """Test successful bulk insert operation."""
     mock_pg_instance, _ = mock_postgres_hook
-    mocker.patch("dags.shopify_common.get_app_db_hook", return_value=mock_pg_instance)
+    mocker.patch("shopify_common.get_app_db_hook", return_value=mock_pg_instance)
 
     table_name = "my_table"
     records = [("val1", 10), ("val2", 20)]
@@ -181,7 +181,7 @@ def test_bulk_insert_to_app_db_success(mock_postgres_hook, mocker):
 def test_bulk_insert_to_app_db_no_records(mock_postgres_hook, mocker):
     """Test bulk insert with no records - should not call insert_rows."""
     mock_pg_instance, _ = mock_postgres_hook
-    mocker.patch("dags.shopify_common.get_app_db_hook", return_value=mock_pg_instance)
+    mocker.patch("shopify_common.get_app_db_hook", return_value=mock_pg_instance)
 
     shopify_common.bulk_insert_to_app_db("my_table", [], ["col1"])
 
@@ -191,7 +191,7 @@ def test_bulk_insert_to_app_db_no_records(mock_postgres_hook, mocker):
 def test_bulk_insert_to_app_db_raises_error(mock_postgres_hook, mocker):
     """Test that bulk_insert_to_app_db propagates errors from hook.insert_rows."""
     mock_pg_instance, _ = mock_postgres_hook
-    mocker.patch("dags.shopify_common.get_app_db_hook", return_value=mock_pg_instance)
+    mocker.patch("shopify_common.get_app_db_hook", return_value=mock_pg_instance)
     mock_pg_instance.insert_rows.side_effect = Exception("Bulk Insert Failed")
 
     with pytest.raises(Exception, match="Bulk Insert Failed"):
