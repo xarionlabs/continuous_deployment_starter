@@ -117,10 +117,18 @@ This is a containerized multi-application deployment system with automated CI/CD
 - **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments
 
 ### Git Hooks
-- **Pre-commit hook**: Automatically runs quality checks on app.pxy6.com when changes are committed
-  - TypeScript type checking (`npm run typecheck`)
-  - ESLint linting (`npm run lint`)
-  - Jest tests (`npm run test`)
-  - Build process (`npm run build`)
-- Hook only runs when files in `applications/app.pxy6.com/` are being committed
+- **Pre-commit hook**: Automatically runs quality checks when changes are committed
+  - **app.pxy6.com checks** (when files in `applications/app.pxy6.com/` are modified):
+    - TypeScript type checking (`npm run typecheck`)
+    - ESLint linting (`npm run lint`)
+    - Jest tests (`npm run test`)
+    - Build process (`npm run build`)
+  - **Docker build tests** (when any Dockerfile is modified):
+    - Tests Docker build for each modified Dockerfile
+    - Prevents commits if Docker builds fail
+    - Helps catch Docker build issues early
+  - **YAML validation** (when any .yaml/.yml file is modified):
+    - Validates YAML syntax using yq or python3
+    - Prevents commits with invalid YAML syntax
+    - Helps catch configuration errors early
 - All checks must pass for commit to succeed
