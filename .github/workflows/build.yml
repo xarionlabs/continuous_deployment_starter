@@ -140,7 +140,7 @@ jobs:
           echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'
 
   build-application:
-    needs: [define-tag, find-changed-applications]
+    needs: [skip-check, define-tag, find-changed-applications]
     if: ${{ !needs.skip-check.outputs.skip && needs.find-changed-applications.outputs.has_changes == 'true' }}
     runs-on: ubuntu-latest
     strategy:
