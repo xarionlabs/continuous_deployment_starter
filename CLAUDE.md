@@ -67,9 +67,12 @@ This is a containerized multi-application deployment system with automated CI/CD
 ### Application Types
 1. **app.pxy6.com**: Shopify app built with Remix, TypeScript, Prisma ORM, and Polaris UI
 2. **pxy6.com**: React/Vite frontend with Tailwind CSS, shadcn/ui components, and analytics tracking
-3. **app_1**: Python backend with FastAPI API and Streamlit frontend, using SQLAlchemy and PostgreSQL
+3. **app_1**: Python backend with FastAPI API and Streamlit frontend, using SQLAlchemy and PostgreSQL (has skipped-Dockerfile, not currently built)
 4. **airflow_dags**: Apache Airflow DAGs package for Shopify data integration, contains workflow definitions and dependencies that get deployed to the Airflow service
-5. **release-tooling**: Python CLI tool for managing selective service deployments
+
+### Utility Types
+1. **user_management**: Python utility for managing users with Docker containerization
+2. **release-tooling**: Python CLI tool for managing selective service deployments
 
 ### CI/CD Pipeline Flow
 1. **Build Workflow**: Detects changed applications, builds Docker images, runs tests, pushes to GHCR
