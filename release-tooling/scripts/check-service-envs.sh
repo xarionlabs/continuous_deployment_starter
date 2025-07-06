@@ -20,7 +20,7 @@ for service in services/*; do
 
     for compose_file in "${compose_files[@]}"; do
         echo "Checking environment variables for: $compose_file"
-        check-env.sh "$compose_file" || missing_any=1
+        "$(dirname "$0")/check-env.sh" "$compose_file" || missing_any=1
     done
   fi
 done

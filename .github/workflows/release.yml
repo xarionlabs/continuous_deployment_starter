@@ -8,7 +8,16 @@ on:
         type: string
 
 jobs:
-  release:
+  build_pytool: # Build job should come first or be correctly referenced by `needs`
+    name: Build Python Release Tool
+    uses: ./.github/workflows/build-release-tool.yml
+    with:
+      image_tag: latest # Or you can use a dynamic tag e.g., ${{ github.sha }}
+    secrets: inherit # Pass secrets like GITHUB_TOKEN if needed by the reusable workflow
+
+  deploy_services: # Renamed from 'release' for clarity
+    name: Deploy Services to ${{ inputs.environment }}
+    needs: build_pytool
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -81,54 +90,51 @@ jobs:
           VARS_JSON: ${{ toJson(vars) }}
           SECRETS_JSON: ${{ toJson(secrets) }}
           AFFECTED_SERVICES: ${{ steps.determine_changes.outputs.affected_services_list }}
+          # GITHUB_REPOSITORY_OWNER is available by default in actions
+          # RELEASE_TOOL_IMAGE_URL will come from the build_pytool job output
+          RELEASE_TOOL_IMAGE_URL_FROM_BUILD: ${{ needs.build_pytool.outputs.image_url }}
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES, GITHUB_REPOSITORY_OWNER # Pass GITHUB_REPOSITORY_OWNER for image name
+          envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES, GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY, RELEASE_TOOL_IMAGE_URL_FROM_BUILD
           script: |
             set -e
             echo "--- Starting Remote Orchestration ---"
 
-            # Define project path (ensure this is correct for your remote setup)
-            # appleboy/ssh-action typically syncs to a directory based on the repo name in the user's home.
-            # Or, if your server has a fixed checkout path, use that.
-            # For this example, let's assume it's in ~/runtime/<repo_name>
             REMOTE_USER_HOME=$(eval echo ~$USER)
             # Infer repository name from GITHUB_REPOSITORY, e.g., "owner/repo-name" -> "repo-name"
+            # GITHUB_REPOSITORY is passed via `envs` so it's available.
             REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
-            PROJECT_DIR_ON_HOST="$REMOTE_USER_HOME/runtime/${REPO_NAME:-continuous_deployment_starter}" # Default if GITHUB_REPOSITORY is not set
+            PROJECT_DIR_ON_HOST="$REMOTE_USER_HOME/runtime/${REPO_NAME:-continuous_deployment_starter}"
 
             echo "Project Directory on Host: $PROJECT_DIR_ON_HOST"
-            echo "GitHub Repository Owner (for image path): $GITHUB_REPOSITORY_OWNER"
+            echo "Release Tool Image URL from build: $RELEASE_TOOL_IMAGE_URL_FROM_BUILD" # Use this in deploy_on_host.sh
 
-            # Navigate to the project directory.
-            # The content should have been synced by the ssh-action (default behavior) or a previous step.
             if [ ! -d "$PROJECT_DIR_ON_HOST" ]; then
                 echo "ERROR: Project directory $PROJECT_DIR_ON_HOST does not exist on remote host."
-                echo "Ensure the repository content is checked out or synced to this location."
                 exit 1
             fi
             cd "$PROJECT_DIR_ON_HOST"
 
-            DEPLOY_SCRIPT_PATH=".github/workflows/scripts/deploy_on_host.sh"
+            # Updated path to the deploy script
+            DEPLOY_SCRIPT_PATH="release-tooling/scripts/deploy_on_host.sh"
 
             if [ ! -f "$DEPLOY_SCRIPT_PATH" ]; then
                 echo "ERROR: Deploy script $DEPLOY_SCRIPT_PATH not found in $PROJECT_DIR_ON_HOST."
                 exit 1
             fi
 
-            echo "Making deploy_on_host.sh executable..."
+            echo "Making $DEPLOY_SCRIPT_PATH executable..."
             chmod +x "$DEPLOY_SCRIPT_PATH"
 
-            echo "Executing deploy_on_host.sh..."
-            # Pass GITHUB_REPOSITORY_OWNER explicitly if deploy_on_host.sh uses it for image path construction
-            # This is already available as an env var if passed via `envs:` to ssh-action.
-            # The deploy_on_host.sh script can then use it, e.g. RELEASE_TOOL_IMAGE_OWNER="${GITHUB_REPOSITORY_OWNER}"
+            echo "Executing $DEPLOY_SCRIPT_PATH..."
+            # Pass RELEASE_TOOL_IMAGE_URL_FROM_BUILD to deploy_on_host.sh
+            # The deploy_on_host.sh script will need to be updated to accept this as an argument
+            # or read it from an environment variable like PYTHON_RELEASE_TOOL_IMAGE.
+            # For now, let's pass it as an environment variable for deploy_on_host.sh to consume.
+            export PYTHON_RELEASE_TOOL_IMAGE="$RELEASE_TOOL_IMAGE_URL_FROM_BUILD"
 
-            # Important: Ensure that VARS_JSON and SECRETS_JSON are passed in a way that handles
-            # potential spaces and special characters within the JSON strings when used as script arguments.
-            # Quoting them is essential.
             "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON"
 
             echo "--- Remote Orchestration Finished ---"

@@ -26,28 +26,30 @@ The tool provides the following main commands:
 This project uses [Poetry](https://python-poetry.org/) for dependency management and packaging.
 
 1.  **Install Poetry**: Follow the instructions on the [official Poetry website](https://python-poetry.org/docs/#installation).
-2.  **Navigate to the tool's directory**:
+2.  **Navigate to this tool's directory**:
     ```bash
-    cd utils/release_tool
+    cd release-tooling/pytool # Updated path
     ```
 3.  **Install Dependencies**:
     ```bash
     poetry install
     ```
-    This will create a virtual environment in the project directory (or elsewhere, depending on your Poetry configuration) and install all dependencies, including development dependencies like `pytest`.
+    This will create a virtual environment in this directory (or elsewhere, depending on your Poetry configuration) and install all dependencies, including development dependencies like `pytest`.
 
 ## Running the Tool Locally
 
-You can run the tool using `poetry run`:
+You can run the tool from the `release-tooling/pytool/` directory using `poetry run`:
 
 ```bash
 poetry run release-tool --help
-poetry run release-tool determine-changes --changed-files "services/my-app/some_file.py"
-poetry run release-tool generate-units --affected-services "my-app" --services-dir "../../services" --output-dir "./test_output_units" --vars-json "{\"GLOBAL_VAR\":\"global_value\"}"
+poetry run release-tool determine-changes --changed-files "services/my-app/some_file.py" # (Path relative to project root if running tool from project root via an alias)
+poetry run release-tool generate-units --affected-services "my-app" --services-dir "../../../services" --output-dir "./test_output_units" --vars-json "{\"GLOBAL_VAR\":\"global_value\"}" # Example paths if running from pytool dir
 # etc.
 ```
 
-Note: For commands that interact with Podman or systemd (`pull-images`, `manage-services`), running them locally requires Podman and a user systemd session to be correctly configured on your local machine. They are primarily designed to be run within the context of the Docker container on the deployment target.
+Note:
+- Paths like `--services-dir` are relative to where the `release-tool` command is effectively run from. When run inside its Docker container by `deploy_on_host.sh`, these paths are set to container-internal absolute paths like `/app/services` which are mapped via volume mounts.
+- For commands that interact with Podman or systemd (`pull-images`, `manage-services`), running them directly locally requires Podman and a user systemd session to be correctly configured. They are primarily designed to be run within their Docker container on the deployment target.
 
 ## Available Commands
 
@@ -70,24 +72,24 @@ Key commands include:
 
 A `Dockerfile` is provided to build a container image for this tool.
 
-1.  **Navigate to the tool's directory**:
+1.  **Navigate to this tool's directory**:
     ```bash
-    cd utils/release_tool
+    cd release-tooling/pytool # Updated path
     ```
 2.  **Build the image**:
     ```bash
     docker build -t your-registry/your-org/release-tool:latest .
     ```
-    (Replace `your-registry/your-org/release-tool:latest` with your desired image name and tag).
+    (Replace `your-registry/your-org/release-tool:latest` with your desired image name and tag. The CI uses `ghcr.io/YOUR_ORG/YOUR_REPO/release-tool:latest`).
 
 ## Running Tests
 
 Tests are written using `pytest`.
 
 1.  **Ensure development dependencies are installed** (`poetry install`).
-2.  **Navigate to the tool's directory**:
+2.  **Navigate to this tool's directory**:
     ```bash
-    cd utils/release_tool
+    cd release-tooling/pytool # Updated path
     ```
 3.  **Run tests**:
     ```bash
@@ -102,14 +104,14 @@ Tests are written using `pytest`.
 
 ## How it's Used in CI/CD
 
-The GitHub Actions workflow (`.github/workflows/release.yml`) uses this tool as part of a larger deployment process orchestrated on the remote host.
+The GitHub Actions workflows use this tool as part of a larger deployment process orchestrated on the remote host.
 
-1.  **Build Docker Image**: A dedicated job in the GitHub Actions workflow is responsible for building this Python utility into a Docker image (e.g., `ghcr.io/your-org/your-repo/release-tool:latest`) and pushing it to a container registry. This typically happens if changes are detected in the `utils/release_tool/` directory.
+1.  **Build Docker Image**: A dedicated reusable workflow (e.g., `.github/workflows/build-release-tool.yml`) is responsible for building this Python utility into a Docker image (e.g., `ghcr.io/YOUR_ORG/YOUR_REPO/release-tool:latest`) and pushing it to a container registry like GHCR. This build is typically triggered if changes are detected in this `release-tooling/pytool/` directory.
 2.  **Remote Host Orchestration**:
-    *   On the target deployment server, a Bash script named `deploy_on_host.sh` (located in `.github/workflows/scripts/`) is executed via SSH by the `release.yml` workflow.
-    *   This `deploy_on_host.sh` script manages the overall deployment sequence:
-        *   It pulls the latest `release-tool` Docker image.
-        *   It runs prerequisite host-level Bash scripts (e.g., for managing Podman secrets, creating `.env` files).
+    *   The main deployment workflow (e.g., `.github/workflows/release.yml`) calls an orchestrator script on the target deployment server, typically `release-tooling/scripts/deploy_on_host.sh`, via SSH.
+    *   This `deploy_on_host.sh` script manages the overall deployment sequence on the host. It:
+        *   Pulls the latest version of this `release-tool` Docker image.
+        *   Executes other necessary host-level Bash scripts (e.g., for managing Podman secrets, creating global `.env` files), which are also located in `release-tooling/scripts/`.
         *   **It then invokes this Python `release-tool` via `podman run` commands for its core tasks:**
             *   `generate-units`: To generate systemd unit files. Paths for service definitions and output unit files are volume-mounted into the container. Configuration like affected services, global variables (`VARS_JSON`), and meta-target names are passed as CLI arguments.
             *   `pull-images`: To pull necessary container images. The Podman socket and the directory containing generated unit files are mounted.

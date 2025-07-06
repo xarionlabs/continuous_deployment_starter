@@ -113,7 +113,6 @@ def test_get_service_properties_some_missing(mock_systemctl_runner: MockSystemct
     # If systemctl show --value for 'Result' is empty, it prints a newline.
     # So, for Type=simple and Result="", the output is "simple\n\n" (or "simple\n \n" if space)
     # Let's assume it's "simple\n\n" which splitlines makes ['simple', '']
-    stdout_props = "simple\n" # This was the original problematic mock
     mock_systemctl_runner.set_output(["show", service, "-p", "Type", "-p", "Result", "--value"], 0, "simple\n\n", "") # Corrected mock output
 
     props = service_manager.get_service_properties(service, props_to_get)
@@ -135,64 +134,10 @@ def test_check_one_service_status_becomes_active(mock_sleep, mock_systemctl_runn
     service = "delayed.service"
     # First call: activating, Second call: active
     show_cmd_args = ["show", service, "-p", "Type", "-p", "ActiveState", "-p", "SubState", "-p", "Result", "--value"]
-    # This direct mock_outputs assignment won't work well with the side_effect logic below.
-    # The side_effect_call should handle all mocked responses for this command.
-    # mock_systemctl_runner.mock_outputs = {
-    #     tuple(["systemctl", "--user"] + show_cmd_args): (0, "simple\nactivating\nstarting\n\n", "") # Initial state
-    # }
 
-    # This setup makes subsequent calls to the same command return different things
     call_count = 0
 
     # Use mocker to specifically patch subprocess.run for this test
-    m = mock.MagicMock()
-    # We need monkeypatch here to undo the autouse fixture's patch for this test's scope if we use mocker
-    # This is getting messy. Let's stick to making the MockSystemctl instance's __call__ behave.
-    # The issue must be simpler.
-
-    # Let's ensure the `expected_cmd_tuple` is exactly what `_run_systemctl_command` will produce.
-    # `_run_systemctl_command` calls `["systemctl", "--user"] + args`
-    # `get_service_properties` calls `_run_systemctl_command` with `args` =
-    # `["show", service_unit_name] + ["-p", p1, "-p", p2, ...] + ["--value"]`
-
-    # Redefine side_effect_call to be simpler and check what's happening
-    # This test is the only one that needs stateful mock return based on call count for the same command.
-
-    # Store the original __call__ method from the instance provided by the autouse fixture
-    original_mock_call_method = mock_systemctl_runner.__call__
-
-    def stateful_side_effect(cmd_list, capture_output, text, check):
-        nonlocal call_count
-        # Always record the call using the instance's method for appending
-        mock_systemctl_runner.calls.append(cmd_list) # Use the instance from fixture
-
-        # Ensure both are tuples for comparison, to be absolutely safe.
-        actual_cmd_tuple = tuple(cmd_list)
-        expected_cmd_for_show_tuple = tuple(["systemctl", "--user"] + show_cmd_args)
-
-        if actual_cmd_tuple == expected_cmd_for_show_tuple:
-            call_count += 1
-            if call_count == 1:
-                return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactivating\nstarting\n\n", stderr="")
-            else:
-                return subprocess.CompletedProcess(args=cmd_list, returncode=0, stdout="simple\nactive\nrunning\n\n", stderr="")
-
-        # If it's not the specific command we're sequencing, fall back to the mock's default behavior
-        # by looking up in its mock_outputs or returning default values.
-        cmd_tuple = tuple(cmd_list)
-        rc, stdout, stderr = mock_systemctl_runner.mock_outputs.get(
-            cmd_tuple,
-            (mock_systemctl_runner.default_rc, mock_systemctl_runner.default_stdout, mock_systemctl_runner.default_stderr)
-        )
-        return subprocess.CompletedProcess(args=cmd_list, returncode=rc, stdout=stdout, stderr=stderr)
-
-    # Instead of modifying mock_systemctl_runner.__call__,
-    # let's use pytest-mock's mocker for this specific test's subprocess.run.
-    # This requires the test function to take 'mocker' as an argument.
-    # The auto_mock_subprocess_run fixture might conflict or be overridden.
-    # For simplicity, let's assume we can directly patch subprocess.run here.
-    # This means the `mock_systemctl_runner` fixture isn't used for `subprocess.run` in this test.
-
     mock_subprocess_run = mocker.patch("subprocess.run")
 
     def side_effect_for_subprocess_run(cmd_list, capture_output, text, check):
@@ -200,6 +145,9 @@ def test_check_one_service_status_becomes_active(mock_sleep, mock_systemctl_runn
         # We still want to record calls if other parts of the test infrastructure expect it,
         # but mock_systemctl_runner.calls won't be populated by this specific patch.
         # This test is now self-contained for mocking subprocess.run.
+        # However, our _run_systemctl_command calls subprocess.run, so this mock IS subprocess.run
+        # We can log calls to the main mock_systemctl_runner.calls if we want, or just check mock_subprocess_run.
+        mock_systemctl_runner.calls.append(cmd_list) # Continue to use the main mock for call logging if desired
 
         expected_cmd_for_show_tuple = tuple(["systemctl", "--user"] + show_cmd_args)
         actual_cmd_tuple = tuple(cmd_list)

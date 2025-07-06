@@ -1,6 +1,6 @@
 # tests/test_unit_generator.py
 import pytest
-import yaml
+import yaml # This will require PyYAML to be available to pytest
 from pathlib import Path
 from typing import Dict, Any, List
 from unittest import mock
@@ -21,8 +21,11 @@ from release_tool.secret_handler import apply_secret_injection
 
 @pytest.fixture
 def mock_services_base_dir(tmp_path: Path) -> Path:
-    """Creates a temporary base directory utils/release_tool/services for tests."""
-    services_dir = tmp_path / "services"
+    """Creates a temporary base directory utils/deployment/pytool/services for tests."""
+    # The services dir for the pytool is relative to where pytool is,
+    # but for tests, we often simulate a project structure.
+    # Let's assume services_dir is passed as an absolute path to the functions.
+    services_dir = tmp_path / "project_root" / "services"
     services_dir.mkdir(parents=True, exist_ok=True)
     return services_dir
 
@@ -89,7 +92,7 @@ def test_parse_compose_file_invalid_yaml(tmp_path: Path):
     assert parse_compose_file(file_path) is None
 
 def test_sanitize_service_name():
-    assert sanitize_service_name_for_filename("my-service!@1") == "my-service_1" # Corrected expectation
+    assert sanitize_service_name_for_filename("my-service!@1") == "my-service_1"
     assert sanitize_service_name_for_filename("valid_name.test") == "valid_name.test"
 
 # --- Tests for QuadletUnit Class ---
@@ -98,7 +101,7 @@ def test_quadlet_unit_basic():
     unit = QuadletUnit("testtype", "testsvc")
     unit.add_entry("Unit", "Description", "A test service")
     unit.add_entry("Service", "ExecStart", "/bin/true")
-    expected_content = "[Unit]\nDescription=A test service\n\n[Service]\nExecStart=/bin/true\n" # Adjusted to one trailing newline
+    expected_content = "[Unit]\nDescription=A test service\n\n[Service]\nExecStart=/bin/true\n"
     assert unit.generate_file_content() == expected_content
     assert unit.get_filename() == "testsvc.testtype"
 
@@ -162,16 +165,15 @@ def test_convert_service_env_vars_merging_and_override(sample_compose_service_si
     assert isinstance(container_unit, ContainerUnit)
     env_entries = container_unit.sections["Container"]["Environment"]
 
-    # Convert list of "KEY=VALUE" strings to a dict for easier assertion
     env_dict = {}
     if isinstance(env_entries, list):
         for entry in env_entries:
             if '=' in entry:
                 k, v = entry.split('=', 1)
                 env_dict[k] = v
-            else: # Should not happen based on current logic for dict inputs
+            else:
                 env_dict[entry] = ""
-    elif isinstance(env_entries, str): # Single entry
+    elif isinstance(env_entries, str):
          if '=' in env_entries:
             k, v = env_entries.split('=', 1)
             env_dict[k] = v
@@ -180,19 +182,22 @@ def test_convert_service_env_vars_merging_and_override(sample_compose_service_si
 
 
     assert env_dict["GLOBAL_VAR"] == "global_value"
-    assert env_dict["SERVICE_VAR"] == "service_value" # Service overrides global
+    assert env_dict["SERVICE_VAR"] == "service_value"
     assert env_dict["SERVICE_ONLY_VAR"] == "specific_to_service"
-    assert env_dict["EMPTY_SERVICE_VAR"] == "" # None becomes empty string
+    assert env_dict["EMPTY_SERVICE_VAR"] == ""
     assert env_dict["GLOBAL_EMPTY_VAR"] == ""
 
-def test_convert_service_env_vars_list_format(capsys):
+def test_convert_service_env_vars_list_format(capsys, mock_services_base_dir): # Added service_name to call
     service_name = "env_list_svc"
+    service_dir = mock_services_base_dir / service_name
+    service_dir.mkdir()
+
     service_config = {
         "image": "myimage:latest",
         "environment": [
             "LIST_VAR1=value1",
             "LIST_VAR2=",
-            "UNSUPPORTED_KEY_ONLY" # This should be warned about and ignored
+            "UNSUPPORTED_KEY_ONLY"
         ]
     }
     full_compose = {"services": {service_name: service_config}}
@@ -208,74 +213,35 @@ def test_convert_service_env_vars_list_format(capsys):
         "LIST_VAR1=value1",
         "LIST_VAR2="
     ]
-    # Check if all expected entries are present
     for expected_entry in expected_env_list:
         assert expected_entry in env_entries
 
-    # Check that UNSUPPORTED_KEY_ONLY is not present
     assert not any("UNSUPPORTED_KEY_ONLY" in entry for entry in env_entries)
 
     captured = capsys.readouterr()
     assert f"Warning: Service '{service_name}' environment list contains key-only entry 'UNSUPPORTED_KEY_ONLY'. This is not supported and will be ignored." in captured.out
 
 
-# --- Tests for generate_all_quadlet_files (Orchestration) ---
-# These are more like integration tests for the generator module
-
-# Removing the problematic test_generate_all_simple_service as test_generate_all_actual_files is more robust.
-# @mock.patch("release_tool.unit_generator.Path.unlink", autospec=True)
-# @mock.patch("release_tool.unit_generator.Path.open", new_callable=mock.mock_open)
-# @mock.patch("release_tool.unit_generator.parse_compose_file")
-# def test_generate_all_simple_service(
-#     mock_parse_compose: mock.MagicMock,
-#     mock_file_open: mock.MagicMock,
-#     mock_unlink: mock.MagicMock,
-#     mock_services_base_dir: Path,
-#     mock_output_dir: Path,
-#     sample_compose_service_simple: Dict[str, Any],
-# ):
-#     service_name = "my_web_server"
-#     (mock_services_base_dir / service_name).mkdir()
-#     mock_parse_compose.return_value = {
-#         "services": {
-#             service_name: sample_compose_service_simple
-#         }
-#     }
-#     mock_output_dir_path = Path(mock_output_dir)
-#     def glob_results(pattern): # pragma: no cover (code was problematic)
-#         return []
-#     # This glob assignment was the source of AttributeError
-#     # mock_output_dir_path.glob = glob_results
-#     # Instead, if mocking glob, it should be done via mocker.patch.object or similar.
-    # # The line below was causing SyntaxError
-#     success = generate_all_quadlet_files(
-#         affected_services=[service_name],
-#         services_dir_path=mock_services_base_dir,
-#         output_dir_path=mock_output_dir_path,
-#         meta_target_name="all.target"
-#     )
-#     assert success
-
-
 # To make the above test more robust without overly complex mocks:
 def test_generate_all_actual_files(
-    mock_services_base_dir: Path, # Actual temp dir
-    mock_output_dir: Path,      # Actual temp dir
+    mock_services_base_dir: Path,
+    mock_output_dir: Path,
     sample_compose_service_simple: Dict[str, Any],
 ):
     service_name = "actual_web"
     service_path = mock_services_base_dir / service_name
     service_path.mkdir()
-    compose_content = {"services": {service_name: sample_compose_service_simple}}
-    with open(service_path / f"{service_name}.compose.yml", "w") as f:
-        yaml.dump(compose_content, f)
+    # Create a docker-compose.yml file for the service
+    compose_content_service = {"services": {service_name: sample_compose_service_simple}}
+    with open(service_path / "docker-compose.yml", "w") as f: # Standardized name
+        yaml.dump(compose_content_service, f)
 
     # Create a dummy old file to check cleanup
     (mock_output_dir / f"{service_name}.old_unit").write_text("old stuff")
 
     success = generate_all_quadlet_files(
         affected_services=[service_name],
-        services_dir_path=mock_services_base_dir,
+        services_dir_path=mock_services_base_dir, # This is .../project_root/services
         output_dir_path=mock_output_dir,
         meta_target_name="all-myapp.target"
     )
@@ -302,48 +268,33 @@ def test_generate_all_actual_files(
     assert f"Description=Service for {service_name} container" in service_content
     assert "PartOf=all-myapp.target" in service_content
     assert "[Service]" in service_content
-    assert f"ExecStart=/usr/bin/podman start {service_name}" in service_content # Assumes default naming
+    assert f"ExecStart=/usr/bin/podman start {service_name}" in service_content
     assert "Type=forking" in service_content
     assert "[Install]" in service_content
     assert "WantedBy=default.target" in service_content
 
 
-# TODO: Add more tests for:
-# - Volume generation (named, host-bind, .volume files)
-# - Network generation (.network files, connecting to existing)
-# - Secret injection (Quadlet Secret= lines)
-# - Depends_on translation to Requires/After in .service file
-# - Oneshot service generation (podman run --rm in ExecStart)
-# - Edge cases: missing image, invalid compose fields, etc.
-# - Multiple services processed in one call
-# - Correct handling of sanitize_service_name_for_filename in output filenames
-# - Test for apply_secret_injection in test_secret_handler.py
-# - Test for different configurations of meta_target_name
-# - Test for services with no primary compose service name match (using first service)
-
 # Placeholder for secret handler tests
-# (Ideally in a separate tests/test_secret_handler.py)
 def test_apply_secret_injection_simple():
     container_unit = ContainerUnit("my_app")
     compose_service_config = {
         "secrets": ["my_podman_secret"]
     }
     all_compose_config = {
-        "secrets": { "my_podman_secret": {"external": True} } # Assume it's an external Podman secret
+        "secrets": { "my_podman_secret": {"external": True} }
     }
     apply_secret_injection(container_unit, compose_service_config, all_compose_config)
 
     secrets_val = container_unit.sections.get("Container", {}).get("Secret")
     if isinstance(secrets_val, str): secrets_val = [secrets_val]
     elif secrets_val is None: secrets_val = []
-    assert "my_podman_secret" in secrets_val # Quadlet Secret= value is just the name or name,target=...
+    assert "my_podman_secret" in secrets_val
 
 def test_apply_secret_injection_long_syntax():
     container_unit = ContainerUnit("my_app_long")
     compose_service_config = {
         "secrets": [{"source": "actual_secret", "target": "/etc/app/secret_file"}]
     }
-    # Case 1: actual_secret is an external podman secret
     all_compose_config_ext = {
         "secrets": {"actual_secret": {"external": True}}
     }
@@ -354,7 +305,6 @@ def test_apply_secret_injection_long_syntax():
     elif secrets_val_ext is None: secrets_val_ext = []
     assert "actual_secret,target=/etc/app/secret_file" in secrets_val_ext
 
-    # Case 2: actual_secret refers to a named secret in top-level that might have a different podman name
     container_unit_named = ContainerUnit("my_app_named_src")
     compose_service_config_named_src = {
          "secrets": [{"source": "app_db_password_alias", "target": "db_pass.txt"}]
@@ -371,4 +321,14 @@ def test_apply_secret_injection_long_syntax():
     elif secrets_val_named is None: secrets_val_named = []
     assert "podman_specific_db_password,target=db_pass.txt" in secrets_val_named
 
-# (End of placeholder for secret handler tests)
+# TODO:
+# - Test Volume generation (named, host-bind, .volume files)
+# - Test Network generation (.network files, connecting to existing)
+# - Test Depends_on translation to Requires/After in .service file
+# - Test Oneshot service generation (podman run --rm in ExecStart)
+# - Test edge cases: missing image, invalid compose fields, etc.
+# - Test multiple services processed in one call
+# - Test correct handling of sanitize_service_name_for_filename in output filenames
+# - Test for different configurations of meta_target_name
+# - Test for services with no primary compose service name match (using first service)
+# - Move secret handler tests to a dedicated test_secret_handler.py
