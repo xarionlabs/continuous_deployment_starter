@@ -1,169 +1,130 @@
 # Production-ready Airflow configuration with LocalExecutor
 # Uses PostgreSQL backend and simplified service architecture
-# Includes Shopify DAGs and dependencies.
 ---
-
-x-airflow-service: &airflow-service
-  # image: docker.io/apache/airflow:3.0.2 # Original image
-  image: airflow_service_prod:${TAG:-latest} # Custom image including Shopify deps
-  build:
-    context: . # Build from this directory (services/06_airflow)
-    dockerfile: Dockerfile # Expects Dockerfile in this directory
-  user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}" # Ensure consistent UID/GID
-  entrypoint: ["/opt/airflow/configure-db-entrypoint.sh"] # Corrected entrypoint name
-  environment:
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager # Default, can be changed
-    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session' # For API and UI
-    AIRFLOW__CORE__FERNET_KEY_FILE: /run/secrets/airflow_fernet_key # Fernet key from secret
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true' # Should be boolean true
-    # Google OAuth - keep if used, otherwise remove
-    GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
-    GOOGLE_OAUTH_CLIENT_SECRET_FILE: /run/secrets/google_oauth_client_secret # Path to secret file
-    GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
-    # Database connection for Airflow Metadata - configured by entrypoint from secrets/env
-    DB_HOST: ${AIRFLOW_METADATA_DB_HOST} # e.g., the service name of the external Postgres
-    DB_PORT: ${AIRFLOW_METADATA_DB_PORT:-5432}
-    DB_DATABASE: ${AIRFLOW_METADATA_DB_NAME} # e.g., airflow_prod_meta
-    DB_USER: ${AIRFLOW_METADATA_DB_USER}     # e.g., airflow_user
-    DB_PASSWORD_FILE: /run/secrets/psql_airflow_password # Path to secret file
-    # Shopify DAGs specific environment variables (read from secrets by entrypoint)
-    SHOPIFY_API_KEY_FILE: /run/secrets/shopify_api_key
-    SHOPIFY_API_PASSWORD_FILE: /run/secrets/shopify_api_password
-    SHOPIFY_STORE_DOMAIN_FILE: /run/secrets/shopify_store_domain
-    # App DB Connection for Shopify DAGs (read from secrets by entrypoint)
-    APP_DB_HOST_FILE: /run/secrets/app_db_host
-    APP_DB_PORT_FILE: /run/secrets/app_db_port
-    APP_DB_NAME_FILE: /run/secrets/app_db_name
-    APP_DB_USER_FILE: /run/secrets/app_db_user
-    APP_DB_PASSWORD_FILE: /run/secrets/app_db_password
-    AIRFLOW_CONN_APP_DB_CONN_ID: "app_db_main_application" # Airflow Connection ID for DAGs
-  volumes:
-    - airflow_dags:/opt/airflow/dags # DAGs can be part of the image and/or mounted here
-    - airflow_logs:/opt/airflow/logs
-    - airflow_plugins:/opt/airflow/plugins # Plugins can be part of the image and/or mounted
-    - ./configure-db-entrypoint.sh:/opt/airflow/configure-db-entrypoint.sh:ro
-    - ./webserver_config.py:/opt/airflow/webserver_config.py:ro # If custom webserver_config is used
-  secrets:
-    - psql_airflow_password
-    - airflow_fernet_key
-    - google_oauth_client_secret # If using Google OAuth
-    # Secrets for Shopify DAGs
-    - shopify_api_key
-    - shopify_api_password
-    - shopify_store_domain
-    # Secrets for App DB connection used by Shopify DAGs
-    - app_db_host
-    - app_db_port
-    - app_db_name
-    - app_db_user
-    - app_db_password
-  depends_on:
-    # Conceptual dependency on an external DB service, actual check in entrypoint
-    # - db
-    airflow-init:
-      condition: service_completed_successfully
-  networks:
-    - db_network # For Airflow metadata DB
-    - app_db_network # For App DB connection, if different from Airflow metadata network
-    - proxy_network # For webserver exposure
-
 services:
+
   airflow-webserver:
-    <<: *airflow-service
-    command: webserver # Correct command for Airflow 3.x
-    expose: # Expose only within Docker network, rely on proxy for external access
+    image: docker.io/apache/airflow:3.0.2
+    entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
+    command: api-server
+    expose:
       - "8080"
     environment:
-      VIRTUAL_HOST: ${AIRFLOW_WEB_VIRTUAL_HOST} # For nginx-proxy or Traefik
-      # Add any webserver specific environment variables here
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
+      VIRTUAL_HOST: ${AIRFLOW_WEB_VIRTUAL_HOST}
+    volumes:
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+      - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
+    secrets:
+      - PSQL_AIRFLOW_PASSWORD
+      - GOOGLE_OAUTH_CLIENT_SECRET
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s # Give time for webserver to start
-    restart: unless-stopped
+      start_period: 30s
+    restart: always
+    depends_on:
+      - airflow-init
+      - db
+    networks:
+      - db_network
+      - proxy_network
 
   airflow-scheduler:
-    <<: *airflow-service
+    image: docker.io/apache/airflow:3.0.2
+    entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
     command: scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
+    volumes:
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+      - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
+    secrets:
+      - PSQL_AIRFLOW_PASSWORD
+      - GOOGLE_OAUTH_CLIENT_SECRET
     healthcheck:
-      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --local"] # Use --local for LocalExecutor
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob']
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s # Give time for scheduler to connect
-    restart: unless-stopped
+      start_period: 30s
+    restart: always
+    depends_on:
+      - airflow-init
+      - db
+    networks:
+      - db_network
 
   airflow-init:
-    <<: *airflow-service
-    # entrypoint: /bin/bash # Override if default entrypoint interferes with simple command
-    command: >
-      bash -c "
-      /opt/airflow/configure-db-entrypoint.sh airflow db migrate &&
-      /opt/airflow/configure-db-entrypoint.sh airflow users create \
-        --username ${AIRFLOW_ADMIN_USER:-airflow} \
-        --password ${AIRFLOW_ADMIN_PASSWORD:-airflow} \
-        --firstname Admin \
-        --lastname User \
-        --role Admin \
-        --email admin@example.com \
-        --unhashed || echo 'Admin user already exists or creation failed.'
-      "
+    image: docker.io/apache/airflow:3.0.2
+    entrypoint: /bin/bash
     restart: "no"
-    environment: # Minimal env for init; inherits from x-airflow-service but can be overridden
-      _AIRFLOW_DB_MIGRATE: 'true' # Triggers db migrate in some entrypoints
-      _AIRFLOW_WWW_USER_CREATE: 'true' # Triggers user creation
-      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USER:-airflow}
-      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-airflow}
-    secrets: # Ensure init has access to necessary secrets for DB connection
-      - psql_airflow_password
-      - airflow_fernet_key # Needed if db init/migrate touches encrypted fields
-      # No Shopify or App DB secrets needed for airflow-init itself
-    networks: # Only needs access to Airflow metadata DB
+    command: /opt/airflow/custom-entrypoint.sh airflow db migrate
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_DOMAIN_WHITELIST: ${GOOGLE_OAUTH_DOMAIN_WHITELIST:-}
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-airflow}
+    volumes:
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+      - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
+    secrets:
+      - PSQL_AIRFLOW_PASSWORD
+      - GOOGLE_OAUTH_CLIENT_SECRET
+    depends_on:
+      - db
+    networks:
       - db_network
 
 volumes:
-  airflow_dags: # Consider if this should be populated by the image or an external volume
+  airflow_dags:
   airflow_logs:
   airflow_plugins:
 
 secrets:
-  psql_airflow_password:
-    file: ${PSQL_AIRFLOW_PASSWORD_FILE:-./secrets/psql_airflow_password.txt} # Example path
-  airflow_fernet_key:
-    file: ${AIRFLOW_FERNET_KEY_FILE:-./secrets/airflow_fernet_key.txt}
-  google_oauth_client_secret: # If using Google OAuth
-    file: ${GOOGLE_OAUTH_CLIENT_SECRET_FILE:-./secrets/google_oauth_client_secret.txt}
-  # Secrets for Shopify DAGs
-  shopify_api_key:
-    file: ${SHOPIFY_API_KEY_FILE:-./secrets/shopify_api_key.txt}
-  shopify_api_password:
-    file: ${SHOPIFY_API_PASSWORD_FILE:-./secrets/shopify_api_password.txt}
-  shopify_store_domain:
-    file: ${SHOPIFY_STORE_DOMAIN_FILE:-./secrets/shopify_store_domain.txt}
-  # Secrets for App DB connection
-  app_db_host:
-    file: ${APP_DB_HOST_FILE:-./secrets/app_db_host.txt}
-  app_db_port:
-    file: ${APP_DB_PORT_FILE:-./secrets/app_db_port.txt}
-  app_db_name:
-    file: ${APP_DB_NAME_FILE:-./secrets/app_db_name.txt}
-  app_db_user:
-    file: ${APP_DB_USER_FILE:-./secrets/app_db_user.txt}
-  app_db_password:
-    file: ${APP_DB_PASSWORD_FILE:-./secrets/app_db_password.txt}
+  PSQL_AIRFLOW_PASSWORD:
+    external: true
+  GOOGLE_OAUTH_CLIENT_SECRET:
+    external: true
 
 networks:
-  db_network: # Network for Airflow Metadata Database
-    name: ${AIRFLOW_METADATA_DB_NETWORK_NAME:-main_db_network}
-    external: ${AIRFLOW_METADATA_DB_NETWORK_EXTERNAL:-true}
-  app_db_network: # Network for Application Database (where DAGs write data)
-    name: ${APP_DB_NETWORK_NAME:-main_app_db_network} # Can be same as AIRFLOW_METADATA_DB_NETWORK_NAME
-    external: ${APP_DB_NETWORK_EXTERNAL:-true}
-  proxy_network: # Network for reverse proxy
-    name: ${PROXY_NETWORK_NAME:-main_proxy_network}
-    external: ${PROXY_NETWORK_EXTERNAL:-true}
+  db_network:
+    driver: bridge
+  proxy_network:
+    driver: bridge
