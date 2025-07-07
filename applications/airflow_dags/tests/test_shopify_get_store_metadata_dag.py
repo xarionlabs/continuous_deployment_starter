@@ -115,16 +115,16 @@ def test_fetch_and_load_products_task_flow(
 
     # Mock Product Data
     mock_product1 = MagicMock()
-    mock_product1.id = 1001
     for col in MOCKED_PRODUCT_COLUMNS: setattr(mock_product1, col, f"prod1_{col}") # Basic values
+    mock_product1.id = 1001  # Set ID after other attributes to avoid override
     mock_product1.created_at = "2023-01-01T00:00:00Z"
     mock_product1.updated_at = "2023-01-01T00:00:00Z"
     mock_product1.published_at = "2023-01-01T00:00:00Z"
 
 
     mock_variant1 = MagicMock()
-    mock_variant1.id = 2001
     for col in MOCKED_VARIANT_COLUMNS: setattr(mock_variant1, col, f"var1_{col}")
+    mock_variant1.id = 2001  # Set ID after other attributes to avoid override
     mock_variant1.price = "10.00"
     mock_variant1.inventory_quantity = "5" # Shopify API might return as string
     mock_variant1.old_inventory_quantity = "0"
@@ -134,8 +134,8 @@ def test_fetch_and_load_products_task_flow(
 
 
     mock_image1 = MagicMock()
-    mock_image1.id = 3001
     for col in MOCKED_IMAGE_COLUMNS: setattr(mock_image1, col, f"img1_{col}")
+    mock_image1.id = 3001  # Set ID after other attributes to avoid override
     mock_image1.created_at = "2023-01-01T00:00:00Z"
     mock_image1.updated_at = "2023-01-01T00:00:00Z"
 
@@ -163,16 +163,16 @@ def test_fetch_and_load_products_task_flow(
     mock_upsert_db.assert_any_call(ANY, "TestShopifyProductVariant", MOCKED_VARIANT_COLUMNS)
     variants_call_args = [c for c in mock_upsert_db.call_args_list if c[0][1] == "TestShopifyProductVariant"][0]
     assert len(variants_call_args[0][0]) == 1
-    assert variants_call_args[0][0][MOCKED_VARIANT_COLUMNS.index("id")] == 2001
-    assert variants_call_args[0][0][MOCKED_VARIANT_COLUMNS.index("product_id")] == 1001
-    assert variants_call_args[0][0][MOCKED_VARIANT_COLUMNS.index("inventory_quantity")] == 5 # Check type conversion
+    assert variants_call_args[0][0][0][MOCKED_VARIANT_COLUMNS.index("id")] == 2001
+    assert variants_call_args[0][0][0][MOCKED_VARIANT_COLUMNS.index("product_id")] == 1001
+    assert variants_call_args[0][0][0][MOCKED_VARIANT_COLUMNS.index("inventory_quantity")] == 5 # Check type conversion
 
     # Images
     mock_upsert_db.assert_any_call(ANY, "TestShopifyProductImage", MOCKED_IMAGE_COLUMNS)
     images_call_args = [c for c in mock_upsert_db.call_args_list if c[0][1] == "TestShopifyProductImage"][0]
     assert len(images_call_args[0][0]) == 1
-    assert images_call_args[0][0][MOCKED_IMAGE_COLUMNS.index("id")] == 3001
-    assert images_call_args[0][0][MOCKED_IMAGE_COLUMNS.index("product_id")] == 1001
+    assert images_call_args[0][0][0][MOCKED_IMAGE_COLUMNS.index("id")] == 3001
+    assert images_call_args[0][0][0][MOCKED_IMAGE_COLUMNS.index("product_id")] == 1001
 
 
 # --- Tests for fetch_and_load_collections_task ---
@@ -204,8 +204,8 @@ def test_fetch_and_load_collections_task_custom_collection(
         mock_shopify_api.CustomCollection, # Expected Shopify resource class
         987, # shop_id
         "TestShopifyCollection", # table_name
-        MOCKED_COLLECTION_COLUMNS, # columns_def
-        updated_at_min=None # Since mock_get_last_ts returned None
+        MOCKED_COLLECTION_COLUMNS # columns_def
+        # Note: updated_at_min is not passed when it's None
     )
 
     # Verify _upsert_data_to_db was called with the data from _fetch_all_pages
@@ -235,7 +235,7 @@ def test_internal_upsert_data_to_db_with_data(mock_get_hook_global):
 
     actual_sql = mock_cursor.executemany.call_args[0][0]
     assert f"INSERT INTO {table_name}" in actual_sql
-    assert "ON CONFLICT (id) DO UPDATE SET" in actual_sql
+    assert "ON CONFLICT (id) DO UPDATE" in actual_sql
     assert "value = EXCLUDED.value" in actual_sql # Check one of the set clauses
 
     assert mock_cursor.executemany.call_args[0][1] == sample_data

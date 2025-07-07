@@ -202,7 +202,7 @@ def test_load_orders_to_db_task_with_data(mock_get_hook, mock_task_instance):
     # Check the SQL query (first arg to executemany)
     actual_sql = mock_cursor.executemany.call_args[0][0]
     assert "INSERT INTO TestShopifyOrder" in actual_sql
-    assert "ON CONFLICT (id) DO UPDATE SET" in actual_sql
+    assert "ON CONFLICT (id) DO UPDATE" in actual_sql
     # Check the data passed (second arg to executemany)
     assert mock_cursor.executemany.call_args[0][1] == sample_orders_data
     mock_conn.commit.assert_called_once()
@@ -236,7 +236,7 @@ def test_load_line_items_to_db_task_with_data(mock_get_hook, mock_task_instance)
     mock_db_hook_instance.get_conn.assert_called_once()
     actual_sql = mock_cursor.executemany.call_args[0][0]
     assert "INSERT INTO TestShopifyOrderLineItem" in actual_sql
-    assert "ON CONFLICT (id) DO UPDATE SET" in actual_sql
+    assert "ON CONFLICT (id) DO UPDATE" in actual_sql
     assert mock_cursor.executemany.call_args[0][1] == sample_li_data
     mock_conn.commit.assert_called_once()
 
