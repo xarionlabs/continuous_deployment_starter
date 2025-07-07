@@ -234,7 +234,7 @@ jobs:
       - skip-check
       - define-tag
       - find-changed-applications
-    if: ${{always() && !needs.skip-check.outputs.skip}}
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
     permissions:
       contents: write
     steps:
