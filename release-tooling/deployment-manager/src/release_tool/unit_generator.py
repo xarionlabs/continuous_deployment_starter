@@ -369,12 +369,14 @@ def generate_all_quadlet_files(
     services_dir_path: Path,
     output_dir_path: Path,
     meta_target_name: Optional[str] = None,
-    vars_json_string: Optional[str] = None
+    vars_json_string: Optional[str] = None,
+    deploy_services_filter: Optional[List[str]] = None
 ) -> bool:
     """
     Generates all necessary Quadlet files for the affected services.
     If meta_target_name is provided, services will be made PartOf= this target.
     vars_json_string provides global environment variables.
+    deploy_services_filter limits generation to only specified docker-compose service names.
     Returns True on success, False on failure.
     """
     if not services_dir_path.is_dir():
@@ -425,43 +427,60 @@ def generate_all_quadlet_files(
             all_ok = False
             continue
 
-        # Assuming one primary service per <service_name>.compose.yml, matching the directory name
-        # or taking the first service if multiple are defined (less ideal).
-        # A better approach might be to iterate if multiple services are in one file,
-        # but current bash scripts seem to imply one service definition per directory.
-        primary_compose_service_name = service_name
-        if primary_compose_service_name not in compose_config['services']:
-            available_yaml_services = list(compose_config['services'].keys())
-            if not available_yaml_services:
-                print(f"Error: No services defined in compose file '{service_compose_file}'. Skipping.", flush=True)
-                all_ok = False
-                continue
-            if service_name in available_yaml_services:
-                primary_compose_service_name = service_name
-            else:
-                primary_compose_service_name = available_yaml_services[0]
-                print(f"Warning: Service name '{service_name}' (from dir) not found in its compose file. Using first service found: '{primary_compose_service_name}'.", flush=True)
-
-        compose_service_def = compose_config['services'][primary_compose_service_name]
-
-        container_unit, aux_units = convert_compose_service_to_container_unit(
-            service_name,
-            compose_service_def,
-            compose_config,
-            global_env_vars=global_env_vars_dict
-        )
-
-        units_to_write: List[QuadletUnit] = []
-        if container_unit:
-            units_to_write.append(container_unit)
-        units_to_write.extend(aux_units)
-
-        if not units_to_write:
-            print(f"No units generated for service '{service_name}'.", flush=True)
-            # all_ok = False # Not necessarily an error if a service is e.g. just a build context
+        # Determine which services to process from the docker-compose file
+        available_compose_services = list(compose_config['services'].keys())
+        if not available_compose_services:
+            print(f"Error: No services defined in compose file '{service_compose_file}'. Skipping.", flush=True)
+            all_ok = False
             continue
 
-        for unit in units_to_write:
+        # Filter services based on deploy_services_filter if provided
+        services_to_process = []
+        if deploy_services_filter:
+            # Check if "all" is specified to deploy everything
+            if "all" in deploy_services_filter:
+                print(f"Deploy filter contains 'all' - processing all services in '{service_compose_file}'", flush=True)
+                services_to_process = available_compose_services
+            else:
+                # Only process services that are in the filter
+                for filter_service in deploy_services_filter:
+                    if filter_service in available_compose_services:
+                        services_to_process.append(filter_service)
+                    else:
+                        print(f"Warning: Service '{filter_service}' specified in deploy filter not found in '{service_compose_file}'. Available services: {available_compose_services}", flush=True)
+        else:
+            # Process all services in the docker-compose file
+            services_to_process = available_compose_services
+
+        if not services_to_process:
+            print(f"No services to process for '{service_name}' after filtering. Skipping.", flush=True)
+            continue
+
+        all_units_to_write: List[QuadletUnit] = []
+        
+        for compose_service_name in services_to_process:
+            print(f"Processing docker-compose service '{compose_service_name}' from '{service_compose_file}'...", flush=True)
+            compose_service_def = compose_config['services'][compose_service_name]
+
+            # Use a combination of directory name and compose service name for unit naming
+            unit_service_name = f"{service_name}_{compose_service_name}" if compose_service_name != service_name else service_name
+
+            container_unit, aux_units = convert_compose_service_to_container_unit(
+                unit_service_name,
+                compose_service_def,
+                compose_config,
+                global_env_vars=global_env_vars_dict
+            )
+
+            if container_unit:
+                all_units_to_write.append(container_unit)
+            all_units_to_write.extend(aux_units)
+
+        if not all_units_to_write:
+            print(f"No units generated for service '{service_name}'.", flush=True)
+            continue
+
+        for unit in all_units_to_write:
             file_content = unit.generate_file_content()
             output_file_path = output_dir_path / unit.get_filename()
             try:

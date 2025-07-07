@@ -54,7 +54,8 @@ def generate_units(
     services_dir: Annotated[str, typer.Option("--services-dir", help="Path to the services definition directory.")] = "./services",
     output_dir: Annotated[str, typer.Option("--output-dir", help="Path to output generated unit files.")] = "~/.config/containers/systemd",
     meta_target: Annotated[str, typer.Option("--meta-target", help="Optional systemd target name to make services PartOf (e.g., all-containers.target).")] = "",
-    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).")] = os.environ.get("VARS_JSON_STR", "{}")
+    vars_json_str: Annotated[str, typer.Option("--vars-json", help="JSON string of global variables (from GitHub vars).")] = os.environ.get("VARS_JSON_STR", "{}"),
+    deploy_services: Annotated[str, typer.Option("--deploy-services", help="Comma-separated list of specific docker-compose service names to deploy.")] = ""
 ):
     """
     Generates systemd unit files for affected services from compose definitions.
@@ -67,10 +68,12 @@ def generate_units(
     typer.echo(f"Input - Services directory: {services_dir}", err=True)
     typer.echo(f"Input - Output directory: {output_dir}", err=True)
     typer.echo(f"Input - Meta target: '{meta_target}'", err=True)
+    typer.echo(f"Input - Deploy services: '{deploy_services}'", err=True)
     typer.echo(f"Input - Vars JSON string: '{vars_json_str[:100]}{'...' if len(vars_json_str) > 100 else ''}'", err=True)
 
 
     affected_services_list = [s for s in affected_services.split(' ') if s]
+    deploy_services_list = [s.strip() for s in deploy_services.split(',') if s.strip()] if deploy_services else []
 
     if not affected_services_list:
         typer.echo("No affected services provided. Nothing to generate.", err=True)
@@ -87,7 +90,8 @@ def generate_units(
         services_dir_path=services_dir_path,
         output_dir_path=output_dir_path,
         meta_target_name=meta_target if meta_target else None,
-        vars_json_string=vars_json_str
+        vars_json_string=vars_json_str,
+        deploy_services_filter=deploy_services_list
     )
 
     if success:
