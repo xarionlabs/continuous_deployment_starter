@@ -258,7 +258,7 @@ jobs:
       - define-tag
       - find-changed-applications
       - create-tag-ref
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -284,7 +284,7 @@ jobs:
 
   trigger-staging-release:
     needs: [skip-check, update-the-release-branch]
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
     uses: ./.github/workflows/release.yml
     with:
       environment: staging
@@ -292,7 +292,7 @@ jobs:
 
   trigger-staging-e2e:
     needs: [skip-check, trigger-staging-release]
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: staging
@@ -300,7 +300,7 @@ jobs:
 
   trigger-live-release:
     needs: [skip-check, trigger-staging-e2e]
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
     uses: ./.github/workflows/release.yml
     with:
       environment: live
@@ -308,7 +308,7 @@ jobs:
 
   trigger-live-e2e:
     needs: [skip-check, trigger-live-release]
-    if: ${{ !needs.skip-check.outputs.skip }}
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: live
