@@ -62,7 +62,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test` - Run Jest tests
 - `npm run test:coverage` - Run tests with coverage
 - `npm run typecheck` - TypeScript type checking
-- `shopify app dev` - Start Shopify app development
+- `shopify app dev` - Start Shopify app development and manage database migrations
+- **Data Sync**: Use "Reload Data" button in app to trigger Airflow DAGs for Shopify data synchronization
 
 #### pxy6.com (React/Vite App)
 - `cd applications/pxy6.com/src` - Navigate to application source
@@ -84,9 +85,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### airflow_dags (Airflow DAGs Package)
 - `cd applications/airflow_dags` - Navigate to DAGs directory
-- `pytest tests/` - Run DAG tests
-- `python -c "from dags.shopify_get_past_purchases_dag import dag"` - Validate DAG import
-- Note: This packages DAGs and dependencies for the Airflow service in `services/06_airflow/`
+- `docker build -t airflow-dags .` - Build DAG container
+- `docker run --rm airflow-dags` - Validate DAG imports and syntax
+- `./validate_dags.sh` - Comprehensive DAG validation (Docker-based)
+- `./quick_test.sh` - Quick validation for development
+- `pytest tests/` - Run DAG tests (with mocked dependencies)
+- `python -c "from dags.shopify_data_pipeline import dag"` - Validate main DAG import
+- Note: Contains Shopify data integration DAGs that sync product, customer, and order data to PostgreSQL
 
 #### Release Tool (Python CLI)
 - `cd tools/deployment/deployment-manager` - Navigate to release tool directory
@@ -110,7 +115,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 1. **app.pxy6.com**: Shopify app built with Remix, TypeScript, Prisma ORM, and Polaris UI
 2. **pxy6.com**: React/Vite frontend with Tailwind CSS, shadcn/ui components, and analytics tracking
 3. **app_1**: Python backend with FastAPI API and Streamlit frontend, using SQLAlchemy and PostgreSQL (has skipped-Dockerfile, not currently built)
-4. **airflow_dags**: Apache Airflow DAGs package for Shopify data integration, contains workflow definitions and dependencies that get deployed to the Airflow service
+4. **airflow_dags**: Apache Airflow DAGs package for comprehensive Shopify data integration - syncs products, customers, orders, and metadata using GraphQL API
 
 ### Utility Types
 1. **user_management**: Python utility for managing users with Docker containerization
@@ -145,16 +150,20 @@ This is a containerized multi-application deployment system with automated CI/CD
 - Airflow connects to PostgreSQL for metadata and main application database for Shopify data
 
 ### Database Migrations
-- **app.pxy6.com**: Use `prisma migrate deploy` or `npm run setup`
+- **app.pxy6.com**: Database migrations managed through `shopify app dev` command - SQLite for local development, PostgreSQL for production
 - **app_1**: Use `alembic upgrade head` in the data/db/migrations directory
+- **airflow_dags**: Uses pxy6_airflow database user to connect to app.pxy6.com's PostgreSQL database for data storage
 
 ### Airflow Integration
-- **Service Location**: `services/06_airflow/` - Apache Airflow infrastructure service
-- **DAGs Location**: `applications/airflow_dags/` - DAG definitions and Python dependencies
-- **Architecture**: The service builds a custom Airflow image that incorporates DAGs from applications/airflow_dags
-- **Purpose**: Orchestrates Shopify data integration workflows (past purchases, store metadata)
-- **Database**: Uses PostgreSQL for Airflow metadata; connects to main application database for data storage
-- **Components**: Webserver (UI), Scheduler (task execution), Init (database setup)
+- **Service Location**: `services/06_airflow/` - Apache Airflow 3.0.2 infrastructure service
+- **DAGs Location**: `applications/airflow_dags/` - Comprehensive Shopify data integration DAGs
+- **Architecture**: Built with custom operators, hooks, and GraphQL client for Shopify API integration
+- **Purpose**: Orchestrates complete Shopify data synchronization (products, customers, orders, metafields, collections)
+- **Database**: Uses PostgreSQL for Airflow metadata; stores Shopify data in app.pxy6.com database using pxy6_airflow user
+- **Components**: DAGs Deploy (one-shot deployment), Webserver (UI), Scheduler (task execution), Init (database setup)
+- **API Integration**: DAGs can be triggered from app.pxy6.com via REST API endpoints
+- **Data Pipeline**: 3 main DAGs - shopify_data_pipeline (orchestration), shopify_past_purchases (customer/orders), shopify_store_metadata (products/catalog)
+- **Hot Deployment**: DAGs can be deployed independently without restarting Airflow services - Airflow automatically detects new DAG files
 
 ### Deployment Information
 - **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments

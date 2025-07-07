@@ -1,5 +1,8 @@
-import {Page, Layout, Card, BlockStack, Text, Button, InlineStack} from "@shopify/polaris";
+import {Page, Layout, Card, BlockStack, Text, Button, InlineStack, Spinner, Banner} from "@shopify/polaris";
 import {TitleBar} from "@shopify/app-bridge-react";
+import {useEffect, useState, useCallback} from "react";
+import type {LoaderFunctionArgs} from "@remix-run/node";
+import {json} from "@remix-run/node";
 
 // Use a fallback icon as RefreshMajor is not available
 const RefreshIcon = () => (
@@ -25,7 +28,191 @@ const RefreshIcon = () => (
   </svg>
 );
 
+interface DataMetrics {
+  catalog: {
+    products: number;
+    customers: number;
+    orders: number;
+    collections: number;
+  };
+  recent: {
+    ordersLast7Days: number;
+    customersLast7Days: number;
+  };
+  revenue: {
+    total: number;
+    average: number;
+  };
+  topProducts: Array<{
+    id: string;
+    title: string;
+    handle: string;
+    vendor: string;
+    productType: string;
+    orderCount: number;
+    totalQuantitySold: number;
+  }>;
+  sync: {
+    lastSync: {
+      status: string;
+      startedAt: string;
+      completedAt?: string;
+      recordsProcessed?: number;
+      recordsCreated?: number;
+      recordsUpdated?: number;
+      errorMessage?: string;
+    } | null;
+    syncStates: Array<{
+      entityType: string;
+      lastSyncAt: string;
+      isActive: boolean;
+      syncVersion?: string;
+    }>;
+  };
+  freshness: {
+    dataAsOf: string;
+    lastUpdated: string;
+  };
+}
+
+interface SyncStatus {
+  isLoading: boolean;
+  runId?: string;
+  status?: string;
+  error?: string;
+}
+
 function DataInsightsSection() {
+  const [metrics, setMetrics] = useState<DataMetrics | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ isLoading: false });
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMetrics = useCallback(async () => {
+    try {
+      const response = await fetch('/api/data-sync/metrics');
+      const result = await response.json();
+      
+      if (result.success) {
+        setMetrics(result.data);
+        setError(null);
+      } else {
+        setError(result.error || 'Failed to load metrics');
+      }
+    } catch (err) {
+      setError('Failed to load metrics');
+      console.error('Error loading metrics:', err);
+    }
+  }, []);
+
+  // Load initial metrics
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
+
+  const pollSyncStatus = useCallback(async (runId: string) => {
+    let attempts = 0;
+    const maxAttempts = 60; // Poll for up to 10 minutes
+    
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/data-sync/status/${runId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          const dagRun = result.data.dagRun;
+          setSyncStatus({
+            isLoading: false,
+            runId,
+            status: dagRun.state,
+          });
+          
+          // If still running, continue polling
+          if (dagRun.state === 'running' && attempts < maxAttempts) {
+            attempts++;
+            setTimeout(poll, 10000); // Poll every 10 seconds
+          } else if (dagRun.state === 'success') {
+            // Reload metrics after successful sync
+            loadMetrics();
+          }
+        }
+      } catch (err) {
+        console.error('Error polling sync status:', err);
+        setSyncStatus(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to check sync status',
+        }));
+      }
+    };
+    
+    poll();
+  }, [loadMetrics]);
+
+  const handleDataSync = useCallback(async () => {
+    setSyncStatus({ isLoading: true });
+    
+    try {
+      const response = await fetch('/api/data-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          syncMode: 'incremental',
+          enableProducts: true,
+          enableCustomers: true,
+          enableOrders: true,
+          note: 'Triggered from data dashboard',
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setSyncStatus({
+          isLoading: false,
+          runId: result.data.runId,
+          status: 'running',
+        });
+        
+        // Poll for status updates
+        pollSyncStatus(result.data.runId);
+      } else {
+        setSyncStatus({
+          isLoading: false,
+          error: result.error || 'Failed to start sync',
+        });
+      }
+    } catch (err) {
+      setSyncStatus({
+        isLoading: false,
+        error: 'Failed to start sync',
+      });
+      console.error('Error starting sync:', err);
+    }
+  }, [pollSyncStatus]);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-US').format(num);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
   return (
     <Layout.Section>
       <Card>
@@ -34,43 +221,91 @@ function DataInsightsSection() {
             <div>
               <Text variant="headingMd" as="h3">Data Insights</Text>
               <Text as="p" variant="bodySm" tone="subdued">
-                Summary of available data.
+                Real-time Shopify data metrics and sync status.
               </Text>
             </div>
-            <Button icon={<RefreshIcon/>} variant="secondary">
-              Reload Data
+            <Button 
+              icon={syncStatus.isLoading ? <Spinner size="small" /> : <RefreshIcon/>} 
+              variant="secondary"
+              loading={syncStatus.isLoading}
+              onClick={handleDataSync}
+              disabled={syncStatus.isLoading}
+            >
+              {syncStatus.isLoading ? 'Syncing...' : 'Sync Data'}
             </Button>
           </InlineStack>
-          <div style={{display: 'flex', gap: 32, flexWrap: 'wrap'}}>
-            <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
-              <Card background="bg-surface-secondary" padding="400">
-                <BlockStack gap="100">
-                  <Text variant="headingSm" as="h4">Product Catalog</Text>
-                  <Text as="p">Products: <b>12,540</b></Text>
-                  <Text as="p">Categories: <b>250</b></Text>
-                  <Text as="p">Collections: <b>85</b></Text>
-                </BlockStack>
-              </Card>
+          
+          {/* Sync Status Banner */}
+          {syncStatus.error && (
+            <Banner tone="critical" title="Sync Error">
+              {syncStatus.error}
+            </Banner>
+          )}
+          
+          {syncStatus.status === 'running' && (
+            <Banner tone="info" title="Sync in Progress">
+              Data synchronization is currently running. Metrics will be updated when complete.
+            </Banner>
+          )}
+          
+          {syncStatus.status === 'success' && (
+            <Banner tone="success" title="Sync Completed">
+              Data synchronization completed successfully. Metrics have been updated.
+            </Banner>
+          )}
+          
+          {error && (
+            <Banner tone="critical" title="Error Loading Data">
+              {error}
+            </Banner>
+          )}
+          
+          {metrics ? (
+            <div style={{display: 'flex', gap: 32, flexWrap: 'wrap'}}>
+              <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
+                <Card background="bg-surface-secondary" padding="400">
+                  <BlockStack gap="100">
+                    <Text variant="headingSm" as="h4">Product Catalog</Text>
+                    <Text as="p">Products: <b>{formatNumber(metrics.catalog.products)}</b></Text>
+                    <Text as="p">Collections: <b>{formatNumber(metrics.catalog.collections)}</b></Text>
+                    <Text as="p">Recent Orders: <b>{formatNumber(metrics.recent.ordersLast7Days)}</b></Text>
+                  </BlockStack>
+                </Card>
+              </div>
+              <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
+                <Card background="bg-surface-secondary" padding="400">
+                  <BlockStack gap="100">
+                    <Text variant="headingSm" as="h4">Customer Activity</Text>
+                    <Text as="p">Total Customers: <b>{formatNumber(metrics.catalog.customers)}</b></Text>
+                    <Text as="p">Total Orders: <b>{formatNumber(metrics.catalog.orders)}</b></Text>
+                    <Text as="p">New Customers (7d): <b>{formatNumber(metrics.recent.customersLast7Days)}</b></Text>
+                  </BlockStack>
+                </Card>
+              </div>
+              <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
+                <Card background="bg-surface-secondary" padding="400">
+                  <BlockStack gap="100">
+                    <Text variant="headingSm" as="h4">Revenue & Data Freshness</Text>
+                    <Text as="p">Total Revenue: <b>{formatCurrency(metrics.revenue.total)}</b></Text>
+                    <Text as="p">Avg Order Value: <b>{formatCurrency(metrics.revenue.average)}</b></Text>
+                    <Text as="p">Last Updated:</Text>
+                    <Text as="p"><b>{formatDate(metrics.freshness.lastUpdated)}</b></Text>
+                  </BlockStack>
+                </Card>
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
-              <Card background="bg-surface-secondary" padding="400">
-                <BlockStack gap="100">
-                  <Text variant="headingSm" as="h4">User Activity</Text>
-                  <Text as="p">Total Users: <b>85,320</b></Text>
-                  <Text as="p">Purchases: <b>15,789</b></Text>
-                </BlockStack>
-              </Card>
+          ) : (
+            <div style={{display: 'flex', gap: 32, flexWrap: 'wrap'}}>
+              <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
+                <Card background="bg-surface-secondary" padding="400">
+                  <BlockStack gap="100">
+                    <Text variant="headingSm" as="h4">Loading...</Text>
+                    <Spinner size="small" />
+                  </BlockStack>
+                </Card>
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
-              <Card background="bg-surface-secondary" padding="400">
-                <BlockStack gap="100">
-                  <Text variant="headingSm" as="h4">Data Freshness</Text>
-                  <Text as="p">Last Refresh:</Text>
-                  <Text as="p"><b>July 26, 2024, 10:35 AM</b></Text>
-                </BlockStack>
-              </Card>
-            </div>
-          </div>
+          )}
         </BlockStack>
       </Card>
     </Layout.Section>
@@ -153,6 +388,13 @@ function DataDashboard() {
       </Layout>
     </Page>
   );
+}
+
+// Loader function for initial data
+export async function loader({ request }: LoaderFunctionArgs) {
+  // This loader doesn't need to pre-fetch data since we're loading it client-side
+  // but it's here for future use if needed
+  return json({ timestamp: new Date().toISOString() });
 }
 
 export default function DataPage() {

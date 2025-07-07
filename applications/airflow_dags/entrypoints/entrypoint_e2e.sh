@@ -1,0 +1,77 @@
+#!/bin/bash
+set -e
+
+echo "Running e2e tests for Airflow DAGs..."
+
+# Set PYTHONPATH to include src directory
+export PYTHONPATH=/app/src:$PYTHONPATH
+
+# Test that all DAGs can be imported and parsed
+echo "Testing DAG parsing and validation..."
+python -c "
+import sys
+import os
+sys.path.insert(0, '/app/src')
+
+# Test DAG structure and syntax
+try:
+    from dags import *
+    print('✓ All DAGs parsed successfully')
+except Exception as e:
+    print(f'✗ DAG parsing failed: {e}')
+    sys.exit(1)
+
+# Test that DAGs have required attributes
+import importlib
+import glob
+
+dag_files = glob.glob('/app/src/dags/*.py')
+dag_files = [f for f in dag_files if not f.endswith('__init__.py')]
+
+for dag_file in dag_files:
+    module_name = os.path.splitext(os.path.basename(dag_file))[0]
+    try:
+        spec = importlib.util.spec_from_file_location(module_name, dag_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # Check for 'dag' attribute
+        if hasattr(module, 'dag'):
+            print(f'✓ {module_name} has dag attribute')
+        else:
+            print(f'✗ {module_name} missing dag attribute')
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f'✗ Error loading {module_name}: {e}')
+        sys.exit(1)
+
+print('✓ All DAGs have required structure')
+"
+
+# Test basic connection capabilities (without actual connections)
+echo "Testing connection utilities..."
+python -c "
+import sys
+sys.path.insert(0, '/app/src')
+
+# Test Shopify client initialization (without actual API calls)
+try:
+    from utils.shopify_client import ShopifyGraphQLClient
+    # Test that we can create client instance
+    client = ShopifyGraphQLClient('test_shop', 'test_token')
+    print('✓ Shopify client can be instantiated')
+except Exception as e:
+    print(f'✗ Shopify client error: {e}')
+    sys.exit(1)
+
+# Test database connection utilities
+try:
+    from utils.database import get_database_connection
+    print('✓ Database utilities available')
+except Exception as e:
+    print(f'✗ Database utilities error: {e}')
+    sys.exit(1)
+"
+
+echo "E2E tests completed successfully!"

@@ -3,6 +3,40 @@
 ---
 services:
 
+  airflow-dags-deploy:
+    image: ghcr.io/xarionlabs/continuous_deployment_starter/airflow_dags:${APP_VERSION:-latest}
+    restart: "no"
+    command: >
+      sh -c "
+        echo 'Deploying DAGs to Airflow volumes...'
+        
+        # Clear existing DAGs to prevent stale files
+        rm -rf /opt/airflow/dags/*
+        rm -rf /opt/airflow/plugins/*
+        
+        # Copy DAGs and dependencies
+        cp -r /app/src/dags/* /opt/airflow/dags/
+        cp -r /app/src/plugins/* /opt/airflow/plugins/ 2>/dev/null || echo 'No plugins to copy'
+        cp -r /app/src/utils /opt/airflow/dags/
+        cp -r /app/src/operators /opt/airflow/dags/
+        cp -r /app/src/hooks /opt/airflow/dags/
+        
+        # Set proper permissions
+        chown -R 50000:0 /opt/airflow/dags
+        chown -R 50000:0 /opt/airflow/plugins
+        chmod -R 755 /opt/airflow/dags
+        chmod -R 755 /opt/airflow/plugins
+        
+        echo 'DAGs deployment completed successfully'
+        ls -la /opt/airflow/dags/
+      "
+    volumes:
+      - airflow_dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+    labels:
+      - "io.containers.autoupdate=registry"
+    user: root
+
   airflow-webserver:
     image: docker.io/apache/airflow:3.0.2
     entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
@@ -28,6 +62,7 @@ services:
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
       - PSQL_AIRFLOW_PASSWORD
+      - PSQL_PXY6_AIRFLOW_PASSWORD
       - GOOGLE_OAUTH_CLIENT_SECRET
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
@@ -65,6 +100,7 @@ services:
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
       - PSQL_AIRFLOW_PASSWORD
+      - PSQL_PXY6_AIRFLOW_PASSWORD
       - GOOGLE_OAUTH_CLIENT_SECRET
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob']
@@ -106,6 +142,7 @@ services:
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
       - PSQL_AIRFLOW_PASSWORD
+      - PSQL_PXY6_AIRFLOW_PASSWORD
       - GOOGLE_OAUTH_CLIENT_SECRET
     depends_on:
       - db
@@ -119,6 +156,8 @@ volumes:
 
 secrets:
   PSQL_AIRFLOW_PASSWORD:
+    external: true
+  PSQL_PXY6_AIRFLOW_PASSWORD:
     external: true
   GOOGLE_OAUTH_CLIENT_SECRET:
     external: true
