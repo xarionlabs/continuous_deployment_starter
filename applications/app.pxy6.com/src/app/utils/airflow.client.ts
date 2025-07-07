@@ -331,3 +331,10 @@ export function getAirflowClient(): AirflowClient {
   }
   return airflowClientInstance;
 }
+
+// Default export for better compatibility
+export default {
+  AirflowClient,
+  createAirflowClient,
+  getAirflowClient,
+};

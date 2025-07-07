@@ -1,8 +1,6 @@
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import * as airflowClientModule from "../utils/airflow.client";
 import { withCors, withCorsLoader } from "../utils/cors.injector";
-import prisma from "../db.server";
 
 /**
  * API Routes for Shopify Data Sync
@@ -10,35 +8,143 @@ import prisma from "../db.server";
  * Endpoints:
  * - POST /api/data-sync - Trigger Shopify data sync DAGs
  * - GET /api/data-sync/status/{runId} - Check DAG run status
- * - GET /api/data-sync/history - Get sync history
- * - GET /api/data-sync/metrics - Get current data metrics
  */
 
-// GET /api/data-sync/history
+// Inline Airflow client functions to avoid import issues
+let jwtToken: string | null = null;
+
+const getJwtToken = async (): Promise<string> => {
+  if (jwtToken) return jwtToken;
+  
+  const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
+  const username = process.env.AIRFLOW_USERNAME || 'admin';
+  const password = process.env.AIRFLOW_PASSWORD || 'admin';
+  
+  const response = await fetch(`${baseUrl.replace('/api/v2', '')}/auth/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      username: username,
+      password: password,
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`JWT token request failed: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  const tokenData = await response.json();
+  jwtToken = tokenData.access_token;
+  return jwtToken as string;
+};
+
+const createAirflowRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
+  const token = await getJwtToken();
+  const url = `${baseUrl}${endpoint}`;
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...options.headers,
+    },
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    // If we get 401, try to refresh the token
+    if (response.status === 401) {
+      jwtToken = null;
+      const newToken = await getJwtToken();
+      const retryResponse = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${newToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...options.headers,
+        },
+        signal: AbortSignal.timeout(30000),
+      });
+      
+      if (!retryResponse.ok) {
+        const retryErrorText = await retryResponse.text();
+        throw new Error(`Airflow API error: ${retryResponse.status} ${retryResponse.statusText} - ${retryErrorText}`);
+      }
+      
+      return retryResponse.json();
+    }
+    
+    throw new Error(`Airflow API error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  return response.json();
+};
+
+const testAirflowConnection = async (): Promise<boolean> => {
+  try {
+    await createAirflowRequest('/monitor/health');
+    return true;
+  } catch (error) {
+    console.error('Airflow connection test failed:', error);
+    return false;
+  }
+};
+
+const triggerDataSync = async (config: {
+  syncMode?: 'full' | 'incremental';
+  enableProducts?: boolean;
+  enableCustomers?: boolean;
+  enableOrders?: boolean;
+  note?: string;
+}) => {
+  const dagId = 'shopify_data_pipeline';
+  const runId = `manual_${Date.now()}`;
+  
+  const requestBody = {
+    dag_run_id: runId,
+    logical_date: new Date().toISOString(),
+    conf: {
+      sync_mode: config.syncMode || 'incremental',
+      enable_products_sync: config.enableProducts !== false,
+      enable_customers_sync: config.enableCustomers !== false,
+      enable_orders_sync: config.enableOrders !== false,
+      triggered_by: 'app_pxy6_com',
+      trigger_time: new Date().toISOString(),
+    },
+    note: config.note || 'Triggered from app.pxy6.com data dashboard',
+  };
+
+  return createAirflowRequest(`/dags/${dagId}/dagRuns`, {
+    method: 'POST',
+    body: JSON.stringify(requestBody),
+  });
+};
+
+const getDagRunStatus = async (runId: string) => {
+  const dagId = 'shopify_data_pipeline';
+  return createAirflowRequest(`/dags/${dagId}/dagRuns/${runId}`);
+};
+
+const getTaskInstances = async (runId: string) => {
+  const dagId = 'shopify_data_pipeline';
+  return createAirflowRequest(`/dags/${dagId}/dagRuns/${runId}/taskInstances`);
+};
+
 // GET /api/data-sync/status/{runId}
-// GET /api/data-sync/metrics
 export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const pathname = url.pathname;
-  const searchParams = url.searchParams;
 
   try {
-    console.log('airflowClientModule:', Object.keys(airflowClientModule));
-    console.log('getAirflowClient type:', typeof airflowClientModule.getAirflowClient);
-    const airflowClient = airflowClientModule.getAirflowClient();
-
-    // GET /api/data-sync/history
-    if (pathname === '/api/data-sync/history') {
-      const limit = parseInt(searchParams.get('limit') || '10', 10);
-      const history = await airflowClient.getSyncHistory(limit);
-      
-      return json({
-        success: true,
-        data: history,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
     // GET /api/data-sync/status/{runId}
     if (pathname.startsWith('/api/data-sync/status/')) {
       const runId = pathname.split('/').pop();
@@ -50,8 +156,8 @@ export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => 
         }, { status: 400 });
       }
 
-      const dagRun = await airflowClient.getDagRunStatus(runId);
-      const taskInstances = await airflowClient.getTaskInstances(runId);
+      const dagRun = await getDagRunStatus(runId);
+      const taskInstances = await getTaskInstances(runId);
       
       return json({
         success: true,
@@ -60,17 +166,6 @@ export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => 
           taskInstances: taskInstances.task_instances,
           totalTasks: taskInstances.total_entries,
         },
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // GET /api/data-sync/metrics
-    if (pathname === '/api/data-sync/metrics') {
-      const metrics = await getShopifyDataMetrics();
-      
-      return json({
-        success: true,
-        data: metrics,
         timestamp: new Date().toISOString(),
       });
     }
@@ -117,12 +212,8 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
       }, { status: 400 });
     }
 
-    console.log('airflowClientModule:', Object.keys(airflowClientModule));
-    console.log('getAirflowClient type:', typeof airflowClientModule.getAirflowClient);
-    const airflowClient = airflowClientModule.getAirflowClient();
-
     // Test connection before triggering
-    const isConnected = await airflowClient.testConnection();
+    const isConnected = await testAirflowConnection();
     if (!isConnected) {
       return json({
         success: false,
@@ -131,7 +222,7 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
     }
 
     // Trigger the DAG
-    const dagRun = await airflowClient.triggerDataSync({
+    const dagRun = await triggerDataSync({
       syncMode,
       enableProducts,
       enableCustomers,
@@ -161,197 +252,3 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
     }, { status: 500 });
   }
 });
-
-/**
- * Get Shopify data metrics from the database
- */
-async function getShopifyDataMetrics() {
-  try {
-    // Get basic counts - use fallback values if Shopify models don't exist yet
-    let productsCount = 0;
-    let customersCount = 0;
-    let ordersCount = 0;
-    let collectionsCount = 0;
-    let recentOrdersCount = 0;
-    let recentCustomersCount = 0;
-    
-    try {
-      const counts = await Promise.all([
-        (prisma as any).product?.count() || 0,
-        (prisma as any).customer?.count() || 0,
-        (prisma as any).order?.count() || 0,
-        (prisma as any).collection?.count() || 0,
-        (prisma as any).order?.count({
-          where: {
-            shopifyCreatedAt: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-            },
-          },
-        }) || 0,
-        (prisma as any).customer?.count({
-          where: {
-            shopifyCreatedAt: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-            },
-          },
-        }) || 0,
-      ]);
-      
-      [productsCount, customersCount, ordersCount, collectionsCount, recentOrdersCount, recentCustomersCount] = counts;
-    } catch (dbError) {
-      console.warn('Some Shopify models not available, using fallback values:', dbError);
-    }
-
-    // Get revenue metrics with fallback
-    let revenueMetrics = { _sum: { totalPrice: 0 }, _avg: { totalPrice: 0 } };
-    let topProductDetails: any[] = [];
-    let latestSyncLog: any = null;
-    let syncStates: any[] = [];
-    
-    try {
-      if ((prisma as any).order) {
-        revenueMetrics = await (prisma as any).order.aggregate({
-          _sum: {
-            totalPrice: true,
-          },
-          _avg: {
-            totalPrice: true,
-          },
-          where: {
-            financialStatus: 'paid',
-            cancelled: false,
-          },
-        });
-      }
-    } catch (err) {
-      console.warn('Revenue metrics not available:', err);
-    }
-
-    try {
-      if ((prisma as any).orderLineItem) {
-        // Get top products by order frequency
-        const topProducts = await (prisma as any).orderLineItem.groupBy({
-          by: ['productId'],
-          _count: {
-            productId: true,
-          },
-          _sum: {
-            quantity: true,
-          },
-          orderBy: {
-            _count: {
-              productId: 'desc',
-            },
-          },
-          take: 5,
-        });
-
-        // Get product details for top products
-        topProductDetails = await Promise.all(
-          topProducts.map(async (item: any) => {
-            if (!item.productId) return null;
-            
-            try {
-              const product = await (prisma as any).product?.findUnique({
-                where: { id: item.productId },
-                select: {
-                  id: true,
-                  title: true,
-                  handle: true,
-                  vendor: true,
-                  productType: true,
-                },
-              });
-              
-              return {
-                ...product,
-                orderCount: item._count.productId,
-                totalQuantitySold: item._sum.quantity || 0,
-              };
-            } catch (err) {
-              console.warn('Product details not available:', err);
-              return null;
-            }
-          })
-        );
-        
-        topProductDetails = topProductDetails.filter(Boolean);
-      }
-    } catch (err) {
-      console.warn('Top products not available:', err);
-    }
-
-    try {
-      if ((prisma as any).syncLog) {
-        // Get latest sync information
-        latestSyncLog = await (prisma as any).syncLog.findFirst({
-          orderBy: {
-            startedAt: 'desc',
-          },
-          select: {
-            id: true,
-            entityType: true,
-            operation: true,
-            status: true,
-            startedAt: true,
-            completedAt: true,
-            recordsProcessed: true,
-            recordsCreated: true,
-            recordsUpdated: true,
-            errorMessage: true,
-          },
-        });
-      }
-    } catch (err) {
-      console.warn('Sync log not available:', err);
-    }
-
-    try {
-      if ((prisma as any).syncState) {
-        // Get sync state for all entities
-        syncStates = await (prisma as any).syncState.findMany({
-          select: {
-            entityType: true,
-            lastSyncAt: true,
-            isActive: true,
-            syncVersion: true,
-          },
-        });
-      }
-    } catch (err) {
-      console.warn('Sync states not available:', err);
-    }
-
-    return {
-      catalog: {
-        products: productsCount,
-        customers: customersCount,
-        orders: ordersCount,
-        collections: collectionsCount,
-      },
-      recent: {
-        ordersLast7Days: recentOrdersCount,
-        customersLast7Days: recentCustomersCount,
-      },
-      revenue: {
-        total: revenueMetrics._sum.totalPrice || 0,
-        average: revenueMetrics._avg.totalPrice || 0,
-      },
-      topProducts: topProductDetails.filter(Boolean),
-      sync: {
-        lastSync: latestSyncLog,
-        syncStates,
-      },
-      freshness: {
-        dataAsOf: new Date().toISOString(),
-        lastUpdated: syncStates.reduce((latest: Date, state: any) => {
-          return state.lastSyncAt > latest ? state.lastSyncAt : latest;
-        }, new Date(0)).toISOString(),
-      },
-    };
-
-  } catch (error) {
-    console.error('Failed to get Shopify data metrics:', error);
-    throw new Error('Failed to retrieve data metrics');
-  }
-}
