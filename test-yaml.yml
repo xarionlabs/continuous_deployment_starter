@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  test:
+    image: nginx
+    ports:
+      - "80:80"
+    environment:
+      - TEST=value
+      - VALID_YAML=true
