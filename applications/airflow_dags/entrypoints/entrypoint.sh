@@ -3,8 +3,48 @@ set -e
 
 echo "Starting Airflow DAGs package..."
 
+# Activate virtual environment if it exists
+if [ -d "/opt/venv" ]; then
+    echo "Activating virtual environment..."
+    source /opt/venv/bin/activate
+    echo "Virtual environment activated: $(which python)"
+    echo "Python version: $(python --version)"
+    echo "Pip version: $(pip --version)"
+else
+    echo "No virtual environment found, using system Python"
+fi
+
 # Set PYTHONPATH to include src directory
 export PYTHONPATH=/app/src:$PYTHONPATH
+
+# Validate environment
+echo "Validating environment..."
+python -c "
+import sys
+import os
+print(f'Python executable: {sys.executable}')
+print(f'Python version: {sys.version}')
+print(f'Python path: {sys.path[:3]}...')
+
+# Test key dependencies
+try:
+    import gql
+    print('✓ GQL (GraphQL client) available')
+except ImportError:
+    print('✗ GQL not available')
+
+try:
+    import asyncpg
+    print('✓ AsyncPG (PostgreSQL driver) available')
+except ImportError:
+    print('✗ AsyncPG not available')
+
+try:
+    import airflow
+    print(f'✓ Airflow available: {airflow.__version__}')
+except ImportError:
+    print('✗ Airflow not available')
+"
 
 # Validate DAGs by importing them
 echo "Validating DAGs..."

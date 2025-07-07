@@ -36,7 +36,7 @@ dag = DAG(
     'shopify_customer_data',
     default_args=default_args,
     description='Extract and process Shopify customer data',
-    schedule_interval='0 2 * * *',  # Daily at 2:00 AM UTC
+    schedule='0 2 * * *',  # Daily at 2:00 AM UTC
     max_active_runs=1,
     tags=['shopify', 'customers', 'data-extraction'],
 )

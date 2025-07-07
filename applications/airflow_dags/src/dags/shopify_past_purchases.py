@@ -68,7 +68,7 @@ dag = DAG(
     DAG_ID,
     default_args=default_args,
     description=DESCRIPTION,
-    schedule_interval=SCHEDULE_INTERVAL,
+    schedule=SCHEDULE_INTERVAL,
     catchup=CATCHUP,
     max_active_runs=MAX_ACTIVE_RUNS,
     max_active_tasks=MAX_ACTIVE_TASKS,

@@ -30,7 +30,7 @@ from airflow.sensors.external_task import ExternalTaskSensor
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.exceptions import AirflowException
 from airflow.models import Variable
-from airflow.utils.dates import days_ago
+# from airflow.utils.dates import days_ago  # Not available in Airflow 3.0.2
 from airflow.utils.state import State
 
 import structlog
@@ -87,7 +87,7 @@ dag = DAG(
     DAG_ID,
     default_args=default_args,
     description=DESCRIPTION,
-    schedule_interval=SCHEDULE_INTERVAL,
+    schedule=SCHEDULE_INTERVAL,
     catchup=CATCHUP,
     max_active_runs=MAX_ACTIVE_RUNS,
     max_active_tasks=MAX_ACTIVE_TASKS,

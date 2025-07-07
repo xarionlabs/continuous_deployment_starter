@@ -36,7 +36,7 @@ dag = DAG(
     'shopify_order_data',
     default_args=default_args,
     description='Extract and process Shopify order data',
-    schedule_interval='0 */4 * * *',  # Every 4 hours
+    schedule='0 */4 * * *',  # Every 4 hours
     max_active_runs=1,
     tags=['shopify', 'orders', 'data-extraction'],
 )

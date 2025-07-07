@@ -3,6 +3,15 @@ set -e
 
 echo "Running tests for Airflow DAGs..."
 
+# Activate virtual environment if it exists
+if [ -d "/opt/venv" ]; then
+    echo "Activating virtual environment..."
+    source /opt/venv/bin/activate
+    echo "Virtual environment activated: $(which python)"
+else
+    echo "No virtual environment found, using system Python"
+fi
+
 # Set PYTHONPATH to include src directory
 export PYTHONPATH=/app/src:$PYTHONPATH
 
