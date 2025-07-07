@@ -47,7 +47,7 @@ COPY --from=builder /root/.cache/pypoetry/virtualenvs/ /opt/poetry/venvs/
 COPY . .
 
 # Find and activate the virtual environment
-RUN VENV_PATH=$(find /opt/poetry/venvs -name "release-tool-*" -type d | head -1) && \
+RUN VENV_PATH=$(find /opt/poetry/venvs -name "deployment-manager-*" -type d | head -1) && \
     echo "Found virtual environment at: $VENV_PATH" && \
     ln -sf "$VENV_PATH" /app/.venv && \
     # Fix the shebang in the release-tool script to point to the correct python

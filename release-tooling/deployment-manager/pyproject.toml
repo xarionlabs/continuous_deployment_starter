@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "release-tool"
+name = "deployment-manager"
 version = "0.1.0"
-description = "Utility for managing selective service releases."
+description = "Utility for managing selective service deployments and releases."
 authors = ["Your Name <you@example.com>"] # Placeholder, user can change
 readme = "README.md" # Will create this later if needed
-packages = [{include = "release_tool"}]
+packages = [{include = "release_tool", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.9" # Specify a compatible Python version, e.g., 3.9+

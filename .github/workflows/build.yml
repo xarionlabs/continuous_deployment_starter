@@ -199,7 +199,7 @@ jobs:
           if [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
-            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/release-tool" >> $GITHUB_OUTPUT
+            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/deployment-manager" >> $GITHUB_OUTPUT
           else
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           fi
@@ -292,8 +292,8 @@ jobs:
           git push origin releases
 
   trigger-staging-release:
-    needs: [skip-check, update-the-release-branch]
-    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
+    needs: [skip-check, build-application, update-the-release-branch]
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' && (needs.build-application.result == 'success' || needs.build-application.result == 'skipped') }}
     uses: ./.github/workflows/release.yml
     with:
       environment: staging

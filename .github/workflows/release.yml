@@ -88,7 +88,7 @@ jobs:
           AFFECTED_SERVICES: ${{ steps.determine_changes.outputs.affected_services_list }}
           # GITHUB_REPOSITORY_OWNER is available by default in actions
           # RELEASE_TOOL_IMAGE_URL will use latest tag from ghcr.io
-          RELEASE_TOOL_IMAGE_URL_FROM_BUILD: ghcr.io/${{ github.repository }}/release-tool:latest
+          RELEASE_TOOL_IMAGE_URL_FROM_BUILD: ghcr.io/${{ github.repository }}/deployment-manager:latest
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
