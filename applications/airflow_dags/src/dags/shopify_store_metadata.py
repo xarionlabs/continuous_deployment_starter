@@ -26,7 +26,7 @@ import hashlib
 
 from airflow import DAG
 from airflow.decorators import task, task_group
-from airflow.operators.dummy import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import BranchPythonOperator
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.exceptions import AirflowException
@@ -1362,7 +1362,7 @@ def generate_catalog_report(**context) -> Dict[str, Any]:
     return report
 
 # Pipeline End
-catalog_pipeline_end = DummyOperator(
+catalog_pipeline_end = EmptyOperator(
     task_id="catalog_pipeline_end",
     trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
     dag=dag,

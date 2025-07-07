@@ -25,7 +25,7 @@ import json
 
 from airflow import DAG
 from airflow.decorators import task, task_group
-from airflow.operators.dummy import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import BranchPythonOperator
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.exceptions import AirflowException
@@ -1083,7 +1083,7 @@ def generate_sync_report(**context) -> Dict[str, Any]:
     return report
 
 # Pipeline End
-pipeline_end = DummyOperator(
+pipeline_end = EmptyOperator(
     task_id="pipeline_end",
     trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
     dag=dag,

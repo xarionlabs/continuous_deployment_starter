@@ -13,6 +13,48 @@ services:
       - airflow_network
     restart: unless-stopped
 
+  airflow-dags-deploy:
+    build: .
+    volumes:
+      - airflow_dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+    command: >
+      sh -c "
+        echo 'Deploying DAGs to local development environment...' &&
+        rm -rf /opt/airflow/dags/* &&
+        cp -r /app/src/dags/* /opt/airflow/dags/ &&
+        cp -r /app/src/utils /opt/airflow/dags/ &&
+        cp -r /app/src/operators /opt/airflow/dags/ &&
+        cp -r /app/src/hooks /opt/airflow/dags/ &&
+        echo 'DAGs deployed successfully.'
+      "
+
+  airflow-standalone:
+    image: apache/airflow:3.0.2
+    volumes:
+      - airflow_dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+      - airflow_logs:/opt/airflow/logs
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:localpassword@db:5432/airflow_test
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'a25c62d375079c43344b91f38ad6fce29d2a9a31456e15e5c5d8ec4f'
+      PYTHONPATH: /opt/airflow/dags
+      SHOPIFY_SHOP_NAME: ${SHOPIFY_SHOP_NAME:-test-shop}
+      SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ACCESS_TOKEN:-test-token}
+      DEVELOPMENT: "true"
+    depends_on:
+      - db
+      - airflow-dags-deploy
+    networks:
+      - airflow_network
+    ports:
+      - "8080:8080"
+    command: airflow standalone
+
   airflow-dags:
     build: .
     working_dir: /app
@@ -84,6 +126,9 @@ services:
 
 volumes:
   postgres_data:
+  airflow_dags:
+  airflow_plugins:
+  airflow_logs:
 
 networks:
   airflow_network:

@@ -22,7 +22,7 @@ import asyncio
 
 from airflow import DAG
 from airflow.decorators import task, task_group
-from airflow.operators.dummy import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import BranchPythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
@@ -304,12 +304,12 @@ def parallel_dag_coordination():
         failed_states=[State.FAILED, State.UPSTREAM_FAILED],
     )
     
-    trigger_all_dags = DummyOperator(
+    trigger_all_dags = EmptyOperator(
         task_id="trigger_all_dags",
         trigger_rule=TriggerRule.NONE_FAILED,
     )
     
-    wait_for_all_dags = DummyOperator(
+    wait_for_all_dags = EmptyOperator(
         task_id="wait_for_all_dags",
         trigger_rule=TriggerRule.ALL_SUCCESS,
     )
@@ -324,7 +324,7 @@ def parallel_dag_coordination():
 def validation_operations():
     """Task group for data validation operations"""
     
-    validation_start = DummyOperator(task_id="validation_start")
+    validation_start = EmptyOperator(task_id="validation_start")
     
     # Products Validation
     products_validation = ShopifyDataValidationOperator(
@@ -401,7 +401,7 @@ def validation_operations():
         trigger_rule=TriggerRule.NONE_FAILED,
     )
     
-    validation_end = DummyOperator(
+    validation_end = EmptyOperator(
         task_id="validation_end",
         trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
     )
@@ -618,7 +618,7 @@ def cleanup_old_data(**context) -> Dict[str, Any]:
     return cleanup_results
 
 # Pipeline End
-pipeline_end = DummyOperator(
+pipeline_end = EmptyOperator(
     task_id="pipeline_end",
     trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
     dag=dag,

@@ -3,7 +3,7 @@
 client_id = "58f7b8ec9072c0d77a9293b607a010c2"
 name = "pxy6-development"
 handle = "pxy6-development"
-application_url = "https://guns-reed-insurance-minor.trycloudflare.com"
+application_url = "https://barely-pointing-lots-ins.trycloudflare.com"
 embedded = true
 
 [build]
@@ -23,7 +23,7 @@ api_version = "2025-04"
 scopes = "read_all_orders,read_customers,read_inventory,read_metaobjects,read_orders,read_product_listings,read_products,read_returns,write_metaobjects"
 
 [auth]
-redirect_urls = ["https://guns-reed-insurance-minor.trycloudflare.com/auth/callback", "https://guns-reed-insurance-minor.trycloudflare.com/auth/shopify/callback", "https://guns-reed-insurance-minor.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://barely-pointing-lots-ins.trycloudflare.com/auth/callback", "https://barely-pointing-lots-ins.trycloudflare.com/auth/shopify/callback", "https://barely-pointing-lots-ins.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

@@ -104,8 +104,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a containerized multi-application deployment system with automated CI/CD pipelines:
 
 ### Project Structure
-- `applications/` - Individual containerized applications
-- `services/` - Infrastructure service configurations (PostgreSQL, Nginx proxy, Airflow)
+- `applications/` - Individual containerized applications with docker-compose files for local development
+- `services/` - Infrastructure service configurations deployed on staging/live servers (PostgreSQL, Nginx proxy, Airflow)
 - `tools/` - Helper tools and automation scripts
 - `.github/workflows/` - CI/CD pipeline definitions
 
@@ -128,7 +128,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Key Technologies
 - **Containerization**: Docker with multi-stage builds
-- **Orchestration**: Docker Compose for local development, Podman with systemd for production
+- **Orchestration**: Docker Compose for local development (use application-level docker-compose files), Podman with systemd for production (uses services/ configurations)
 - **Registry**: GitHub Container Registry (ghcr.io)
 - **Reverse Proxy**: Nginx for external access and SSL termination
 - **Database**: PostgreSQL with migrations via Prisma (app.pxy6.com) and Alembic (app_1)

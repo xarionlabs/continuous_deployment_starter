@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - db_network
+      - app_network
     restart: unless-stopped
 
   app:
@@ -22,29 +22,33 @@ services:
       - ./src:/app/src
       - ./entrypoints:/app/entrypoints
     entrypoint: ["./entrypoints/entrypoint.sh"]
-    env_file:
-      - src/.env
     environment:
+      SHOPIFY_API_KEY: 58f7b8ec9072c0d77a9293b607a010c2
       DATABASE_PROVIDER: postgresql
-      DATABASE_URL: postgresql://pxy6:${PSQL_PXY6_PASSWORD}@db:5432/pxy6
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
+      PSQL_PXY6_PASSWORD: localpassword
       NODE_ENV: development
     ports:
       - "3000:3000"
     networks:
-      - db_network
+      - app_network
 
   tests:
     build: .
+    depends_on:
+      - db
     working_dir: /app
     volumes:
       - ./src:/app/src
       - ./entrypoints:/app/entrypoints
     networks:
-      - db_network
+      - app_network
     entrypoint: ["./entrypoints/entrypoint_test.sh"]
     environment:
+      SHOPIFY_API_KEY: 58f7b8ec9072c0d77a9293b607a010c2
       DATABASE_PROVIDER: postgresql
-      DATABASE_URL: postgresql://pxy6:${PSQL_PXY6_PASSWORD}@db:5432/pxy6
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
+      PSQL_PXY6_PASSWORD: localpassword
       NODE_ENV: test
 
   e2e_tests:
@@ -56,16 +60,18 @@ services:
       - ./src:/app/src
       - ./entrypoints:/app/entrypoints
     networks:
-      - db_network
+      - app_network
     entrypoint: ["./entrypoints/entrypoint_e2e.sh"]
     environment:
+      SHOPIFY_API_KEY: 58f7b8ec9072c0d77a9293b607a010c2
       DATABASE_PROVIDER: postgresql
-      DATABASE_URL: postgresql://pxy6:${PSQL_PXY6_PASSWORD}@db:5432/pxy6
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
+      PSQL_PXY6_PASSWORD: localpassword
       NODE_ENV: test
 
 volumes:
   postgres_data:
 
 networks:
-  db_network:
+  app_network:
     driver: bridge

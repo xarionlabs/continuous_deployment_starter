@@ -1,8 +1,10 @@
 import {Page, Layout, Card, BlockStack, Text, Button, InlineStack, Spinner, Banner} from "@shopify/polaris";
 import {TitleBar} from "@shopify/app-bridge-react";
-import {useEffect, useState, useCallback} from "react";
+import {useState, useCallback} from "react";
 import type {LoaderFunctionArgs} from "@remix-run/node";
 import {json} from "@remix-run/node";
+import {useLoaderData} from "@remix-run/react";
+import prisma from "../db.server";
 
 // Use a fallback icon as RefreshMajor is not available
 const RefreshIcon = () => (
@@ -83,31 +85,20 @@ interface SyncStatus {
 }
 
 function DataInsightsSection() {
-  const [metrics, setMetrics] = useState<DataMetrics | null>(null);
+  const loaderData = useLoaderData<typeof loader>();
+  const [metrics] = useState<DataMetrics | null>(loaderData.metrics);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ isLoading: false });
   const [error, setError] = useState<string | null>(null);
 
   const loadMetrics = useCallback(async () => {
     try {
-      const response = await fetch('/api/data-sync/metrics');
-      const result = await response.json();
-      
-      if (result.success) {
-        setMetrics(result.data);
-        setError(null);
-      } else {
-        setError(result.error || 'Failed to load metrics');
-      }
+      // Reload the page to get fresh data
+      window.location.reload();
     } catch (err) {
       setError('Failed to load metrics');
       console.error('Error loading metrics:', err);
     }
   }, []);
-
-  // Load initial metrics
-  useEffect(() => {
-    loadMetrics();
-  }, [loadMetrics]);
 
   const pollSyncStatus = useCallback(async (runId: string) => {
     let attempts = 0;
@@ -392,9 +383,213 @@ function DataDashboard() {
 
 // Loader function for initial data
 export async function loader({ request }: LoaderFunctionArgs) {
-  // This loader doesn't need to pre-fetch data since we're loading it client-side
-  // but it's here for future use if needed
-  return json({ timestamp: new Date().toISOString() });
+  const metrics = await getShopifyDataMetrics();
+  return json({ 
+    timestamp: new Date().toISOString(),
+    metrics 
+  });
+}
+
+/**
+ * Get Shopify data metrics from the database
+ */
+async function getShopifyDataMetrics(): Promise<DataMetrics> {
+  try {
+    // Get basic counts - use fallback values if Shopify models don't exist yet
+    let productsCount = 0;
+    let customersCount = 0;
+    let ordersCount = 0;
+    let collectionsCount = 0;
+    let recentOrdersCount = 0;
+    let recentCustomersCount = 0;
+    
+    try {
+      const counts = await Promise.all([
+        (prisma as any).product?.count() || 0,
+        (prisma as any).customer?.count() || 0,
+        (prisma as any).order?.count() || 0,
+        (prisma as any).collection?.count() || 0,
+        (prisma as any).order?.count({
+          where: {
+            shopifyCreatedAt: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+            },
+          },
+        }) || 0,
+        (prisma as any).customer?.count({
+          where: {
+            shopifyCreatedAt: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+            },
+          },
+        }) || 0,
+      ]);
+      
+      [productsCount, customersCount, ordersCount, collectionsCount, recentOrdersCount, recentCustomersCount] = counts;
+    } catch (dbError) {
+      console.warn('Some Shopify models not available, using fallback values:', dbError);
+    }
+
+    // Get revenue metrics with fallback
+    let revenueMetrics = { _sum: { totalPrice: 0 }, _avg: { totalPrice: 0 } };
+    let topProductDetails: any[] = [];
+    let latestSyncLog: any = null;
+    let syncStates: any[] = [];
+    
+    try {
+      if ((prisma as any).order) {
+        revenueMetrics = await (prisma as any).order.aggregate({
+          _sum: {
+            totalPrice: true,
+          },
+          _avg: {
+            totalPrice: true,
+          },
+          where: {
+            financialStatus: 'paid',
+            cancelled: false,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('Revenue metrics not available:', err);
+    }
+
+    try {
+      if ((prisma as any).orderLineItem) {
+        // Get top products by order frequency
+        const topProducts = await (prisma as any).orderLineItem.groupBy({
+          by: ['productId'],
+          _count: {
+            productId: true,
+          },
+          _sum: {
+            quantity: true,
+          },
+          orderBy: {
+            _count: {
+              productId: 'desc',
+            },
+          },
+          take: 5,
+        });
+
+        // Get product details for top products
+        topProductDetails = await Promise.all(
+          topProducts.map(async (item: any) => {
+            if (!item.productId) return null;
+            
+            try {
+              const product = await (prisma as any).product?.findUnique({
+                where: { id: item.productId },
+                select: {
+                  id: true,
+                  title: true,
+                  handle: true,
+                  vendor: true,
+                  productType: true,
+                },
+              });
+              
+              return {
+                ...product,
+                orderCount: item._count.productId,
+                totalQuantitySold: item._sum.quantity || 0,
+              };
+            } catch (err) {
+              console.warn('Product details not available:', err);
+              return null;
+            }
+          })
+        );
+        
+        topProductDetails = topProductDetails.filter(Boolean);
+      }
+    } catch (err) {
+      console.warn('Top products not available:', err);
+    }
+
+    try {
+      if ((prisma as any).syncLog) {
+        // Get latest sync information
+        latestSyncLog = await (prisma as any).syncLog.findFirst({
+          orderBy: {
+            startedAt: 'desc',
+          },
+          select: {
+            id: true,
+            entityType: true,
+            operation: true,
+            status: true,
+            startedAt: true,
+            completedAt: true,
+            recordsProcessed: true,
+            recordsCreated: true,
+            recordsUpdated: true,
+            errorMessage: true,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('Sync log not available:', err);
+    }
+
+    try {
+      if ((prisma as any).syncState) {
+        // Get sync state for all entities
+        syncStates = await (prisma as any).syncState.findMany({
+          select: {
+            entityType: true,
+            lastSyncAt: true,
+            isActive: true,
+            syncVersion: true,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('Sync states not available:', err);
+    }
+
+    return {
+      catalog: {
+        products: productsCount,
+        customers: customersCount,
+        orders: ordersCount,
+        collections: collectionsCount,
+      },
+      recent: {
+        ordersLast7Days: recentOrdersCount,
+        customersLast7Days: recentCustomersCount,
+      },
+      revenue: {
+        total: revenueMetrics._sum.totalPrice || 0,
+        average: revenueMetrics._avg.totalPrice || 0,
+      },
+      topProducts: topProductDetails.filter(Boolean),
+      sync: {
+        lastSync: latestSyncLog,
+        syncStates,
+      },
+      freshness: {
+        dataAsOf: new Date().toISOString(),
+        lastUpdated: syncStates.reduce((latest: Date, state: any) => {
+          return state.lastSyncAt > latest ? state.lastSyncAt : latest;
+        }, new Date(0)).toISOString(),
+      },
+    };
+
+  } catch (error) {
+    console.error('Failed to get Shopify data metrics:', error);
+    // Return empty metrics instead of throwing
+    return {
+      catalog: { products: 0, customers: 0, orders: 0, collections: 0 },
+      recent: { ordersLast7Days: 0, customersLast7Days: 0 },
+      revenue: { total: 0, average: 0 },
+      topProducts: [],
+      sync: { lastSync: null, syncStates: [] },
+      freshness: { dataAsOf: new Date().toISOString(), lastUpdated: new Date(0).toISOString() },
+    };
+  }
 }
 
 export default function DataPage() {

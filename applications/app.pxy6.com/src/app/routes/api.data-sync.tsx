@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { getAirflowClient } from "../utils/airflow.client";
+import * as airflowClientModule from "../utils/airflow.client";
 import { withCors, withCorsLoader } from "../utils/cors.injector";
 import prisma from "../db.server";
 
@@ -23,7 +23,9 @@ export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => 
   const searchParams = url.searchParams;
 
   try {
-    const airflowClient = getAirflowClient();
+    console.log('airflowClientModule:', Object.keys(airflowClientModule));
+    console.log('getAirflowClient type:', typeof airflowClientModule.getAirflowClient);
+    const airflowClient = airflowClientModule.getAirflowClient();
 
     // GET /api/data-sync/history
     if (pathname === '/api/data-sync/history') {
@@ -115,7 +117,9 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
       }, { status: 400 });
     }
 
-    const airflowClient = getAirflowClient();
+    console.log('airflowClientModule:', Object.keys(airflowClientModule));
+    console.log('getAirflowClient type:', typeof airflowClientModule.getAirflowClient);
+    const airflowClient = airflowClientModule.getAirflowClient();
 
     // Test connection before triggering
     const isConnected = await airflowClient.testConnection();
@@ -342,7 +346,7 @@ async function getShopifyDataMetrics() {
         dataAsOf: new Date().toISOString(),
         lastUpdated: syncStates.reduce((latest: Date, state: any) => {
           return state.lastSyncAt > latest ? state.lastSyncAt : latest;
-        }, new Date(0)),
+        }, new Date(0)).toISOString(),
       },
     };
 
