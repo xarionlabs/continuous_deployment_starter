@@ -20,6 +20,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `[force-build]` - Force build all applications regardless of changes
 - `[skip-build]` - Skip the entire workflow (no builds or releases)
 - `[release-only]` - Skip builds but proceed with releases using latest images
+- `[deploy-services: service1,service2,service3]` - Deploy only specified docker-compose service names
+- `[deploy-services: all]` - Deploy all services from all docker-compose files
 
 ### Docker Testing Commands
 - `./utilities/test-docker-builds.sh` - Test all Dockerfile builds locally
@@ -66,7 +68,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Note: This packages DAGs and dependencies for the Airflow service in `services/06_airflow/`
 
 #### Release Tool (Python CLI)
-- `cd release-tooling/pytool` - Navigate to release tool directory
+- `cd release-tooling/deployment-manager` - Navigate to release tool directory
 - `poetry install` - Install dependencies
 - `poetry run pytest` - Run tests
 - `poetry run release-tool --help` - Show CLI help
@@ -91,7 +93,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Utility Types
 1. **user_management**: Python utility for managing users with Docker containerization
-2. **release-tooling**: Python CLI tool for managing selective service deployments
+2. **deployment-manager**: Python CLI tool for managing selective service deployments (located in release-tooling/deployment-manager)
 
 ### CI/CD Pipeline Flow
 1. **Build Workflow**: Detects changed applications, builds Docker images, runs tests, pushes to GHCR

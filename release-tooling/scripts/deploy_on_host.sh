@@ -32,6 +32,7 @@ log_error() {
 SCRIPT_AFFECTED_SERVICES="${1:-}"
 SCRIPT_VARS_JSON_STR="${2:-{\}}"
 SCRIPT_SECRETS_JSON_STR="${3:-{\}}"
+SCRIPT_DEPLOY_SERVICES="${4:-}"
 
 # --- Main Function ---
 main() {
@@ -81,6 +82,7 @@ main() {
 
     log_step "Initializing Deployment on Host"
     log_info "Affected Services: '$SCRIPT_AFFECTED_SERVICES'"
+    log_info "Deploy Services: '$SCRIPT_DEPLOY_SERVICES'"
 log_info "Project Directory on Host: $PROJECT_DIR_ON_HOST"
 log_info "Services Definitions on Host: $SERVICES_DEF_DIR_ON_HOST"
 log_info "Systemd User Units Directory on Host: $SYSTEMD_USER_UNITS_DIR_ON_HOST"
@@ -109,7 +111,7 @@ log_info "Successfully pulled $RELEASE_TOOL_FULL_IMAGE_NAME."
 log_step "Refreshing Podman Secrets (Host Script)"
 _SCRIPT_PATH="$HOST_SCRIPTS_DIR/refresh_podman_secrets.sh"
 if [ -f "$_SCRIPT_PATH" ]; then
-    "$_SCRIPT_PATH" "$SECRETS_JSON_STR"
+    "$_SCRIPT_PATH" "$SCRIPT_SECRETS_JSON_STR"
 else
     log_warning "refresh_podman_secrets.sh not found at $_SCRIPT_PATH. Skipping."
 fi
@@ -159,6 +161,11 @@ log_step "Generating Quadlet Units (Python Tool)"
 # - Services definitions from host (ro)
 # - Systemd user units output directory on host (rw)
 # Note: Paths inside the container for the tool are fixed (e.g., /app/services, /app/output_units)
+DEPLOY_SERVICES_ARG=""
+if [ -n "$SCRIPT_DEPLOY_SERVICES" ]; then
+    DEPLOY_SERVICES_ARG="--deploy-services $SCRIPT_DEPLOY_SERVICES"
+fi
+
 podman run --rm \
     --security-opt label=disable \
     -v "$SERVICES_DEF_DIR_ON_HOST:/app/services:ro,Z" \
@@ -168,7 +175,8 @@ podman run --rm \
     --services-dir "/app/services" \
     --output-dir "/app/output_units" \
     --meta-target "all-containers.target" \
-    --vars-json "$SCRIPT_VARS_JSON_STR"
+    --vars-json "$SCRIPT_VARS_JSON_STR" \
+    $DEPLOY_SERVICES_ARG
 log_info "Quadlet unit generation attempt complete."
 
 

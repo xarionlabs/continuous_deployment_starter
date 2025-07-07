@@ -6,6 +6,10 @@ on:
       environment:
         required: true
         type: string
+      deploy_services:
+        required: false
+        type: string
+        default: ''
 
 permissions:
   packages: write
@@ -86,6 +90,7 @@ jobs:
           VARS_JSON: ${{ toJson(vars) }}
           SECRETS_JSON: ${{ toJson(secrets) }}
           AFFECTED_SERVICES: ${{ steps.determine_changes.outputs.affected_services_list }}
+          DEPLOY_SERVICES: ${{ inputs.deploy_services }}
           # GITHUB_REPOSITORY_OWNER is available by default in actions
           # RELEASE_TOOL_IMAGE_URL will use latest tag from ghcr.io
           RELEASE_TOOL_IMAGE_URL_FROM_BUILD: ghcr.io/${{ github.repository }}/deployment-manager:latest
@@ -93,7 +98,7 @@ jobs:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES, GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY, RELEASE_TOOL_IMAGE_URL_FROM_BUILD
+          envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES, DEPLOY_SERVICES, GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY, RELEASE_TOOL_IMAGE_URL_FROM_BUILD
           script: |
             set -e
             echo "--- Starting Remote Orchestration ---"
@@ -112,7 +117,7 @@ jobs:
                 exit 1
             fi
             cd "$PROJECT_DIR_ON_HOST"
-
+            git pull
             DEPLOY_SCRIPT_PATH="release-tooling/scripts/deploy_on_host.sh"
 
             if [ ! -f "$DEPLOY_SCRIPT_PATH" ]; then
@@ -130,6 +135,6 @@ jobs:
             # For now, let's pass it as an environment variable for deploy_on_host.sh to consume.
             export PYTHON_RELEASE_TOOL_IMAGE="$RELEASE_TOOL_IMAGE_URL_FROM_BUILD"
 
-            "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON"
+            "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON" "$DEPLOY_SERVICES"
 
             echo "--- Remote Orchestration Finished ---"

@@ -35,6 +35,7 @@ jobs:
       skip: ${{steps.skip-workflow.outputs.skip}}
       force_build: ${{steps.force-build-check.outputs.force}}
       release_only: ${{steps.release-only-check.outputs.release_only}}
+      deploy_services: ${{steps.deploy-services-check.outputs.deploy_services}}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -70,6 +71,19 @@ jobs:
             echo "Release-only mode detected - will skip builds and use latest images"
           else
             echo "release_only=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: check-deploy-services
+        id: deploy-services-check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -i "\[deploy-services:" > /dev/null; then
+            # Extract service names from [deploy-services: service1,service2,service3]
+            SERVICES=$(echo "$COMMIT_MSG" | grep -oiE '\[deploy-services:\s*[^\]]+\]' | sed -E 's/\[deploy-services:\s*([^\]]+)\]/\1/' | tr -d ' ')
+            echo "deploy_services=$SERVICES" >> $GITHUB_OUTPUT
+            echo "Deploy-services mode detected - will deploy only specified services: $SERVICES"
+          else
+            echo "deploy_services=" >> $GITHUB_OUTPUT
           fi
 
   define-tag:
@@ -166,6 +180,7 @@ jobs:
           echo "force_build output: '${{ needs.skip-check.outputs.force_build }}'"
           echo "skip output: '${{ needs.skip-check.outputs.skip }}'"
           echo "release_only output: '${{ needs.skip-check.outputs.release_only }}'"
+          echo "deploy_services output: '${{ needs.skip-check.outputs.deploy_services }}'"
 
   build-application:
     needs: [skip-check, define-tag, find-changed-applications]
@@ -309,6 +324,7 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       environment: staging
+      deploy_services: ${{ needs.skip-check.outputs.deploy_services }}
     secrets: inherit
 
   trigger-staging-e2e:
@@ -325,6 +341,7 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       environment: live
+      deploy_services: ${{ needs.skip-check.outputs.deploy_services }}
     secrets: inherit
 
   trigger-live-e2e:
