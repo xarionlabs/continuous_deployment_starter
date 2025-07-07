@@ -34,6 +34,7 @@ jobs:
     outputs:
       skip: ${{steps.skip-workflow.outputs.skip}}
       force_build: ${{steps.force-build-check.outputs.force}}
+      release_only: ${{steps.release-only-check.outputs.release_only}}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,6 +60,16 @@ jobs:
             else
               echo "force=false" >> $GITHUB_OUTPUT
             fi
+          fi
+
+      - name: check-release-only
+        id: release-only-check
+        run: |
+          if git log -1 --pretty=%B | grep -i "\[release-only\]" > /dev/null; then
+            echo "release_only=true" >> $GITHUB_OUTPUT
+            echo "Release-only mode detected - will skip builds and use latest images"
+          else
+            echo "release_only=false" >> $GITHUB_OUTPUT
           fi
 
   define-tag:
@@ -154,10 +165,11 @@ jobs:
           echo "has_changes output: '${{ steps.find_applications.outputs.has_changes }}'"
           echo "force_build output: '${{ needs.skip-check.outputs.force_build }}'"
           echo "skip output: '${{ needs.skip-check.outputs.skip }}'"
+          echo "release_only output: '${{ needs.skip-check.outputs.release_only }}'"
 
   build-application:
     needs: [skip-check, define-tag, find-changed-applications]
-    if: ${{ needs.skip-check.outputs.skip != 'true' && needs.find-changed-applications.outputs.has_changes == 'true' }}
+    if: ${{ needs.skip-check.outputs.skip != 'true' && needs.skip-check.outputs.release_only != 'true' && needs.find-changed-applications.outputs.has_changes == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -293,7 +305,7 @@ jobs:
 
   trigger-staging-release:
     needs: [skip-check, build-application, update-the-release-branch]
-    if: ${{ always() && needs.skip-check.outputs.skip != 'true' && (needs.build-application.result == 'success' || needs.build-application.result == 'skipped') }}
+    if: ${{ always() && needs.skip-check.outputs.skip != 'true' && (needs.build-application.result == 'success' || needs.build-application.result == 'skipped' || needs.skip-check.outputs.release_only == 'true') }}
     uses: ./.github/workflows/release.yml
     with:
       environment: staging

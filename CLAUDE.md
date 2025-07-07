@@ -13,9 +13,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `act` - Run GitHub Actions workflows locally using act
 - `act -l` - List available workflows and jobs
 - `act -j build-application` - Run specific job locally
-- `act --dry-run` - Show what would be executed without running
 - `act push` - Simulate push event to test build workflow
 - `act workflow_call --input environment=staging` - Test release workflow with staging environment
+
+### Commit Message Tags for CI/CD Control
+- `[force-build]` - Force build all applications regardless of changes
+- `[skip-build]` - Skip the entire workflow (no builds or releases)
+- `[release-only]` - Skip builds but proceed with releases using latest images
 
 ### Docker Testing Commands
 - `./utilities/test-docker-builds.sh` - Test all Dockerfile builds locally
@@ -109,6 +113,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 - Version tagging uses timestamp format (YYYYMMDD-HHMMSS)
 - Force build all applications with `[force-build]` in commit message
 - Skip builds with `[skip-build]` in commit message
+- Release-only mode with `[release-only]` in commit message - skips builds but proceeds with releases using latest images
 
 ### Service Communication
 - Internal services communicate through Docker networks
