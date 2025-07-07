@@ -100,8 +100,13 @@ jobs:
           echo "Valid utilities found:"
           echo "$VALID_UTILITIES"
           
-          # Combine applications and utilities
-          ALL_BUILDABLE=$(echo -e "$VALID_APPS\n$VALID_UTILITIES" | sed '/^$/d')
+          # Find all valid release-tooling directories (those with Dockerfiles)
+          VALID_RELEASE_TOOLS=$(find release-tooling -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/release-tooling\///" | sort)
+          echo "Valid release-tooling found:"
+          echo "$VALID_RELEASE_TOOLS"
+          
+          # Combine applications, utilities, and release-tooling
+          ALL_BUILDABLE=$(echo -e "$VALID_APPS\n$VALID_UTILITIES\n$VALID_RELEASE_TOOLS" | sed '/^$/d')
           echo "All buildable items:"
           echo "$ALL_BUILDABLE"
           
@@ -124,8 +129,8 @@ jobs:
             # Find which valid items have changes
             CHANGED_ITEMS=""
             for item in $VALID_ITEMS; do
-              # Check if item is in applications/ or utilities/
-              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/"; then
+              # Check if item is in applications/, utilities/, or release-tooling/
+              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/" || echo "$CHANGED_FILES" | grep -q "^release-tooling/$item/"; then
                 CHANGED_ITEMS="$CHANGED_ITEMS$item"$'\n'
               fi
             done
@@ -181,8 +186,10 @@ jobs:
             echo "path=applications/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "path=utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
+            echo "path=release-tooling/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           else
-            echo "Error: Could not find ${{ matrix.ITEM }} in applications or utilities"
+            echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, or release-tooling"
             exit 1
           fi
 
@@ -191,6 +198,8 @@ jobs:
         run: |
           if [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
+            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/release-tool" >> $GITHUB_OUTPUT
           else
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           fi
@@ -292,7 +301,7 @@ jobs:
 
   trigger-staging-e2e:
     needs: [skip-check, trigger-staging-release]
-    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
+    if: ${{ needs.skip-check.outputs.skip != 'true' && needs.trigger-staging-release.result == 'success' }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: staging
@@ -300,7 +309,7 @@ jobs:
 
   trigger-live-release:
     needs: [skip-check, trigger-staging-e2e]
-    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
+    if: ${{ needs.skip-check.outputs.skip != 'true' && needs.trigger-staging-e2e.result == 'success' }}
     uses: ./.github/workflows/release.yml
     with:
       environment: live
@@ -308,7 +317,7 @@ jobs:
 
   trigger-live-e2e:
     needs: [skip-check, trigger-live-release]
-    if: ${{ always() && needs.skip-check.outputs.skip != 'true' }}
+    if: ${{ needs.skip-check.outputs.skip != 'true' && needs.trigger-live-release.result == 'success' }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       environment: live
