@@ -11,11 +11,11 @@ from airflow.models import DAG
 # or that PYTHONPATH is set up accordingly.
 DAGS_DIR = os.path.join(os.path.dirname(__file__), "..", "dags")
 
-# Get a list of all .py files in the DAGs directory, excluding __init__.py
+# Get a list of all .py files in the DAGs directory, excluding __init__.py and utility modules
 dag_files = [
     f
     for f in os.listdir(DAGS_DIR)
-    if f.endswith(".py") and not f.startswith("__init__")
+    if f.endswith(".py") and not f.startswith("__init__") and f != "shopify_common.py"
 ]
 
 @pytest.mark.parametrize("dag_file", dag_files)
