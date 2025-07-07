@@ -234,8 +234,7 @@ jobs:
       - skip-check
       - define-tag
       - find-changed-applications
-      - build-application
-    if: ${{always() && !needs.skip-check.outputs.skip && (needs.build-application.result == 'success' || needs.build-application.result == 'skipped')}}
+    if: ${{always() && !needs.skip-check.outputs.skip}}
     permissions:
       contents: write
     steps:
