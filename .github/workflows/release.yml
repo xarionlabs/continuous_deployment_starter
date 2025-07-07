@@ -12,16 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  build_pytool: # Build job should come first or be correctly referenced by `needs`
-    name: Build Python Release Tool
-    uses: ./.github/workflows/build-release-tool.yml
-    with:
-      image_tag: latest # Or you can use a dynamic tag e.g., ${{ github.sha }}
-    secrets: inherit # Pass secrets like GITHUB_TOKEN if needed by the reusable workflow
-
   deploy_services:
     name: Deploy Services to ${{ inputs.environment }}
-    needs: build_pytool
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -95,8 +87,8 @@ jobs:
           SECRETS_JSON: ${{ toJson(secrets) }}
           AFFECTED_SERVICES: ${{ steps.determine_changes.outputs.affected_services_list }}
           # GITHUB_REPOSITORY_OWNER is available by default in actions
-          # RELEASE_TOOL_IMAGE_URL will come from the build_pytool job output
-          RELEASE_TOOL_IMAGE_URL_FROM_BUILD: ${{ needs.build_pytool.outputs.image_url }}
+          # RELEASE_TOOL_IMAGE_URL will use latest tag from ghcr.io
+          RELEASE_TOOL_IMAGE_URL_FROM_BUILD: ghcr.io/${{ github.repository }}/release-tool:latest
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}

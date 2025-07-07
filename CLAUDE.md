@@ -9,6 +9,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `find applications -type d -exec test -e '{}'/Dockerfile \; -print` - Find all applications with Dockerfiles
 - `./utilities/github-automation/see_workflow_logs.sh` - Check latest GitHub Actions workflow status and logs
 
+### Workflow Testing Commands
+- `act` - Run GitHub Actions workflows locally using act
+- `act -l` - List available workflows and jobs
+- `act -j build-application` - Run specific job locally
+- `act --dry-run` - Show what would be executed without running
+- `act push` - Simulate push event to test build workflow
+- `act workflow_call --input environment=staging` - Test release workflow with staging environment
+
+### Docker Testing Commands
+- `./utilities/test-docker-builds.sh` - Test all Dockerfile builds locally
+- `docker build -t test-image applications/[app_name]/` - Test specific application Dockerfile
+- `docker build -t test-image utilities/[utility_name]/` - Test specific utility Dockerfile
+- `docker build -t test-image release-tooling/[tool_name]/` - Test specific release tool Dockerfile
+- `docker run --rm test-image /app/entrypoints/entrypoint_test.sh` - Run tests in built image
+
 ### Application-Specific Commands
 
 #### app.pxy6.com (Shopify Remix App)
