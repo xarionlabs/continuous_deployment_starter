@@ -14,15 +14,16 @@ services:
     restart: unless-stopped
 
   airflow-standalone:
+    user: airflow
     image: apache/airflow:3.0.2
     volumes:
       - ./dags:/opt/airflow/dags
       - airflow_plugins:/opt/airflow/plugins
       - airflow_logs:/opt/airflow/logs
-      - ./src:/app/src
-      - ./setup.py:/app/setup.py
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./requirements.txt:/app/requirements.txt
+      - ./src:/opt/airflow/src
+      - ./setup.py:/opt/airflow/setup.py
+      - ./pyproject.toml:/opt/airflow/pyproject.toml
+      - ./requirements.txt:/opt/airflow/requirements.txt
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:localpassword@db:5432/airflow_test
@@ -43,26 +44,27 @@ services:
       - airflow_network
     ports:
       - "8080:8080"
-    user: root
     command: |
       bash -c "
-        echo 'Making /app writable...'
-        chown -R airflow:airflow /app
         
         echo 'Installing DAG dependencies...'
-        if [ -f /app/requirements.txt ]; then
-          pip install --no-cache-dir -r /app/requirements.txt
+        if [ -f /opt/airflow/requirements.txt ]; then
+          pip install --no-cache-dir -r /opt/airflow/requirements.txt
         else
           echo 'Requirements file not found, skipping dependency installation'
         fi
         
         echo 'Installing pxy6 package...'
-        if [ -f /app/setup.py ]; then
-          cd /app && pip install --no-cache-dir -e .
+        if [ -f /opt/airflow/setup.py ]; then
+          cd /opt/airflow && pip install --no-cache-dir -e .
           echo 'pxy6 package installed successfully'
         else
           echo 'No setup.py found, skipping pxy6 package installation'
         fi
+        
+        echo 'Verifying pxy6 installation...'
+        python -c 'import pxy6; print(\"pxy6 package imported successfully\")'
+        
         echo 'Starting Airflow standalone...'
         airflow standalone &
         AIRFLOW_PID=$$!
