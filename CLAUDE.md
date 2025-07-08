@@ -270,3 +270,11 @@ git commit -m "$(cat <<'EOF'
    EOF
    )"
 </example>
+
+## Testing Standards
+**CRITICAL: ALL tests must pass. Having "a majority of tests passing" is NEVER acceptable.**
+- When fixing tests, continue working until 100% of tests pass
+- Do not stop at partial test fixes - identify and fix root causes
+- Mock external dependencies properly instead of accepting failures
+- If tests fail due to missing setup, fix the setup
+- Never rationalize test failures as "acceptable" or "expected"
