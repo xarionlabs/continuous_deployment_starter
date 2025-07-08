@@ -72,7 +72,32 @@ services:
           echo 'Requirements file not found, skipping dependency installation'
         fi
         echo 'Starting Airflow standalone...'
-        airflow standalone
+        airflow standalone &
+        AIRFLOW_PID=$$!
+        
+        # Wait for Airflow to fully start
+        echo 'Waiting for Airflow to start...'
+        for i in {1..60}; do
+          if curl -f http://localhost:8080/api/v2/monitor/health >/dev/null 2>&1; then
+            echo 'Airflow is ready!'
+            break
+          fi
+          sleep 2
+        done
+        
+        # Update admin password
+        echo 'Setting admin password to admin...'
+        echo '{\"admin\": \"admin\"}' > /opt/airflow/simple_auth_manager_passwords.json.generated
+        
+        echo '===================='
+        echo 'Airflow is ready!'
+        echo 'URL: http://localhost:8080'
+        echo 'Username: admin'
+        echo 'Password: admin'
+        echo '===================='
+        
+        # Keep the process running
+        wait $$AIRFLOW_PID
       "
 
   airflow-dags:
