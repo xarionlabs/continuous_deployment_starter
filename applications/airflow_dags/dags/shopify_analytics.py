@@ -50,9 +50,12 @@ def shopify_analytics_dag():
     )
     
     @task
-    def calculate_customer_metrics() -> dict:
+    def calculate_customer_metrics(**context) -> dict:
         """Calculate basic customer metrics"""
         logger.info("Calculating customer metrics")
+        
+        # Get DAG run configuration (may be passed from shopify_sync)
+        dag_run_conf = context['dag_run'].conf or {}
         
         async def _calculate_metrics():
             db_manager = DatabaseManager()
@@ -94,9 +97,12 @@ def shopify_analytics_dag():
         return result
     
     @task
-    def calculate_order_metrics() -> dict:
+    def calculate_order_metrics(**context) -> dict:
         """Calculate basic order metrics"""
         logger.info("Calculating order metrics")
+        
+        # Get DAG run configuration (may be passed from shopify_sync)
+        dag_run_conf = context['dag_run'].conf or {}
         
         async def _calculate_metrics():
             db_manager = DatabaseManager()
@@ -143,9 +149,12 @@ def shopify_analytics_dag():
         return result
     
     @task
-    def calculate_product_metrics() -> dict:
+    def calculate_product_metrics(**context) -> dict:
         """Calculate basic product metrics"""
         logger.info("Calculating product metrics")
+        
+        # Get DAG run configuration (may be passed from shopify_sync)
+        dag_run_conf = context['dag_run'].conf or {}
         
         async def _calculate_metrics():
             db_manager = DatabaseManager()

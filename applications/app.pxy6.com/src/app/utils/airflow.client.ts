@@ -160,6 +160,9 @@ export class AirflowClient {
     enableCustomers?: boolean;
     enableOrders?: boolean;
     note?: string;
+    shopDomain?: string;
+    accessToken?: string;
+    shopId?: string;
   } = {}): Promise<DagRun> {
     const dagId = 'shopify_sync';
     const runId = `manual_${Date.now()}`;
@@ -171,6 +174,10 @@ export class AirflowClient {
         enable_products_sync: config.enableProducts !== false,
         enable_customers_sync: config.enableCustomers !== false,
         enable_orders_sync: config.enableOrders !== false,
+        // Shop-specific data for multi-tenant support
+        shop_domain: config.shopDomain,
+        access_token: config.accessToken,
+        shop_id: config.shopId,
         triggered_by: 'app_pxy6_com',
         trigger_time: new Date().toISOString(),
       },

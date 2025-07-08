@@ -39,6 +39,8 @@ class ShopifyHook(BaseHook):
     def __init__(
         self,
         shopify_conn_id: str = default_conn_name,
+        shop_domain: str = None,
+        access_token: str = None,
         api_version: str = "2023-10",
         timeout: int = 30,
         max_retries: int = 3,
@@ -52,7 +54,9 @@ class ShopifyHook(BaseHook):
         Initialize Shopify Hook
         
         Args:
-            shopify_conn_id: Airflow connection ID for Shopify
+            shopify_conn_id: Airflow connection ID for Shopify (fallback)
+            shop_domain: Shopify shop domain (without .myshopify.com)
+            access_token: Shopify access token
             api_version: Shopify API version
             timeout: Request timeout in seconds
             max_retries: Maximum number of retries for failed requests
@@ -69,8 +73,8 @@ class ShopifyHook(BaseHook):
         self.cache_ttl = cache_ttl
         
         # Initialize connection properties
-        self._shop_name: Optional[str] = None
-        self._access_token: Optional[str] = None
+        self._shop_name: Optional[str] = shop_domain
+        self._access_token: Optional[str] = access_token
         self._session: Optional[requests.Session] = None
         self._last_call_time: float = 0
         
@@ -93,37 +97,60 @@ class ShopifyHook(BaseHook):
         
         logger.info(
             f"Initialized ShopifyHook with connection: {shopify_conn_id}, "
-            f"API version: {api_version}, metrics: {enable_metrics}, caching: {enable_caching}"
+            f"shop_domain: {shop_domain}, API version: {api_version}, "
+            f"metrics: {enable_metrics}, caching: {enable_caching}"
         )
     
     def get_connection(self, conn_id: str) -> Connection:
         """Get Airflow connection for Shopify"""
         return super().get_connection(conn_id)
     
-    def get_conn(self) -> requests.Session:
+    def get_conn(self, dag_run_conf: Optional[Dict[str, Any]] = None) -> requests.Session:
         """
         Get or create HTTP session for Shopify API
+        
+        Args:
+            dag_run_conf: Optional DAG run configuration with shop credentials
         
         Returns:
             Configured requests session
         """
         if self._session is None:
-            self._setup_connection()
+            self._setup_connection(dag_run_conf)
         return self._session
     
-    def _setup_connection(self) -> None:
-        """Setup connection to Shopify API"""
+    def _setup_connection(self, dag_run_conf: Optional[Dict[str, Any]] = None) -> None:
+        """Setup connection to Shopify API using DAG config or Airflow connection"""
         try:
-            conn = self.get_connection(self.shopify_conn_id)
+            # Priority order: DAG run config > direct parameters > Airflow connection
             
-            # Extract connection details
-            self._shop_name = conn.host
-            self._access_token = conn.password
+            # 1. Try DAG run configuration first (for multi-tenant apps)
+            if dag_run_conf:
+                shop_domain = dag_run_conf.get('shop_domain')
+                access_token = dag_run_conf.get('access_token')
+                
+                if shop_domain and access_token:
+                    self._shop_name = shop_domain
+                    self._access_token = access_token
+                    logger.info(f"Using shop credentials from DAG config: {shop_domain}")
+            
+            # 2. Use direct parameters if provided and not already set
+            if not self._shop_name or not self._access_token:
+                if hasattr(self, '_shop_name') and hasattr(self, '_access_token'):
+                    # Already set in __init__
+                    pass
+            
+            # 3. Fall back to Airflow connection
+            if not self._shop_name or not self._access_token:
+                conn = self.get_connection(self.shopify_conn_id)
+                self._shop_name = self._shop_name or conn.host
+                self._access_token = self._access_token or conn.password
+                logger.info(f"Using shop credentials from Airflow connection: {self.shopify_conn_id}")
             
             if not self._shop_name or not self._access_token:
                 raise AirflowException(
-                    f"Shopify connection '{self.shopify_conn_id}' missing required fields. "
-                    "Host should be shop name, Password should be access token."
+                    "Missing shop_domain or access_token. Provide via DAG config, "
+                    "direct parameters, or Airflow connection."
                 )
             
             # Set GraphQL endpoint
@@ -216,7 +243,8 @@ class ShopifyHook(BaseHook):
         query: str,
         variables: Optional[Dict[str, Any]] = None,
         operation_name: Optional[str] = None,
-        use_cache: bool = None
+        use_cache: bool = None,
+        dag_run_conf: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Execute GraphQL query against Shopify API
@@ -225,6 +253,7 @@ class ShopifyHook(BaseHook):
             query: GraphQL query string
             variables: Query variables
             operation_name: Optional operation name
+            dag_run_conf: Optional DAG run configuration with shop credentials
             
         Returns:
             GraphQL response data
@@ -247,7 +276,7 @@ class ShopifyHook(BaseHook):
         
         self._apply_rate_limit()
         
-        session = self.get_conn()
+        session = self.get_conn(dag_run_conf)
         
         # Track metrics
         if self.enable_metrics:
@@ -482,6 +511,19 @@ class ShopifyHook(BaseHook):
         
         result = self.execute_graphql(query)
         return result.get("data", {}).get("cost", {})
+    
+    def setup_with_dag_config(self, dag_run_conf: Dict[str, Any]) -> None:
+        """
+        Setup hook with DAG run configuration
+        
+        Args:
+            dag_run_conf: DAG run configuration containing shop credentials
+        """
+        if self._session:
+            self.close()
+        
+        self._setup_connection(dag_run_conf)
+        logger.info(f"ShopifyHook configured for shop: {self._shop_name}")
     
     def close(self) -> None:
         """Close the session"""

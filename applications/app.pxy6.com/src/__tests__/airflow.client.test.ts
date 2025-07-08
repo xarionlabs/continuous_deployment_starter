@@ -131,6 +131,9 @@ describe('AirflowClient', () => {
           enable_products_sync: true,
           enable_customers_sync: false,
           enable_orders_sync: true,
+          shop_domain: 'test-shop',
+          access_token: 'shpat_test123',
+          shop_id: 'test-shop.myshopify.com',
         },
       };
 
@@ -145,6 +148,9 @@ describe('AirflowClient', () => {
         enableCustomers: false,
         enableOrders: true,
         note: 'Custom sync',
+        shopDomain: 'test-shop',
+        accessToken: 'shpat_test123',
+        shopId: 'test-shop.myshopify.com',
       });
 
       expect(result).toEqual(mockDagRun);
@@ -152,6 +158,8 @@ describe('AirflowClient', () => {
       const requestBody = JSON.parse(fetchCall[1].body);
       expect(requestBody.conf.sync_mode).toBe('full');
       expect(requestBody.conf.enable_customers_sync).toBe(false);
+      expect(requestBody.conf.shop_domain).toBe('test-shop');
+      expect(requestBody.conf.access_token).toBe('shpat_test123');
       expect(requestBody.note).toBe('Custom sync');
     });
 

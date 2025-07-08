@@ -1,6 +1,7 @@
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { withCors, withCorsLoader } from "../utils/cors.injector";
+import { authenticate } from "../shopify.server";
 
 /**
  * API Routes for Shopify Data Sync
@@ -55,6 +56,9 @@ const triggerDataSync = async (config: {
   enableCustomers?: boolean;
   enableOrders?: boolean;
   note?: string;
+  shopDomain?: string;
+  accessToken?: string;
+  shopId?: string;
 }) => {
   const dagId = 'shopify_sync';
   const runId = `manual_${Date.now()}`;
@@ -67,6 +71,10 @@ const triggerDataSync = async (config: {
       enable_products_sync: config.enableProducts !== false,
       enable_customers_sync: config.enableCustomers !== false,
       enable_orders_sync: config.enableOrders !== false,
+      // Shop-specific data for multi-tenant support
+      shop_domain: config.shopDomain,
+      access_token: config.accessToken,
+      shop_id: config.shopId,
       triggered_by: 'app_pxy6_com',
       trigger_time: new Date().toISOString(),
     },
@@ -145,6 +153,13 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
   }
 
   try {
+    // Get Shopify session for shop-specific data
+    const { session } = await authenticate.admin(request);
+    const { shop, accessToken } = session;
+    
+    // Extract shop domain (remove .myshopify.com suffix if present)
+    const shopDomain = shop.replace('.myshopify.com', '');
+
     const body = await request.json();
     const {
       syncMode = 'incremental',
@@ -171,13 +186,16 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
       }, { status: 503 });
     }
 
-    // Trigger the DAG
+    // Trigger the DAG with shop-specific data
     const dagRun = await triggerDataSync({
       syncMode,
       enableProducts,
       enableCustomers,
       enableOrders,
       note,
+      shopDomain,
+      accessToken,
+      shopId: shop, // Use full shop domain as shop ID
     });
 
     return json({
