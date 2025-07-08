@@ -186,3 +186,57 @@ This is a containerized multi-application deployment system with automated CI/CD
     - Helps catch configuration errors early
     - No local dependencies required
 - All checks must pass for commit to succeed
+
+## Git Commit Best Practices
+
+# Committing changes with git
+
+When the user asks you to create a new git commit, follow these steps carefully:
+
+1. You have the capability to call multiple tools in a single response. When multiple independent pieces of information are requested, batch your tool calls together for optimal performance. ALWAYS run the following bash commands in parallel, each using the Bash tool:
+  - Run a git status command to see all untracked files.
+  - Run a git diff command to see both staged and unstaged changes that will be committed.
+  - Run a git log command to see recent commit messages, so that you can follow this repository's commit message style.
+2. **Carefully review all changes** before committing:
+  - Analyze each changed file to understand what was modified and why
+  - Identify which changes are necessary for the task at hand
+  - Identify any unintended or unnecessary changes that should be reverted
+  - Check for any sensitive information that shouldn't be committed
+  - For complex changes, consider checking the original state of files to understand what was removed or modified
+3. **Clean up unnecessary changes** before committing:
+  - If you find changes that are not necessary for the current task, revert them using git restore or manual edits
+  - Only stage and commit the changes that are actually needed
+  - Ensure all changes align with the original task requirements
+4. **Draft and create the commit**:
+  - Summarize the nature of the changes (eg. new feature, enhancement to an existing feature, bug fix, refactoring, test, docs, etc.). Ensure the message accurately reflects the changes and their purpose (i.e. "add" means a wholly new feature, "update" means an enhancement to an existing feature, "fix" means a bug fix, etc.).
+  - Draft a concise (1-2 sentences) commit message that focuses on the "why" rather than the "what"
+  - Ensure it accurately reflects the changes and their purpose
+5. You have the capability to call multiple tools in a single response. When multiple independent pieces of information are requested, batch your tool calls together for optimal performance. ALWAYS run the following commands in parallel:
+   - Add only the relevant and necessary files to the staging area.
+   - Create the commit with a message ending with:
+   🤖 Generated with [Claude Code](https://claude.ai/code)
+
+   Co-Authored-By: Claude <noreply@anthropic.com>
+   - Run git status to make sure the commit succeeded.
+6. If the commit fails due to pre-commit hook changes, retry the commit ONCE to include these automated changes. If it fails again, it usually means a pre-commit hook is preventing the commit. If the commit succeeds but you notice that files were modified by the pre-commit hook, you MUST amend your commit to include them.
+
+Important notes:
+- NEVER update the git config
+- NEVER run additional commands to read or explore code, besides git bash commands
+- NEVER use the TodoWrite or Task tools
+- DO NOT push to the remote repository unless the user explicitly asks you to do so
+- IMPORTANT: Never use git commands with the -i flag (like git rebase -i or git add -i) since they require interactive input which is not supported.
+- If there are no changes to commit (i.e., no untracked files and no modifications), do not create an empty commit
+- **ALWAYS verify changes one by one** - don't blindly commit all changes without understanding what each change does
+- **Remove or revert unnecessary changes** before committing to keep the commit clean and focused
+- In order to ensure good formatting, ALWAYS pass the commit message via a HEREDOC, a la this example:
+<example>
+git commit -m "$(cat <<'EOF'
+   Commit message here.
+
+   🤖 Generated with [Claude Code](https://claude.ai/code)
+
+   Co-Authored-By: Claude <noreply@anthropic.com>
+   EOF
+   )"
+</example>
