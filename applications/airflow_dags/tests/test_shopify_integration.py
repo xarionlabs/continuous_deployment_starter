@@ -28,9 +28,9 @@ from datetime import datetime, timedelta
 import json
 
 # Import the modules we're testing
-from utils.shopify_graphql import ShopifyGraphQLClient, ShopifyRateLimit, GraphQLError
-from utils.database import DatabaseManager, get_pxy6_database_manager, get_pxy6_database_connection
-from utils.config import get_shopify_config
+from pxy6.utils.shopify_graphql import ShopifyGraphQLClient, ShopifyRateLimit, GraphQLError
+from pxy6.utils.database import DatabaseManager, get_pxy6_database_manager, get_pxy6_database_connection
+from pxy6.utils.config import get_shopify_config
 
 
 class TestShopifyGraphQLClient:

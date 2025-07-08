@@ -1,19 +1,31 @@
 """
-Airflow DAGs package for Shopify data integration.
+PXY6 Airflow Package
 
-This package contains DAGs and utilities for orchestrating Shopify data workflows
-using Apache Airflow. It includes:
-
-- DAGs for extracting Shopify data (customers, orders, products, etc.)
-- Utilities for Shopify GraphQL API interactions
-- Database connection and data storage utilities
-- Plugins for custom Airflow operators and hooks
-
-The package is designed to be deployed to the Airflow service defined in
-services/06_airflow/ and integrates with the main application database
-for storing processed Shopify data.
+A comprehensive package for Shopify data integration with Apache Airflow.
+Provides operators, hooks, and utilities for syncing Shopify data to PostgreSQL.
 """
 
 __version__ = "1.0.0"
 __author__ = "PXY6 Team"
-__email__ = "tech@pxy6.com"
+__email__ = "team@pxy6.com"
+
+# Import key components for easier access
+from .operators.shopify_operator import (
+    ShopifyToPostgresOperator,
+    ShopifyDataValidationOperator,
+    ShopifyIncrementalSyncOperator,
+)
+from .hooks.shopify_hook import ShopifyHook
+from .utils.database import DatabaseManager
+from .utils.shopify_client import ShopifyClient
+from .utils.config import Config
+
+__all__ = [
+    "ShopifyToPostgresOperator",
+    "ShopifyDataValidationOperator",
+    "ShopifyIncrementalSyncOperator",
+    "ShopifyHook",
+    "DatabaseManager",
+    "ShopifyClient",
+    "Config",
+]

@@ -91,6 +91,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `./quick_test.sh` - Quick validation for development
 - `pytest tests/` - Run DAG tests (with mocked dependencies)
 - `python -c "from dags.shopify_data_pipeline import dag"` - Validate main DAG import
+- `docker exec airflow_dags-airflow-standalone-1 airflow dags list-import-errors` - Check DAG import errors in running Airflow container
 - Note: Contains Shopify data integration DAGs that sync product, customer, and order data to PostgreSQL
 
 #### Release Tool (Python CLI)

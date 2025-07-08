@@ -15,7 +15,7 @@ class TestDAGStructure:
     
     def setup_method(self):
         """Setup test fixtures."""
-        self.dagbag = DagBag(dag_folder='src/dags/', include_examples=False)
+        self.dagbag = DagBag(dag_folder='dags/', include_examples=False)
     
     def test_dag_loading(self):
         """Test that all DAGs load without errors."""
@@ -71,7 +71,7 @@ class TestShopifyCustomerDataDAG:
     
     def setup_method(self):
         """Setup test fixtures."""
-        self.dagbag = DagBag(dag_folder='src/dags/', include_examples=False)
+        self.dagbag = DagBag(dag_folder='dags/', include_examples=False)
         self.dag = self.dagbag.get_dag('shopify_customer_data')
     
     def test_dag_exists(self):
@@ -116,7 +116,7 @@ class TestShopifyOrderDataDAG:
     
     def setup_method(self):
         """Setup test fixtures."""
-        self.dagbag = DagBag(dag_folder='src/dags/', include_examples=False)
+        self.dagbag = DagBag(dag_folder='dags/', include_examples=False)
         self.dag = self.dagbag.get_dag('shopify_order_data')
     
     def test_dag_exists(self):

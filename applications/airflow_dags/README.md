@@ -1,296 +1,202 @@
-# Shopify GraphQL Client and Test Framework for Airflow DAGs
+# Airflow DAGs Package
 
-This project provides a robust Shopify GraphQL client and comprehensive test framework for Airflow DAGs, designed to handle Shopify data integration workflows with proper authentication, rate limiting, pagination, and database operations.
+This package contains Apache Airflow DAGs for syncing Shopify data to PostgreSQL using GraphQL queries.
 
-## Features
+## Project Structure
 
-### Shopify GraphQL Client (`src/utils/shopify_graphql.py`)
-- **Authentication**: Handles Shopify access tokens with proper headers
-- **Rate Limiting**: Implements intelligent rate limiting based on GraphQL cost analysis
-- **Pagination**: Supports cursor-based pagination for large datasets
-- **Error Handling**: Comprehensive error handling and retry logic with exponential backoff
-- **Async Operations**: Full async/await support for efficient concurrent operations
-- **Specific Queries**: Implements the exact GraphQL queries required:
-  - `getAllProductData` - Retrieves all product information including variants and images
-  - `getProductImages` - Fetches product images with metadata
-  - `getCustomersWithOrders` - Gets customer data with complete order history
-
-### Database Manager (`src/utils/database.py`)
-- **Connection Pooling**: Efficient PostgreSQL connection management using asyncpg
-- **Schema Management**: Automatic creation of Shopify-specific database tables
-- **Data Operations**: Upsert operations for products, customers, and orders
-- **Sync Tracking**: Tracks synchronization timestamps for incremental updates
-- **Error Recovery**: Robust error handling and transaction management
-
-### Test Framework (`tests/test_shopify_integration.py`)
-- **Live Store Testing**: Tests against real Shopify stores with proper authentication
-- **Mock Testing**: Unit tests with mocked responses for CI/CD environments
-- **Integration Tests**: End-to-end testing of complete sync workflows
-- **Performance Tests**: Concurrent operations and batch processing validation
-- **Error Recovery**: Tests for handling various failure scenarios
-
-## Installation
-
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
+```
+airflow_dags/
+├── src/                  # Source directory (installed as pxy6 package)
+│   ├── operators/        # Custom operators → pxy6.operators
+│   ├── hooks/            # Custom hooks → pxy6.hooks
+│   ├── utils/            # Utility functions → pxy6.utils
+│   └── __init__.py       # Package initialization
+├── dags/                 # DAG definitions (top-level, not in package)
+├── tests/                # Test files
+├── entrypoints/          # Docker entrypoints
+├── setup.py             # Package setup configuration
+├── pyproject.toml       # Modern Python project configuration
+├── requirements.txt     # Python dependencies
+├── Dockerfile           # Container definition
+└── README.md           # This file
 ```
 
-2. Set up environment variables:
-```bash
-export SHOPIFY_STORE_URL="https://your-store.myshopify.com"
-export SHOPIFY_ACCESS_TOKEN="your-access-token"
-export POSTGRES_PASSWORD="your-database-password"
-```
+## Architecture
 
-## Usage
+This project follows standard Airflow patterns:
 
-### Basic Shopify Client Usage
+- **DAGs folder contains only DAGs** - Pure DAG files with no package structure
+- **Dependencies come from installed packages** - The `pxy6` package is installed during Docker build
+- **Clean separation** - DAGs import from the installed `pxy6` package, not relative imports
 
-```python
-from src.utils.shopify_graphql import ShopifyGraphQLClient
+## Local Development
 
-# Initialize client
-client = ShopifyGraphQLClient(
-    store_url="https://your-store.myshopify.com",
-    access_token="your-access-token"
-)
+### Prerequisites
 
-# Use with async context manager
-async with client:
-    # Test connection
-    if await client.test_connection():
-        print("Connected successfully")
-    
-    # Get shop information
-    shop_info = await client.get_shop_info()
-    print(f"Shop: {shop_info['name']}")
-    
-    # Get all products with pagination
-    async for products_batch in client.get_all_product_data(batch_size=50):
-        for product in products_batch:
-            print(f"Product: {product['title']}")
-    
-    # Get customers with orders
-    async for customers_batch in client.get_customers_with_orders(batch_size=50):
-        for customer in customers_batch:
-            print(f"Customer: {customer['email']}")
-```
+- Python 3.9+
+- Docker
+- Access to Shopify store with Admin API permissions
 
-### Database Operations
+### Setup
 
-```python
-from src.utils.database import DatabaseManager
+1. **Install the package in development mode:**
+   ```bash
+   pip install -e .
+   ```
 
-# Initialize database manager
-async with DatabaseManager() as db:
-    # Test connection
-    if await db.test_connection():
-        print("Database connected")
-    
-    # Create tables
-    await db.create_tables()
-    
-    # Insert product data
-    await db.upsert_product(product_data)
-    
-    # Insert customer data
-    await db.upsert_customer(customer_data)
-    
-    # Get statistics
-    products_count = await db.get_products_count()
-    customers_count = await db.get_customers_count()
-    print(f"Products: {products_count}, Customers: {customers_count}")
-```
+2. **Set environment variables:**
+   ```bash
+   export SHOPIFY_SHOP_NAME="your-shop-name"
+   export SHOPIFY_ACCESS_TOKEN="your-access-token"
+   export PXY6_POSTGRES_HOST="localhost"
+   export PXY6_POSTGRES_PASSWORD="your-password"
+   ```
 
-### Complete Sync Workflow
+3. **Run tests:**
+   ```bash
+   python -m pytest tests/ -v
+   ```
 
-```python
-from src.utils.shopify_graphql import ShopifyGraphQLClient
-from src.utils.database import DatabaseManager
+### DAG Development
 
-async def sync_shopify_data():
-    client = ShopifyGraphQLClient(
-        store_url="https://your-store.myshopify.com",
-        access_token="your-access-token"
-    )
-    
-    async with client, DatabaseManager() as db:
-        # Ensure database tables exist
-        await db.create_tables()
-        
-        # Sync products
-        async for products_batch in client.get_all_product_data():
-            for product in products_batch:
-                await db.upsert_product(product)
-        
-        # Sync customers
-        async for customers_batch in client.get_customers_with_orders():
-            for customer in customers_batch:
-                await db.upsert_customer(customer)
-        
-        print("Sync completed successfully")
+- Place DAG files in `dags/` (top-level directory)
+- Import from the `pxy6` package: `from pxy6.operators.shopify_operator import ShopifyOperator`
+- Add operators, hooks, and utilities to the `pxy6/` package
+- Follow existing patterns for error handling and logging
 
-# Run the sync
-import asyncio
-asyncio.run(sync_shopify_data())
-```
+### Testing
 
-## Testing
+- Unit tests: `tests/test_utils.py`
+- Integration tests: `tests/test_shopify_integration.py`
+- DAG structure tests: `tests/test_dags.py`
 
-### Running Tests
+## Docker Usage
+
+### Build and Test
 
 ```bash
-# Run all tests
-pytest tests/ -v
+# Build the image (installs pxy6 package)
+docker build -t airflow-dags .
 
-# Run specific test categories
-pytest tests/test_shopify_integration.py::TestShopifyGraphQLClient -v
-pytest tests/test_shopify_integration.py::TestDatabaseManager -v
-pytest tests/test_shopify_integration.py::TestIntegration -v
+# Run tests
+docker run --rm airflow-dags
 
-# Run tests with coverage
-pytest tests/ --cov=src --cov-report=html
-
-# Run only mock tests (skip live API calls)
-export SKIP_LIVE_TESTS=true
-pytest tests/ -v
+# Run specific test
+docker run --rm airflow-dags pytest tests/test_dags.py -v
 ```
 
-### Test Configuration
+### Local Development with Docker
 
-Set these environment variables for live testing:
-- `SHOPIFY_STORE_URL`: Your Shopify store URL
-- `SHOPIFY_ACCESS_TOKEN`: Shopify access token with appropriate permissions
-- `POSTGRES_PASSWORD`: Database password for the pxy6_airflow user
-- `SKIP_LIVE_TESTS`: Set to "true" to skip tests requiring live credentials
+```bash
+# Build for development
+docker build -t airflow-dags-dev .
 
-### Test Categories
+# Run with environment variables
+docker run --rm \
+  -e SHOPIFY_SHOP_NAME=your-shop \
+  -e SHOPIFY_ACCESS_TOKEN=your-token \
+  airflow-dags-dev
+```
 
-1. **Unit Tests**: Test individual components with mocked dependencies
-2. **Integration Tests**: Test complete workflows with real Shopify API
-3. **Performance Tests**: Validate concurrent operations and batch processing
-4. **Error Recovery Tests**: Ensure proper handling of various failure scenarios
+## DAG Overview
 
-## GraphQL Queries
+### shopify_customer_data
+- **Schedule**: Daily at 2:00 AM UTC
+- **Purpose**: Extract customer data from Shopify
+- **Data**: Customer profiles, contact information, segments
 
-The client implements these specific GraphQL queries:
+### shopify_order_data  
+- **Schedule**: Every 4 hours
+- **Purpose**: Extract order data from Shopify
+- **Data**: Orders, line items, fulfillment status
 
-### getAllProductData
-Retrieves comprehensive product information including:
-- Product metadata (title, handle, description, etc.)
-- Product variants with pricing and inventory
-- Product images with metadata
-- SEO information and metafields
-- Options and variant configurations
+### shopify_past_purchases
+- **Schedule**: Daily at 2:00 AM UTC
+- **Purpose**: Extract comprehensive customer purchase history
+- **Data**: Customer orders with complete purchase journey
 
-### getProductImages
-Fetches detailed image information for specific products:
-- Image URLs and metadata
-- Dimensions and alt text
-- Original and transformed sources
+### shopify_store_metadata
+- **Schedule**: Daily at 3:00 AM UTC
+- **Purpose**: Extract product catalog and store metadata
+- **Data**: Products, variants, collections, images
 
-### getCustomersWithOrders
-Gets customer data with complete order history:
-- Customer profile information
-- Order history with line items
-- Customer journey analytics
-- Addresses and metafields
-- Purchase behavior metrics
-
-## Database Schema
-
-The database schema includes these tables:
-
-- `shopify_products`: Product information and metadata
-- `shopify_product_variants`: Product variants with pricing
-- `shopify_product_images`: Product images and metadata
-- `shopify_customers`: Customer profiles and preferences
-- `shopify_orders`: Order information and status
-- `shopify_order_line_items`: Individual order line items
-
-All tables include:
-- `synced_at`: Timestamp for tracking data freshness
-- `raw_data`: Complete JSON payload for future extensibility
-- Proper indexes for performance optimization
-
-## Rate Limiting
-
-The client implements intelligent rate limiting:
-- Monitors GraphQL cost analysis from Shopify headers
-- Automatically waits when approaching rate limits
-- Configurable rate limit buffer to prevent hitting limits
-- Exponential backoff for retry operations
-
-## Error Handling
-
-Comprehensive error handling includes:
-- Network connectivity issues
-- Authentication failures
-- Rate limit exceeded scenarios
-- GraphQL query errors
-- Database connection problems
-- Data validation errors
+### shopify_data_pipeline
+- **Schedule**: Daily at 1:00 AM UTC
+- **Purpose**: Main orchestration DAG
+- **Data**: Coordinates all other DAGs and provides unified monitoring
 
 ## Configuration
 
 ### Environment Variables
 
-- `SHOPIFY_STORE_URL`: Shopify store URL
-- `SHOPIFY_ACCESS_TOKEN`: Shopify access token
-- `POSTGRES_HOST`: Database host (default: "db")
-- `POSTGRES_PORT`: Database port (default: 5432)
-- `POSTGRES_DATABASE`: Database name (default: "pxy6")
-- `POSTGRES_USER`: Database user (default: "pxy6_airflow")
-- `POSTGRES_PASSWORD`: Database password
-- `DB_MIN_CONNECTIONS`: Minimum database connections (default: 1)
-- `DB_MAX_CONNECTIONS`: Maximum database connections (default: 10)
-- `DB_COMMAND_TIMEOUT`: Database command timeout (default: 60)
+- `SHOPIFY_SHOP_NAME`: Your Shopify store name (without .myshopify.com)
+- `SHOPIFY_ACCESS_TOKEN`: Admin API access token
+- `PXY6_POSTGRES_HOST`: PostgreSQL host for app.pxy6.com database
+- `PXY6_POSTGRES_PASSWORD`: PostgreSQL password for pxy6_airflow user
 
-### Shopify API Permissions
+### Database Connection
 
-The Shopify access token requires these permissions:
-- `read_products`: Access to product information
-- `read_customers`: Access to customer data
-- `read_orders`: Access to order information
-- `read_inventory`: Access to inventory levels
-- `read_product_listings`: Access to product listings
-- `read_analytics`: Access to analytics data (for customer journey)
+The DAGs connect to the app.pxy6.com PostgreSQL database using the `pxy6_airflow` user. This user has read/write access to tables needed for Shopify data synchronization.
 
-## Production Considerations
+## Monitoring
 
-### Performance
-- Use connection pooling for database operations
-- Implement proper batch sizes for pagination
-- Monitor and respect rate limits
-- Use async operations for concurrent processing
+- All DAGs include comprehensive logging using structlog
+- Error handling with exponential backoff for API calls
+- Rate limit monitoring for Shopify API
+- Database connection health checks
 
-### Security
-- Store credentials securely (use environment variables or secret management)
-- Implement proper access controls for database connections
-- Use HTTPS for all API communications
-- Validate and sanitize all input data
+## API Integration
 
-### Monitoring
-- Log all operations for debugging and monitoring
-- Track sync times and success rates
-- Monitor database performance and growth
-- Set up alerts for rate limit warnings
+### Shopify GraphQL API
 
-### Scaling
-- Consider implementing queue-based processing for large datasets
-- Use distributed processing for multiple stores
-- Implement incremental sync based on timestamps
-- Consider data archiving for historical information
+- Uses Admin API version 2023-10
+- Implements rate limiting and retry logic
+- Supports both incremental and full sync modes
+- Comprehensive error handling for API failures
+
+### Key Queries
+
+- `getCustomersWithOrders`: Customer purchase data
+- `getAllProductData`: Product catalog information
+- `getProductImages`: Product image metadata
+
+## Development Guidelines
+
+1. **Package Structure**: Use the `pxy6` package for reusable components
+2. **DAG Imports**: Always import from `pxy6.module` not relative imports
+3. **Error Handling**: Always include proper error handling and logging
+4. **Rate Limiting**: Respect Shopify API rate limits
+5. **Idempotency**: Ensure DAGs can be re-run safely
+6. **Testing**: Write tests for new functionality
+7. **Documentation**: Update README for new features
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Import Errors**: Check that imports use `from pxy6.module import ...`
+2. **Database Connection**: Verify credentials and network access
+3. **API Rate Limits**: Check Shopify API usage and implement backoff
+4. **Memory Issues**: Monitor large data sets and implement chunking
+
+### Debugging
+
+```bash
+# Check DAG imports
+python -c "from dags.shopify_data_pipeline import dag"
+
+# Test pxy6 package imports
+python -c "from pxy6.utils.database import get_pxy6_database_manager; print('DB OK')"
+
+# Test Shopify connection
+python -c "from pxy6.utils.shopify_graphql import ShopifyGraphQLClient; print('Shopify OK')"
+```
 
 ## Contributing
 
-1. Follow Python best practices and PEP 8 style guidelines
-2. Add comprehensive tests for new features
-3. Update documentation for any API changes
-4. Ensure all tests pass before submitting changes
-5. Use type hints for better code clarity
-
-## License
-
-This project is part of the continuous deployment starter framework and follows the same licensing terms.
+1. Follow existing code patterns
+2. Use the `pxy6` package for shared components
+3. Write tests for new features
+4. Update documentation
+5. Test in Docker environment
+6. Ensure all DAGs load without errors

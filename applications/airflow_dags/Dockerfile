@@ -18,6 +18,13 @@ RUN python -m venv /opt/venv && \
     /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
+# Copy package files and install the pxy6 package
+COPY setup.py pyproject.toml ./
+COPY src/ ./src/
+
+# Install the pxy6 package in development mode
+RUN /opt/venv/bin/pip install --no-cache-dir -e .
+
 # Stage 2: Runtime environment
 FROM python:3.9-slim as runtime
 
@@ -42,8 +49,11 @@ WORKDIR /app
 # Copy virtual environment from builder stage
 COPY --from=builder /opt/venv /opt/venv
 
-# Copy application code
-COPY . .
+# Copy DAGs and entrypoints
+COPY dags/ ./dags/
+COPY entrypoints/ ./entrypoints/
+COPY tests/ ./tests/
+COPY *.sh ./
 
 # Set correct ownership and permissions
 RUN chown -R airflow:airflow /app /opt/venv && \

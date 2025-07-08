@@ -12,35 +12,35 @@ else
     echo "No virtual environment found, using system Python"
 fi
 
-# Set PYTHONPATH to include src directory
-export PYTHONPATH=/app/src:$PYTHONPATH
+# Set PYTHONPATH to include current directory (pxy6 package is installed)
+export PYTHONPATH=/app:$PYTHONPATH
 
 # Run DAG validation tests
 echo "Running DAG validation tests..."
 python -c "
 import sys
 import os
-sys.path.insert(0, '/app/src')
+sys.path.insert(0, '/app')
 
-# Test utilities first
+# Test pxy6 package imports
 try:
-    from utils.shopify_client import ShopifyGraphQLClient
-    print('✓ Legacy Shopify client imports successful')
+    from pxy6.utils.shopify_client import ShopifyGraphQLClient
+    print('✓ PXY6 Shopify client imports successful')
 except Exception as e:
-    print(f'✗ Legacy Shopify client import error: {e}')
+    print(f'✗ PXY6 Shopify client import error: {e}')
 
 try:
-    from utils.shopify_graphql import ShopifyGraphQLClient
-    print('✓ New Shopify GraphQL client imports successful')
+    from pxy6.utils.shopify_graphql import ShopifyGraphQLClient
+    print('✓ PXY6 Shopify GraphQL client imports successful')
 except Exception as e:
-    print(f'✗ New Shopify GraphQL client import error: {e}')
+    print(f'✗ PXY6 Shopify GraphQL client import error: {e}')
     sys.exit(1)
 
 try:
-    from utils.database import get_database_connection, get_pxy6_database_manager
-    print('✓ Database utilities import successful')
+    from pxy6.utils.database import get_database_connection, get_pxy6_database_manager
+    print('✓ PXY6 Database utilities import successful')
 except Exception as e:
-    print(f'✗ Database utilities import error: {e}')
+    print(f'✗ PXY6 Database utilities import error: {e}')
     sys.exit(1)
 
 # Test DAG imports (individual DAGs)
@@ -62,9 +62,9 @@ echo "Testing Shopify GraphQL client functionality..."
 python -c "
 import sys
 import os
-sys.path.insert(0, '/app/src')
+sys.path.insert(0, '/app')
 
-from utils.shopify_graphql import ShopifyGraphQLClient
+from pxy6.utils.shopify_graphql import ShopifyGraphQLClient
 
 # Test client initialization
 try:

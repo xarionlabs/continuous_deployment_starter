@@ -6,9 +6,9 @@ This module contains tests for the utility functions used by the DAGs.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from utils.config import get_config, get_shopify_config, get_database_config
-from utils.shopify_client import ShopifyGraphQLClient
-from utils.database import DatabaseManager, get_database_connection
+from pxy6.utils.config import get_config, get_shopify_config, get_database_config
+from pxy6.utils.shopify_client import ShopifyGraphQLClient
+from pxy6.utils.database import DatabaseManager, get_database_connection
 
 
 class TestConfig:
