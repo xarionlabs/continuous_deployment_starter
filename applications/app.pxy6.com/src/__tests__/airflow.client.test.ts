@@ -9,7 +9,7 @@ describe('AirflowClient', () => {
 
   beforeEach(() => {
     client = new AirflowClient({
-      baseUrl: 'http://localhost:8080/api/v1',
+      baseUrl: 'http://localhost:8080/api/v2',
       username: 'test',
       password: 'test',
       timeout: 10000,
@@ -30,7 +30,7 @@ describe('AirflowClient', () => {
 
     it('should set default timeout', () => {
       const defaultClient = new AirflowClient({
-        baseUrl: 'http://localhost:8080/api/v1',
+        baseUrl: 'http://localhost:8080/api/v2',
         username: 'test',
         password: 'test',
       });
@@ -49,7 +49,7 @@ describe('AirflowClient', () => {
 
       expect(result).toBe(true);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/health',
+        'http://localhost:8080/api/v2/monitor/health',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Basic dGVzdDp0ZXN0',
@@ -107,7 +107,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagRun);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns',
+        'http://localhost:8080/api/v2/dags/shopify_sync/dagRuns',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -188,7 +188,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagRun);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns/test-run-123',
+        'http://localhost:8080/api/v2/dags/shopify_sync/dagRuns/test-run-123',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Basic dGVzdDp0ZXN0',
@@ -222,7 +222,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockHistory);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns?limit=10&order_by=-execution_date',
+        'http://localhost:8080/api/v2/dags/shopify_sync/dagRuns?limit=10&order_by=-execution_date',
         expect.any(Object)
       );
     });
@@ -241,7 +241,7 @@ describe('AirflowClient', () => {
       await client.getDagRunHistory(5);
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns?limit=5&order_by=-execution_date',
+        'http://localhost:8080/api/v2/dags/shopify_sync/dagRuns?limit=5&order_by=-execution_date',
         expect.any(Object)
       );
     });
@@ -272,7 +272,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockTaskInstances);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns/test-run-123/taskInstances',
+        'http://localhost:8080/api/v2/dags/shopify_sync/dagRuns/test-run-123/taskInstances',
         expect.any(Object)
       );
     });
@@ -437,7 +437,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagRun);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns/test-run-123',
+        'http://localhost:8080/api/v2/dags/shopify_sync/dagRuns/test-run-123',
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify({ state: 'failed' }),
@@ -464,7 +464,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagInfo);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_sync',
+        'http://localhost:8080/api/v2/dags/shopify_sync',
         expect.any(Object)
       );
     });

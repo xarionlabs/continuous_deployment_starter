@@ -11,46 +11,19 @@ import { withCors, withCorsLoader } from "../utils/cors.injector";
  */
 
 // Inline Airflow client functions to avoid import issues
-let jwtToken: string | null = null;
-
-const getJwtToken = async (): Promise<string> => {
-  if (jwtToken) return jwtToken;
-  
+const createAirflowRequest = async (endpoint: string, options: RequestInit = {}) => {
   const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
   const username = process.env.AIRFLOW_USERNAME || 'admin';
   const password = process.env.AIRFLOW_PASSWORD || 'admin';
   
-  const response = await fetch(`${baseUrl.replace('/api/v2', '')}/auth/token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      username: username,
-      password: password,
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`JWT token request failed: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  const tokenData = await response.json();
-  jwtToken = tokenData.access_token;
-  return jwtToken as string;
-};
-
-const createAirflowRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
-  const token = await getJwtToken();
+  // Create basic auth header
+  const credentials = btoa(`${username}:${password}`);
   const url = `${baseUrl}${endpoint}`;
   
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Basic ${credentials}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...options.headers,
@@ -60,29 +33,6 @@ const createAirflowRequest = async (endpoint: string, options: RequestInit = {})
 
   if (!response.ok) {
     const errorText = await response.text();
-    // If we get 401, try to refresh the token
-    if (response.status === 401) {
-      jwtToken = null;
-      const newToken = await getJwtToken();
-      const retryResponse = await fetch(url, {
-        ...options,
-        headers: {
-          'Authorization': `Bearer ${newToken}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          ...options.headers,
-        },
-        signal: AbortSignal.timeout(30000),
-      });
-      
-      if (!retryResponse.ok) {
-        const retryErrorText = await retryResponse.text();
-        throw new Error(`Airflow API error: ${retryResponse.status} ${retryResponse.statusText} - ${retryErrorText}`);
-      }
-      
-      return retryResponse.json();
-    }
-    
     throw new Error(`Airflow API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
 

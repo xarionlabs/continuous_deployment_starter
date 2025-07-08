@@ -28,6 +28,9 @@ services:
       DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
       PSQL_PXY6_PASSWORD: localpassword
       NODE_ENV: development
+      AIRFLOW_API_URL: http://localhost:8080/api/v2
+      AIRFLOW_USERNAME: admin
+      AIRFLOW_PASSWORD: admin
     ports:
       - "3000:3000"
     networks:

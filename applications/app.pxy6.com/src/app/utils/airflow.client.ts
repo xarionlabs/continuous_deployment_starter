@@ -143,7 +143,7 @@ export class AirflowClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      await this.makeRequest('/health');
+      await this.makeRequest('/monitor/health');
       return true;
     } catch (error) {
       console.error('Airflow connection test failed:', error);
@@ -311,7 +311,7 @@ export class AirflowClient {
  */
 export function createAirflowClient(): AirflowClient {
   const config: AirflowConfig = {
-    baseUrl: process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v1',
+    baseUrl: process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2',
     username: process.env.AIRFLOW_USERNAME || 'admin',
     password: process.env.AIRFLOW_PASSWORD || 'admin',
     timeout: 30000,
