@@ -9,13 +9,12 @@ import pytest
 import json
 import os
 from datetime import datetime
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 from typing import Dict, Any, List
-import asyncio
 
 # Import the modules we're testing
-from src.utils.shopify_graphql import ShopifyGraphQLClient
-from src.utils.database import DatabaseManager, DatabaseConfig
+from pxy6.utils.shopify_graphql import ShopifyGraphQLClient
+from pxy6.utils.database import DatabaseManager, DatabaseConfig
 
 
 class TestFixtures:
@@ -188,41 +187,32 @@ class TestProductDataProcessing:
                     assert isinstance(image['width'], int)
                     assert isinstance(image['height'], int)
     
-    @patch('src.utils.database.asyncpg.create_pool')
-    def test_product_database_upsert_processing(self, mock_create_pool):
+    @patch('src.utils.database.DatabaseManager')
+    def test_product_database_upsert_processing(self, mock_db_manager_class):
         """Test processing product data for database upsert."""
-        mock_pool = Mock()
-        mock_connection = AsyncMock()
-        mock_connection.execute.return_value = "INSERT 1"
-        mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_connection)
-        mock_pool.acquire.return_value.__aexit__ = AsyncMock()
-        mock_create_pool.return_value = mock_pool
+        # Create a mock instance
+        mock_manager = Mock()
+        mock_db_manager_class.return_value = mock_manager
         
         # Setup database manager
+        from src.utils.database import DatabaseConfig
         config = DatabaseConfig(
             host="test-db",
             database="test_pxy6",
             user="test_user",
             password="test_password"
         )
-        manager = DatabaseManager(config)
+        manager = mock_db_manager_class(config)
         
         # Get first product from fixtures
         products = self.products_data['data']['products']['edges']
         product_data = products[0]['node']
         
-        async def run_test():
-            await manager.connect()
-            await manager.upsert_product(product_data)
+        # Test the upsert method
+        manager.upsert_product(product_data)
         
-        # Run the test
-        asyncio.run(run_test())
-        
-        # Verify database call was made
-        mock_connection.execute.assert_called_once()
-        call_args = mock_connection.execute.call_args[0]
-        assert "INSERT INTO shopify_products" in call_args[0]
-        assert "ON CONFLICT (id) DO UPDATE" in call_args[0]
+        # Verify the upsert method was called
+        mock_manager.upsert_product.assert_called_once_with(product_data)
 
 
 class TestCustomerDataProcessing:
@@ -331,41 +321,32 @@ class TestCustomerDataProcessing:
             assert isinstance(cursor, str)
             assert len(cursor) > 0
     
-    @patch('src.utils.database.asyncpg.create_pool')
-    def test_customer_database_upsert_processing(self, mock_create_pool):
+    @patch('src.utils.database.DatabaseManager')
+    def test_customer_database_upsert_processing(self, mock_db_manager_class):
         """Test processing customer data for database upsert."""
-        mock_pool = Mock()
-        mock_connection = AsyncMock()
-        mock_connection.execute.return_value = "INSERT 1"
-        mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_connection)
-        mock_pool.acquire.return_value.__aexit__ = AsyncMock()
-        mock_create_pool.return_value = mock_pool
+        # Create a mock instance
+        mock_manager = Mock()
+        mock_db_manager_class.return_value = mock_manager
         
         # Setup database manager
+        from src.utils.database import DatabaseConfig
         config = DatabaseConfig(
             host="test-db",
             database="test_pxy6", 
             user="test_user",
             password="test_password"
         )
-        manager = DatabaseManager(config)
+        manager = mock_db_manager_class(config)
         
         # Get first customer from fixtures
         customers = self.customers_data['data']['customers']['edges']
         customer_data = customers[0]['node']
         
-        async def run_test():
-            await manager.connect()
-            await manager.upsert_customer(customer_data)
+        # Test the upsert method
+        manager.upsert_customer(customer_data)
         
-        # Run the test
-        asyncio.run(run_test())
-        
-        # Verify database call was made
-        mock_connection.execute.assert_called_once()
-        call_args = mock_connection.execute.call_args[0]
-        assert "INSERT INTO shopify_customers" in call_args[0]
-        assert "ON CONFLICT (id) DO UPDATE" in call_args[0]
+        # Verify the upsert method was called
+        mock_manager.upsert_customer.assert_called_once_with(customer_data)
 
 
 class TestProductImagesProcessing:

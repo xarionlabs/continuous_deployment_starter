@@ -49,11 +49,13 @@ WORKDIR /app
 # Copy virtual environment from builder stage
 COPY --from=builder /opt/venv /opt/venv
 
-# Copy DAGs and entrypoints
+# Copy application code and DAGs
+COPY src/ ./src/
 COPY dags/ ./dags/
 COPY entrypoints/ ./entrypoints/
 COPY tests/ ./tests/
 COPY *.sh ./
+COPY pytest.ini ./
 
 # Set correct ownership and permissions
 RUN chown -R airflow:airflow /app /opt/venv && \

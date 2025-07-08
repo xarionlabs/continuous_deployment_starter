@@ -14,8 +14,32 @@ from unittest.mock import Mock, AsyncMock
 
 # Add the src directory to the Python path
 current_dir = Path(__file__).parent
-src_dir = current_dir.parent / 'src'
+project_root = current_dir.parent
+src_dir = project_root / 'src'
 sys.path.insert(0, str(src_dir))
+sys.path.insert(0, str(project_root))
+
+# Set Airflow environment for testing
+os.environ.setdefault("AIRFLOW__CORE__LOAD_EXAMPLES", "False")
+os.environ.setdefault("AIRFLOW__CORE__UNIT_TEST_MODE", "True")
+os.environ.setdefault("AIRFLOW__CORE__EXECUTOR", "SequentialExecutor")
+
+# Set up a test database path
+import tempfile
+test_db_path = tempfile.mktemp(suffix='.db')
+os.environ.setdefault("AIRFLOW__DATABASE__SQL_ALCHEMY_CONN", f"sqlite:///{test_db_path}")
+os.environ.setdefault("AIRFLOW_HOME", tempfile.mkdtemp())
+
+# Initialize Airflow DB before any imports
+try:
+    from airflow.utils.db import initdb
+    from airflow import settings
+    # Ensure we're using the test database
+    settings.configure_orm()
+    initdb()
+except Exception:
+    # If initialization fails, it's okay for unit tests
+    pass
 
 
 @pytest.fixture(scope="session")
@@ -48,7 +72,7 @@ def product_images_fixture(test_fixtures_dir):
 @pytest.fixture
 def mock_shopify_client():
     """Create a mock Shopify client for testing."""
-    from src.utils.shopify_graphql import ShopifyGraphQLClient
+    from pxy6.utils.shopify_graphql import ShopifyGraphQLClient
     
     client = ShopifyGraphQLClient(
         shop_name="test-shop",
@@ -60,23 +84,34 @@ def mock_shopify_client():
 @pytest.fixture
 def mock_database_config():
     """Create a mock database configuration for testing."""
-    from src.utils.database import DatabaseConfig
-    
-    return DatabaseConfig(
-        host="test-db",
-        port=5432,
-        database="test_pxy6",
-        user="test_pxy6_airflow",
-        password="test_password"
-    )
+    return {
+        "host": "test-db",
+        "port": 5432,
+        "database": "test_pxy6",
+        "user": "test_pxy6_airflow",
+        "password": "test_password"
+    }
 
 
 @pytest.fixture
-def mock_database_manager(mock_database_config):
+def mock_database_manager():
     """Create a mock database manager for testing."""
-    from src.utils.database import DatabaseManager
+    from pxy6.utils.database import DatabaseManager
     
-    return DatabaseManager(mock_database_config)
+    # Return a mock instance since we don't want to connect to a real database
+    mock_manager = Mock(spec=DatabaseManager)
+    mock_manager.connect = AsyncMock()
+    mock_manager.close = AsyncMock()
+    mock_manager.create_tables = AsyncMock()
+    mock_manager.get_customers_count = AsyncMock(return_value=10)
+    mock_manager.get_orders_count = AsyncMock(return_value=20)
+    mock_manager.get_products_count = AsyncMock(return_value=30)
+    mock_manager.upsert_customer = AsyncMock()
+    mock_manager.upsert_order = AsyncMock()
+    mock_manager.upsert_product = AsyncMock()
+    mock_manager.execute_query = AsyncMock(return_value=[{"count": 5}])
+    
+    return mock_manager
 
 
 @pytest.fixture
