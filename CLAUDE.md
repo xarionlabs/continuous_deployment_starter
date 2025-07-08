@@ -100,6 +100,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `poetry run pytest` - Run tests
 - `poetry run release-tool --help` - Show CLI help
 
+## Important: Local Development vs Services Deployment
+
+**⚠️ CRITICAL: Do NOT run docker-compose commands locally in the services/ folder**
+
+### Local Development
+- **Use application-level docker-compose files**: Located in `applications/[app_name]/docker-compose.yaml`
+- **Command**: `docker-compose -f applications/[app_name]/docker-compose.yaml up --build`
+- **Purpose**: Local development, testing, and debugging individual applications
+- **Environment**: Isolated, lightweight, development-focused configurations
+
+### Services Deployment (Production Infrastructure)
+- **Location**: `services/` folder contains infrastructure service configurations
+- **Deployment Target**: Staging and live servers only
+- **Management**: Automated deployment system using Podman with systemd
+- **Services Include**: PostgreSQL, Nginx proxy, Airflow, and other infrastructure components
+- **DO NOT**: Run these locally with docker-compose - they are production infrastructure configurations
+
+### Why This Separation Matters
+1. **Resource Usage**: Services configurations are designed for production servers with different resource requirements
+2. **Network Configuration**: Production services use specific networking that may conflict with local development
+3. **Data Persistence**: Production services manage persistent data that shouldn't be mixed with local development
+4. **Security**: Production configurations include security settings not suitable for local development
+5. **Dependencies**: Services may depend on external resources not available locally
+
+### What to Use When
+- **Developing/Testing Applications**: Use `applications/[app_name]/docker-compose.yaml`
+- **Testing Infrastructure**: Use the deployment system on staging servers
+- **Production Deployment**: Managed automatically by CI/CD pipeline
+
 ## Architecture
 
 This is a containerized multi-application deployment system with automated CI/CD pipelines:

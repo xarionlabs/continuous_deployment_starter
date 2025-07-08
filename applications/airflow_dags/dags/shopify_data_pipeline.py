@@ -31,7 +31,7 @@ from airflow.utils.trigger_rule import TriggerRule
 from airflow.exceptions import AirflowException
 from airflow.models import Variable
 # from airflow.utils.dates import days_ago  # Not available in Airflow 3.0.2
-from airflow.utils.state import State
+from airflow.utils.state import DagRunState
 
 import structlog
 from pxy6.operators.shopify_operator import (
@@ -254,9 +254,8 @@ def sequential_dag_coordination():
         conf={"triggered_by": "shopify_data_pipeline"},
         wait_for_completion=True,
         poke_interval=60,
-        timeout=COORDINATED_DAGS["shopify_past_purchases"]["timeout"].total_seconds(),
-        allowed_states=[State.SUCCESS],
-        failed_states=[State.FAILED, State.UPSTREAM_FAILED],
+        allowed_states=[DagRunState.SUCCESS],
+        failed_states=[DagRunState.FAILED],
     )
     
     # Trigger Store Metadata DAG (runs after past purchases)
@@ -266,9 +265,8 @@ def sequential_dag_coordination():
         conf={"triggered_by": "shopify_data_pipeline"},
         wait_for_completion=True,
         poke_interval=60,
-        timeout=COORDINATED_DAGS["shopify_store_metadata"]["timeout"].total_seconds(),
-        allowed_states=[State.SUCCESS],
-        failed_states=[State.FAILED, State.UPSTREAM_FAILED],
+        allowed_states=[DagRunState.SUCCESS],
+        failed_states=[DagRunState.FAILED],
     )
     
     # Sequential execution
@@ -288,9 +286,8 @@ def parallel_dag_coordination():
         conf={"triggered_by": "shopify_data_pipeline", "mode": "parallel"},
         wait_for_completion=True,
         poke_interval=60,
-        timeout=COORDINATED_DAGS["shopify_past_purchases"]["timeout"].total_seconds(),
-        allowed_states=[State.SUCCESS],
-        failed_states=[State.FAILED, State.UPSTREAM_FAILED],
+        allowed_states=[DagRunState.SUCCESS],
+        failed_states=[DagRunState.FAILED],
     )
     
     trigger_store_metadata_parallel = TriggerDagRunOperator(
@@ -299,9 +296,8 @@ def parallel_dag_coordination():
         conf={"triggered_by": "shopify_data_pipeline", "mode": "parallel"},
         wait_for_completion=True,
         poke_interval=60,
-        timeout=COORDINATED_DAGS["shopify_store_metadata"]["timeout"].total_seconds(),
-        allowed_states=[State.SUCCESS],
-        failed_states=[State.FAILED, State.UPSTREAM_FAILED],
+        allowed_states=[DagRunState.SUCCESS],
+        failed_states=[DagRunState.FAILED],
     )
     
     trigger_all_dags = EmptyOperator(
@@ -624,47 +620,41 @@ pipeline_end = EmptyOperator(
     dag=dag,
 )
 
-# Pipeline Error Handler
-pipeline_error = BashOperator(
-    task_id="pipeline_error",
-    bash_command='echo "Pipeline failed - check logs for details"',
-    trigger_rule=TriggerRule.ONE_FAILED,
-    dag=dag,
-)
 
-# Set up task dependencies
-config = get_pipeline_config()
-validation = validate_connections()
-database_prep = prepare_database()
+# Set up task dependencies using with dag context
+with dag:
+    config = get_pipeline_config()
+    validation = validate_connections()
+    database_prep = prepare_database()
 
-# Main pipeline flow
-config >> validation >> database_prep >> coordination_decision
+    # Main pipeline flow
+    config >> validation >> database_prep >> coordination_decision
 
-# Sequential coordination path
-sequential_coordination = sequential_dag_coordination()
-coordination_decision >> sequential_coordination
+    # Sequential coordination path
+    sequential_coordination = sequential_dag_coordination()
+    coordination_decision >> sequential_coordination
 
-# Parallel coordination path
-parallel_coordination = parallel_dag_coordination()
-coordination_decision >> parallel_coordination
+    # Parallel coordination path
+    parallel_coordination = parallel_dag_coordination()
+    coordination_decision >> parallel_coordination
 
-# Monitoring and reporting
-dag_monitoring = monitor_coordinated_dags()
-comprehensive_report = generate_comprehensive_report()
-cleanup = cleanup_old_data()
+    # Monitoring and reporting
+    dag_monitoring = monitor_coordinated_dags()
+    comprehensive_report = generate_comprehensive_report()
+    cleanup = cleanup_old_data()
 
-# Connect coordination operations to monitoring and reporting
-[sequential_coordination, parallel_coordination] >> dag_monitoring >> comprehensive_report >> cleanup >> pipeline_end
+    # Connect coordination operations to monitoring and reporting
+    [sequential_coordination, parallel_coordination] >> dag_monitoring >> comprehensive_report >> cleanup >> pipeline_end
 
-# Error handling
-pipeline_error = BashOperator(
-    task_id="pipeline_error",
-    bash_command='echo "Pipeline coordination failed - check logs for details"',
-    trigger_rule=TriggerRule.ONE_FAILED,
-    dag=dag,
-)
+    # Error handling
+    pipeline_error = BashOperator(
+        task_id="pipeline_error",
+        bash_command='echo "Pipeline coordination failed - check logs for details"',
+        trigger_rule=TriggerRule.ONE_FAILED,
+        dag=dag,
+    )
 
-[sequential_coordination, parallel_coordination, dag_monitoring, comprehensive_report, cleanup] >> pipeline_error
+    [sequential_coordination, parallel_coordination, dag_monitoring, comprehensive_report, cleanup] >> pipeline_error
 
 if __name__ == "__main__":
     dag.test()

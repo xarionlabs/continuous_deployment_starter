@@ -13,32 +13,16 @@ services:
       - airflow_network
     restart: unless-stopped
 
-  airflow-dags-deploy:
-    build: .
-    volumes:
-      - airflow_dags:/opt/airflow/dags
-      - airflow_plugins:/opt/airflow/plugins
-    user: root
-    entrypoint: ["sh"]
-    command: >
-      -c "
-        echo 'Deploying DAGs to local development environment...' &&
-        rm -rf /opt/airflow/dags/* &&
-        cp -r /app/src/dags/* /opt/airflow/dags/ &&
-        cp -r /app/src/utils /opt/airflow/dags/ &&
-        cp -r /app/src/operators /opt/airflow/dags/ &&
-        cp -r /app/src/hooks /opt/airflow/dags/ &&
-        cp /app/requirements.txt /opt/airflow/dags/ &&
-        chown -R 50000:0 /opt/airflow/dags &&
-        echo 'DAGs and dependencies deployed successfully.'
-      "
-
   airflow-standalone:
     image: apache/airflow:3.0.2
     volumes:
-      - airflow_dags:/opt/airflow/dags
+      - ./dags:/opt/airflow/dags
       - airflow_plugins:/opt/airflow/plugins
       - airflow_logs:/opt/airflow/logs
+      - ./src:/app/src
+      - ./setup.py:/app/setup.py
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./requirements.txt:/app/requirements.txt
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:localpassword@db:5432/airflow_test
@@ -53,23 +37,31 @@ services:
       # Ensure DAG dependencies are available
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_NO_CACHE_DIR: "1"
-      # Set admin password
-      _AIRFLOW_WWW_USER_USERNAME: 'admin'
-      _AIRFLOW_WWW_USER_PASSWORD: 'admin'
     depends_on:
       - db
-      - airflow-dags-deploy
     networks:
       - airflow_network
     ports:
       - "8080:8080"
+    user: root
     command: |
       bash -c "
+        echo 'Making /app writable...'
+        chown -R airflow:airflow /app
+        
         echo 'Installing DAG dependencies...'
-        if [ -f /opt/airflow/dags/requirements.txt ]; then
-          pip install --no-cache-dir -r /opt/airflow/dags/requirements.txt
+        if [ -f /app/requirements.txt ]; then
+          pip install --no-cache-dir -r /app/requirements.txt
         else
           echo 'Requirements file not found, skipping dependency installation'
+        fi
+        
+        echo 'Installing pxy6 package...'
+        if [ -f /app/setup.py ]; then
+          cd /app && pip install --no-cache-dir -e .
+          echo 'pxy6 package installed successfully'
+        else
+          echo 'No setup.py found, skipping pxy6 package installation'
         fi
         echo 'Starting Airflow standalone...'
         airflow standalone &
@@ -171,7 +163,6 @@ services:
 
 volumes:
   postgres_data:
-  airflow_dags:
   airflow_plugins:
   airflow_logs:
 

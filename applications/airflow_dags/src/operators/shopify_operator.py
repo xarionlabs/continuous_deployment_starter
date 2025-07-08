@@ -23,8 +23,8 @@ from airflow.hooks.base import BaseHook
 import structlog
 import json
 
-from hooks.shopify_hook import ShopifyHook
-from utils.database import DatabaseManager
+from pxy6.hooks.shopify_hook import ShopifyHook
+from pxy6.utils.database import DatabaseManager
 
 logger = structlog.get_logger(__name__)
 

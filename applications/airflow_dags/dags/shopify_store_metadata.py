@@ -1368,32 +1368,33 @@ catalog_pipeline_end = EmptyOperator(
     dag=dag,
 )
 
-# Set up task dependencies
-config = get_catalog_sync_config()
-validation = validate_catalog_connections()
-database_prep = prepare_catalog_database()
+# Set up task dependencies using with dag context
+with dag:
+    config = get_catalog_sync_config()
+    validation = validate_catalog_connections()
+    database_prep = prepare_catalog_database()
 
-# Main pipeline flow
-config >> validation >> database_prep >> catalog_sync_decision
+    # Main pipeline flow
+    config >> validation >> database_prep >> catalog_sync_decision
 
-# Full sync path
-full_catalog_sync = full_catalog_sync_operations()
-catalog_sync_decision >> full_catalog_sync
+    # Full sync path
+    full_catalog_sync = full_catalog_sync_operations()
+    catalog_sync_decision >> full_catalog_sync
 
-# Incremental sync path
-incremental_catalog_sync = incremental_catalog_sync_operations()
-catalog_sync_decision >> incremental_catalog_sync
+    # Incremental sync path
+    incremental_catalog_sync = incremental_catalog_sync_operations()
+    catalog_sync_decision >> incremental_catalog_sync
 
-# Image sync (runs in parallel with main sync)
-image_sync = image_sync_operations()
-[full_catalog_sync, incremental_catalog_sync] >> image_sync
+    # Image sync (runs in parallel with main sync)
+    image_sync = image_sync_operations()
+    [full_catalog_sync, incremental_catalog_sync] >> image_sync
 
-# Validation and reporting
-catalog_validation = validate_catalog_data()
-catalog_report = generate_catalog_report()
+    # Validation and reporting
+    catalog_validation = validate_catalog_data()
+    catalog_report = generate_catalog_report()
 
-# Connect all operations to validation and reporting
-[full_catalog_sync, incremental_catalog_sync, image_sync] >> catalog_validation >> catalog_report >> catalog_pipeline_end
+    # Connect all operations to validation and reporting
+    [full_catalog_sync, incremental_catalog_sync, image_sync] >> catalog_validation >> catalog_report >> catalog_pipeline_end
 
 if __name__ == "__main__":
     dag.test()

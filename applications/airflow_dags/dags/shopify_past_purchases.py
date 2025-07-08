@@ -1089,28 +1089,29 @@ pipeline_end = EmptyOperator(
     dag=dag,
 )
 
-# Set up task dependencies
-config = get_sync_config()
-validation = validate_connections()
-database_prep = prepare_database_tables()
+# Set up task dependencies using with dag context
+with dag:
+    config = get_sync_config()
+    validation = validate_connections()
+    database_prep = prepare_database_tables()
 
-# Main pipeline flow
-config >> validation >> database_prep >> sync_mode_decision
+    # Main pipeline flow
+    config >> validation >> database_prep >> sync_mode_decision
 
-# Full sync path
-full_sync_group = full_sync_operations()
-sync_mode_decision >> full_sync_group
+    # Full sync path
+    full_sync_group = full_sync_operations()
+    sync_mode_decision >> full_sync_group
 
-# Incremental sync path
-incremental_sync_group = incremental_sync_operations()
-sync_mode_decision >> incremental_sync_group
+    # Incremental sync path
+    incremental_sync_group = incremental_sync_operations()
+    sync_mode_decision >> incremental_sync_group
 
-# Validation and reporting
-data_validation = validate_past_purchases_data()
-sync_report = generate_sync_report()
+    # Validation and reporting
+    data_validation = validate_past_purchases_data()
+    sync_report = generate_sync_report()
 
-# Connect sync operations to validation and reporting
-[full_sync_group, incremental_sync_group] >> data_validation >> sync_report >> pipeline_end
+    # Connect sync operations to validation and reporting
+    [full_sync_group, incremental_sync_group] >> data_validation >> sync_report >> pipeline_end
 
 if __name__ == "__main__":
     dag.test()

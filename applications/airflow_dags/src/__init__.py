@@ -17,8 +17,8 @@ from .operators.shopify_operator import (
 )
 from .hooks.shopify_hook import ShopifyHook
 from .utils.database import DatabaseManager
-from .utils.shopify_client import ShopifyClient
-from .utils.config import Config
+from .utils.shopify_client import ShopifyGraphQLClient
+from .utils.config import AirflowConfig
 
 __all__ = [
     "ShopifyToPostgresOperator",
@@ -26,6 +26,6 @@ __all__ = [
     "ShopifyIncrementalSyncOperator",
     "ShopifyHook",
     "DatabaseManager",
-    "ShopifyClient",
-    "Config",
+    "ShopifyGraphQLClient",
+    "AirflowConfig",
 ]
