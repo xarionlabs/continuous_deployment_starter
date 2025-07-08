@@ -106,7 +106,7 @@ const triggerDataSync = async (config: {
   enableOrders?: boolean;
   note?: string;
 }) => {
-  const dagId = 'shopify_data_pipeline';
+  const dagId = 'shopify_sync';
   const runId = `manual_${Date.now()}`;
   
   const requestBody = {
@@ -130,12 +130,12 @@ const triggerDataSync = async (config: {
 };
 
 const getDagRunStatus = async (runId: string) => {
-  const dagId = 'shopify_data_pipeline';
+  const dagId = 'shopify_sync';
   return createAirflowRequest(`/dags/${dagId}/dagRuns/${runId}`);
 };
 
 const getTaskInstances = async (runId: string) => {
-  const dagId = 'shopify_data_pipeline';
+  const dagId = 'shopify_sync';
   return createAirflowRequest(`/dags/${dagId}/dagRuns/${runId}/taskInstances`);
 };
 

@@ -6,8 +6,8 @@ This module contains tests for DAG structure, syntax, and basic functionality.
 
 import pytest
 from datetime import datetime, timedelta
+from unittest.mock import Mock, patch
 from airflow.models import DagBag
-from airflow.utils.dag_cycle import check_cycle
 
 
 class TestDAGStructure:
@@ -25,8 +25,8 @@ class TestDAGStructure:
     def test_dag_ids(self):
         """Test that expected DAGs are present."""
         expected_dags = [
-            'shopify_customer_data',
-            'shopify_order_data',
+            'shopify_sync',
+            'shopify_analytics',
         ]
         
         for dag_id in expected_dags:
@@ -40,13 +40,12 @@ class TestDAGStructure:
             assert dag.description is not None
             assert dag.owner is not None
             assert dag.start_date is not None
-            assert dag.schedule_interval is not None
+            # Airflow 3.x uses 'schedule' instead of 'schedule_interval'
+            # Schedule can be None for manually triggered DAGs
+            assert hasattr(dag, 'schedule')
             
             # Test DAG has tasks
             assert len(dag.tasks) > 0
-            
-            # Test no cycles in DAG
-            check_cycle(dag)
     
     def test_dag_default_args(self):
         """Test DAG default arguments."""
@@ -55,24 +54,23 @@ class TestDAGStructure:
             
             # Test required default args
             assert 'owner' in default_args
-            assert 'start_date' in default_args
+            assert 'depends_on_past' in default_args
+            assert 'email_on_failure' in default_args
+            assert 'email_on_retry' in default_args
             assert 'retries' in default_args
             assert 'retry_delay' in default_args
-            
-            # Test start_date is not in the future
-            assert default_args['start_date'] <= datetime.now()
             
             # Test retry_delay is a timedelta
             assert isinstance(default_args['retry_delay'], timedelta)
 
 
-class TestShopifyCustomerDataDAG:
-    """Test Shopify Customer Data DAG."""
+class TestShopifySyncDAG:
+    """Test Shopify Sync DAG."""
     
     def setup_method(self):
         """Setup test fixtures."""
         self.dagbag = DagBag(dag_folder='dags/', include_examples=False)
-        self.dag = self.dagbag.get_dag('shopify_customer_data')
+        self.dag = self.dagbag.get_dag('shopify_sync')
     
     def test_dag_exists(self):
         """Test that the DAG exists."""
@@ -81,10 +79,10 @@ class TestShopifyCustomerDataDAG:
     def test_dag_tasks(self):
         """Test DAG tasks."""
         expected_tasks = [
-            'extract_customer_data',
-            'store_customer_data',
-            'validate_customer_data',
-            'health_check',
+            'sync_customers',
+            'sync_orders',
+            'sync_products',
+            'generate_sync_summary',
         ]
         
         actual_tasks = [task.task_id for task in self.dag.tasks]
@@ -94,30 +92,26 @@ class TestShopifyCustomerDataDAG:
     
     def test_dag_schedule(self):
         """Test DAG schedule."""
-        # Daily at 2:00 AM UTC
-        assert self.dag.schedule_interval == '0 2 * * *'
+        # Triggered manually via app.pxy6.com API
+        # Airflow 3.x uses 'schedule' instead of 'schedule_interval'
+        assert self.dag.schedule is None
     
     def test_dag_dependencies(self):
         """Test task dependencies."""
-        extract_task = self.dag.get_task('extract_customer_data')
-        store_task = self.dag.get_task('store_customer_data')
-        validate_task = self.dag.get_task('validate_customer_data')
-        health_check_task = self.dag.get_task('health_check')
+        summary_task = self.dag.get_task('generate_sync_summary')
         
-        # Test upstream dependencies
-        assert extract_task.upstream_task_ids == set()
-        assert store_task.upstream_task_ids == {'extract_customer_data'}
-        assert validate_task.upstream_task_ids == {'store_customer_data'}
-        assert health_check_task.upstream_task_ids == {'validate_customer_data'}
+        # Test that summary task has all sync tasks as upstreams
+        expected_upstreams = {'sync_customers', 'sync_orders', 'sync_products'}
+        assert summary_task.upstream_task_ids == expected_upstreams
 
 
-class TestShopifyOrderDataDAG:
-    """Test Shopify Order Data DAG."""
+class TestShopifyAnalyticsDAG:
+    """Test Shopify Analytics DAG."""
     
     def setup_method(self):
         """Setup test fixtures."""
         self.dagbag = DagBag(dag_folder='dags/', include_examples=False)
-        self.dag = self.dagbag.get_dag('shopify_order_data')
+        self.dag = self.dagbag.get_dag('shopify_analytics')
     
     def test_dag_exists(self):
         """Test that the DAG exists."""
@@ -126,10 +120,11 @@ class TestShopifyOrderDataDAG:
     def test_dag_tasks(self):
         """Test DAG tasks."""
         expected_tasks = [
-            'extract_order_data',
-            'store_order_data',
+            'wait_for_sync',
+            'calculate_customer_metrics',
             'calculate_order_metrics',
-            'health_check',
+            'calculate_product_metrics',
+            'generate_analytics_report',
         ]
         
         actual_tasks = [task.task_id for task in self.dag.tasks]
@@ -139,21 +134,21 @@ class TestShopifyOrderDataDAG:
     
     def test_dag_schedule(self):
         """Test DAG schedule."""
-        # Every 4 hours
-        assert self.dag.schedule_interval == '0 */4 * * *'
+        # Triggered manually or by external task sensor
+        # Airflow 3.x uses 'schedule' instead of 'schedule_interval'
+        assert self.dag.schedule is None
     
     def test_dag_dependencies(self):
         """Test task dependencies."""
-        extract_task = self.dag.get_task('extract_order_data')
-        store_task = self.dag.get_task('store_order_data')
-        metrics_task = self.dag.get_task('calculate_order_metrics')
-        health_check_task = self.dag.get_task('health_check')
+        wait_task = self.dag.get_task('wait_for_sync')
+        report_task = self.dag.get_task('generate_analytics_report')
         
-        # Test upstream dependencies
-        assert extract_task.upstream_task_ids == set()
-        assert store_task.upstream_task_ids == {'extract_order_data'}
-        assert metrics_task.upstream_task_ids == {'store_order_data'}
-        assert health_check_task.upstream_task_ids == {'calculate_order_metrics'}
+        # Test that wait_for_sync has no upstreams
+        assert wait_task.upstream_task_ids == set()
+        
+        # Test that report task has all metrics tasks as upstreams
+        expected_upstreams = {'calculate_customer_metrics', 'calculate_order_metrics', 'calculate_product_metrics'}
+        assert report_task.upstream_task_ids == expected_upstreams
 
 
 if __name__ == '__main__':

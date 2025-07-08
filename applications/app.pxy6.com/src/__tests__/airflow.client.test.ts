@@ -85,7 +85,7 @@ describe('AirflowClient', () => {
   describe('triggerDataSync', () => {
     it('should trigger data sync with default configuration', async () => {
       const mockDagRun = {
-        dag_id: 'shopify_data_pipeline',
+        dag_id: 'shopify_sync',
         dag_run_id: 'manual_1234567890',
         run_id: 'test-run-123',
         state: 'queued',
@@ -107,7 +107,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagRun);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_data_pipeline/dagRuns',
+        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -121,7 +121,7 @@ describe('AirflowClient', () => {
 
     it('should trigger data sync with custom configuration', async () => {
       const mockDagRun = {
-        dag_id: 'shopify_data_pipeline',
+        dag_id: 'shopify_sync',
         dag_run_id: 'manual_1234567890',
         run_id: 'test-run-123',
         state: 'queued',
@@ -172,7 +172,7 @@ describe('AirflowClient', () => {
   describe('getDagRunStatus', () => {
     it('should return DAG run status', async () => {
       const mockDagRun = {
-        dag_id: 'shopify_data_pipeline',
+        dag_id: 'shopify_sync',
         run_id: 'test-run-123',
         state: 'running',
         start_date: '2024-01-01T00:00:00Z',
@@ -188,7 +188,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagRun);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_data_pipeline/dagRuns/test-run-123',
+        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns/test-run-123',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Basic dGVzdDp0ZXN0',
@@ -203,7 +203,7 @@ describe('AirflowClient', () => {
       const mockHistory = {
         dag_runs: [
           {
-            dag_id: 'shopify_data_pipeline',
+            dag_id: 'shopify_sync',
             run_id: 'test-run-123',
             state: 'success',
             start_date: '2024-01-01T00:00:00Z',
@@ -222,7 +222,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockHistory);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_data_pipeline/dagRuns?limit=10&order_by=-execution_date',
+        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns?limit=10&order_by=-execution_date',
         expect.any(Object)
       );
     });
@@ -241,7 +241,7 @@ describe('AirflowClient', () => {
       await client.getDagRunHistory(5);
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_data_pipeline/dagRuns?limit=5&order_by=-execution_date',
+        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns?limit=5&order_by=-execution_date',
         expect.any(Object)
       );
     });
@@ -253,7 +253,7 @@ describe('AirflowClient', () => {
         task_instances: [
           {
             task_id: 'sync_products',
-            dag_id: 'shopify_data_pipeline',
+            dag_id: 'shopify_sync',
             run_id: 'test-run-123',
             state: 'success',
             start_date: '2024-01-01T00:00:00Z',
@@ -272,7 +272,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockTaskInstances);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_data_pipeline/dagRuns/test-run-123/taskInstances',
+        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns/test-run-123/taskInstances',
         expect.any(Object)
       );
     });
@@ -283,7 +283,7 @@ describe('AirflowClient', () => {
       const mockDagRuns = {
         dag_runs: [
           {
-            dag_id: 'shopify_data_pipeline',
+            dag_id: 'shopify_sync',
             run_id: 'test-run-123',
             state: 'success',
             start_date: '2024-01-01T00:00:00Z',
@@ -328,7 +328,7 @@ describe('AirflowClient', () => {
       const mockDagRuns = {
         dag_runs: [
           {
-            dag_id: 'shopify_data_pipeline',
+            dag_id: 'shopify_sync',
             run_id: 'test-run-123',
             state: 'failed',
             start_date: '2024-01-01T00:00:00Z',
@@ -372,7 +372,7 @@ describe('AirflowClient', () => {
       const mockDagRuns = {
         dag_runs: [
           {
-            dag_id: 'shopify_data_pipeline',
+            dag_id: 'shopify_sync',
             run_id: 'test-run-123',
             state: 'success',
             start_date: '2024-01-01T00:00:00Z',
@@ -423,7 +423,7 @@ describe('AirflowClient', () => {
   describe('cancelDagRun', () => {
     it('should cancel a DAG run', async () => {
       const mockDagRun = {
-        dag_id: 'shopify_data_pipeline',
+        dag_id: 'shopify_sync',
         run_id: 'test-run-123',
         state: 'failed',
       };
@@ -437,7 +437,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagRun);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_data_pipeline/dagRuns/test-run-123',
+        'http://localhost:8080/api/v1/dags/shopify_sync/dagRuns/test-run-123',
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify({ state: 'failed' }),
@@ -449,7 +449,7 @@ describe('AirflowClient', () => {
   describe('getDagInfo', () => {
     it('should return DAG information', async () => {
       const mockDagInfo = {
-        dag_id: 'shopify_data_pipeline',
+        dag_id: 'shopify_sync',
         is_active: true,
         is_paused: false,
         description: 'Shopify data synchronization pipeline',
@@ -464,7 +464,7 @@ describe('AirflowClient', () => {
 
       expect(result).toEqual(mockDagInfo);
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/dags/shopify_data_pipeline',
+        'http://localhost:8080/api/v1/dags/shopify_sync',
         expect.any(Object)
       );
     });

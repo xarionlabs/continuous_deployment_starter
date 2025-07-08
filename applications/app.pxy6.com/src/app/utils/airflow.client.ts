@@ -161,7 +161,7 @@ export class AirflowClient {
     enableOrders?: boolean;
     note?: string;
   } = {}): Promise<DagRun> {
-    const dagId = 'shopify_data_pipeline';
+    const dagId = 'shopify_sync';
     const runId = `manual_${Date.now()}`;
     
     const requestBody: TriggerDagRequest = {
@@ -187,7 +187,7 @@ export class AirflowClient {
    * Get DAG run status
    */
   async getDagRunStatus(runId: string): Promise<DagRun> {
-    const dagId = 'shopify_data_pipeline';
+    const dagId = 'shopify_sync';
     return this.makeRequest<DagRun>(`/dags/${dagId}/dagRuns/${runId}`);
   }
 
@@ -195,7 +195,7 @@ export class AirflowClient {
    * Get DAG run history
    */
   async getDagRunHistory(limit: number = 10): Promise<DagRunsResponse> {
-    const dagId = 'shopify_data_pipeline';
+    const dagId = 'shopify_sync';
     const params = new URLSearchParams({
       limit: limit.toString(),
       order_by: '-execution_date',
@@ -208,7 +208,7 @@ export class AirflowClient {
    * Get task instances for a DAG run
    */
   async getTaskInstances(runId: string): Promise<TaskInstancesResponse> {
-    const dagId = 'shopify_data_pipeline';
+    const dagId = 'shopify_sync';
     return this.makeRequest<TaskInstancesResponse>(`/dags/${dagId}/dagRuns/${runId}/taskInstances`);
   }
 
@@ -269,7 +269,7 @@ export class AirflowClient {
    * Cancel a running DAG run
    */
   async cancelDagRun(runId: string): Promise<DagRun> {
-    const dagId = 'shopify_data_pipeline';
+    const dagId = 'shopify_sync';
     
     return this.makeRequest<DagRun>(`/dags/${dagId}/dagRuns/${runId}`, {
       method: 'PATCH',
@@ -281,7 +281,7 @@ export class AirflowClient {
    * Get DAG information
    */
   async getDagInfo(): Promise<any> {
-    const dagId = 'shopify_data_pipeline';
+    const dagId = 'shopify_sync';
     return this.makeRequest(`/dags/${dagId}`);
   }
 
