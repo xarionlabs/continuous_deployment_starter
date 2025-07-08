@@ -8,31 +8,33 @@ services:
     restart: "no"
     command: >
       sh -c "
-        echo 'Deploying DAGs to Airflow volumes...'
+        echo 'Deploying DAGs and package files to Airflow...'
         
         # Clear existing DAGs to prevent stale files
         rm -rf /opt/airflow/dags/*
         rm -rf /opt/airflow/plugins/*
         
-        # Copy DAGs and dependencies
-        cp -r /app/src/dags/* /opt/airflow/dags/
-        cp -r /app/src/plugins/* /opt/airflow/plugins/ 2>/dev/null || echo 'No plugins to copy'
-        cp -r /app/src/utils /opt/airflow/dags/
-        cp -r /app/src/operators /opt/airflow/dags/
-        cp -r /app/src/hooks /opt/airflow/dags/
+        # Copy DAGs and package files needed for installation
+        cp -r /app/dags/* /opt/airflow/dags/
+        cp -r /app/src /opt/airflow/
+        cp /app/requirements.txt /opt/airflow/
+        cp /app/setup.py /opt/airflow/
         
         # Set proper permissions
         chown -R 50000:0 /opt/airflow/dags
         chown -R 50000:0 /opt/airflow/plugins
+        chown -R 50000:0 /opt/airflow/src
         chmod -R 755 /opt/airflow/dags
         chmod -R 755 /opt/airflow/plugins
+        chmod -R 755 /opt/airflow/src
         
-        echo 'DAGs deployment completed successfully'
+        echo 'DAGs and package files deployment completed successfully'
         ls -la /opt/airflow/dags/
       "
     volumes:
       - airflow_dags:/opt/airflow/dags
       - airflow_plugins:/opt/airflow/plugins
+      - airflow_packages:/opt/airflow
     labels:
       - "io.containers.autoupdate=registry"
     user: root
@@ -81,7 +83,28 @@ services:
   airflow-scheduler:
     image: docker.io/apache/airflow:3.0.2
     entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
-    command: scheduler
+    command: >
+      sh -c "
+        echo 'Installing pxy6 package before starting scheduler...'
+        
+        # Wait for DAGs to be deployed
+        while [ ! -f /opt/airflow/dags/shopify_data_pipeline.py ]; do
+          echo 'Waiting for DAGs to be deployed...'
+          sleep 5
+        done
+        
+        # Install pxy6 package and dependencies from the shared package files
+        cd /opt/airflow
+        pip install --no-cache-dir -r requirements.txt
+        pip install --no-cache-dir -e .
+        
+        echo 'pxy6 package installed successfully'
+        echo 'Verifying installation:'
+        python -c 'from pxy6.utils.database import DatabaseManager; print(\"✓ pxy6 package working\")'
+        
+        echo 'Starting Airflow scheduler...'
+        exec airflow scheduler
+      "
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
@@ -96,6 +119,7 @@ services:
       - airflow_dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
       - airflow_plugins:/opt/airflow/plugins
+      - airflow_packages:/opt/airflow
       - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
@@ -111,6 +135,7 @@ services:
     restart: always
     depends_on:
       - airflow-init
+      - airflow-dags-deploy
       - db
     networks:
       - db_network
@@ -153,6 +178,7 @@ volumes:
   airflow_dags:
   airflow_logs:
   airflow_plugins:
+  airflow_packages:
 
 secrets:
   PSQL_AIRFLOW_PASSWORD:
