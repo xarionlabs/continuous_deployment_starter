@@ -51,6 +51,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Same environment as CI/CD pipeline
 - Easy cleanup after testing (no local dependency pollution)
 
+### Database Connection Information
+
+#### PostgreSQL Database Access
+- **Docker Container**: `airflow_dags-db-1`
+- **Username**: `pxy6_airflow`
+- **Password**: `localdatabase`
+- **Database**: `pxy6`
+
+#### Database Connection Commands
+```bash
+# Connect to PostgreSQL in Docker container
+docker exec airflow_dags-db-1 psql -U pxy6_airflow -d pxy6
+
+# Check table structure
+docker exec airflow_dags-db-1 psql -U pxy6_airflow -d pxy6 -c "\d [table_name]"
+
+# List all tables
+docker exec airflow_dags-db-1 psql -U pxy6_airflow -d pxy6 -c "\dt"
+```
+
+#### Database Migration Notes
+- The database is used by both the Shopify app (`app.pxy6.com`) and Airflow DAGs (`airflow_dags`)
+- Prisma schema changes in `app.pxy6.com` need to be applied to affect the database structure
+- Run `shopify app dev` in the `app.pxy6.com` directory to apply migrations
+
 ### Application-Specific Commands
 
 #### app.pxy6.com (Shopify Remix App)
@@ -62,7 +87,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test` - Run Jest tests
 - `npm run test:coverage` - Run tests with coverage
 - `npm run typecheck` - TypeScript type checking
-- `shopify app dev` - Start Shopify app development
+- `shopify app dev` - Start Shopify app development and manage database migrations
+- **Data Sync**: Use "Reload Data" button in app to trigger Airflow DAGs for Shopify data synchronization
 
 #### pxy6.com (React/Vite App)
 - `cd applications/pxy6.com/src` - Navigate to application source
@@ -84,9 +110,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### airflow_dags (Airflow DAGs Package)
 - `cd applications/airflow_dags` - Navigate to DAGs directory
-- `pytest tests/` - Run DAG tests
-- `python -c "from dags.shopify_get_past_purchases_dag import dag"` - Validate DAG import
-- Note: This packages DAGs and dependencies for the Airflow service in `services/06_airflow/`
+- `docker build -t airflow-dags .` - Build DAG container
+- `docker run --rm airflow-dags` - Validate DAG imports and syntax
+- `docker build . -t=airflow-dags && docker run --entrypoint="" airflow-dags pytest` - Run tests in Docker container
+- `./validate_dags.sh` - Comprehensive DAG validation (Docker-based)
+- `./quick_test.sh` - Quick validation for development
+- `pytest tests/` - Run DAG tests (with mocked dependencies)
+- `docker build -t airflow-dags-test . && docker run --rm --entrypoint="" airflow-dags-test pytest tests/ -v` - Run all tests in Docker container
+- `docker run --rm --entrypoint="" airflow-dags-test pytest tests/test_shopify_hook.py -v` - Run ShopifyHook throttling tests
+- `python -c "from dags.shopify_data_pipeline import dag"` - Validate main DAG import
+- `docker exec airflow_dags-airflow-standalone-1 airflow dags list-import-errors` - Check DAG import errors in running Airflow container
+- Note: Contains Shopify data integration DAGs that sync product, customer, and order data to PostgreSQL
+- **Testing**: Use `--entrypoint=""` with Docker to bypass container's default entrypoint and run pytest directly
 
 #### Release Tool (Python CLI)
 - `cd tools/deployment/deployment-manager` - Navigate to release tool directory
@@ -94,13 +129,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `poetry run pytest` - Run tests
 - `poetry run release-tool --help` - Show CLI help
 
+## Important: Local Development vs Services Deployment
+
+**⚠️ CRITICAL: Do NOT run docker-compose commands locally in the services/ folder**
+
+### Local Development
+- **Use application-level docker-compose files**: Located in `applications/[app_name]/docker-compose.yaml`
+- **Command**: `docker-compose -f applications/[app_name]/docker-compose.yaml up --build`
+- **Purpose**: Local development, testing, and debugging individual applications
+- **Environment**: Isolated, lightweight, development-focused configurations
+
+### Services Deployment (Production Infrastructure)
+- **Location**: `services/` folder contains infrastructure service configurations
+- **Deployment Target**: Staging and live servers only
+- **Management**: Automated deployment system using Podman with systemd
+- **Services Include**: PostgreSQL, Nginx proxy, Airflow, and other infrastructure components
+- **DO NOT**: Run these locally with docker-compose - they are production infrastructure configurations
+
+### Why This Separation Matters
+1. **Resource Usage**: Services configurations are designed for production servers with different resource requirements
+2. **Network Configuration**: Production services use specific networking that may conflict with local development
+3. **Data Persistence**: Production services manage persistent data that shouldn't be mixed with local development
+4. **Security**: Production configurations include security settings not suitable for local development
+5. **Dependencies**: Services may depend on external resources not available locally
+
+### What to Use When
+- **Developing/Testing Applications**: Use `applications/[app_name]/docker-compose.yaml`
+- **Testing Infrastructure**: Use the deployment system on staging servers
+- **Production Deployment**: Managed automatically by CI/CD pipeline
+
 ## Architecture
 
 This is a containerized multi-application deployment system with automated CI/CD pipelines:
 
 ### Project Structure
-- `applications/` - Individual containerized applications
-- `services/` - Infrastructure service configurations (PostgreSQL, Nginx proxy, Airflow)
+- `applications/` - Individual containerized applications with docker-compose files for local development
+- `services/` - Infrastructure service configurations deployed on staging/live servers (PostgreSQL, Nginx proxy, Airflow)
 - `tools/` - Helper tools and automation scripts
 - `.github/workflows/` - CI/CD pipeline definitions
 
@@ -110,7 +174,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 1. **app.pxy6.com**: Shopify app built with Remix, TypeScript, Prisma ORM, and Polaris UI
 2. **pxy6.com**: React/Vite frontend with Tailwind CSS, shadcn/ui components, and analytics tracking
 3. **app_1**: Python backend with FastAPI API and Streamlit frontend, using SQLAlchemy and PostgreSQL (has skipped-Dockerfile, not currently built)
-4. **airflow_dags**: Apache Airflow DAGs package for Shopify data integration, contains workflow definitions and dependencies that get deployed to the Airflow service
+4. **airflow_dags**: Apache Airflow DAGs package for comprehensive Shopify data integration - syncs products, customers, orders, and metadata using GraphQL API
 
 ### Utility Types
 1. **user_management**: Python utility for managing users with Docker containerization
@@ -123,7 +187,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Key Technologies
 - **Containerization**: Docker with multi-stage builds
-- **Orchestration**: Docker Compose for local development, Podman with systemd for production
+- **Orchestration**: Docker Compose for local development (use application-level docker-compose files), Podman with systemd for production (uses services/ configurations)
 - **Registry**: GitHub Container Registry (ghcr.io)
 - **Reverse Proxy**: Nginx for external access and SSL termination
 - **Database**: PostgreSQL with migrations via Prisma (app.pxy6.com) and Alembic (app_1)
@@ -145,16 +209,20 @@ This is a containerized multi-application deployment system with automated CI/CD
 - Airflow connects to PostgreSQL for metadata and main application database for Shopify data
 
 ### Database Migrations
-- **app.pxy6.com**: Use `prisma migrate deploy` or `npm run setup`
+- **app.pxy6.com**: Database migrations managed through `shopify app dev` command - SQLite for local development, PostgreSQL for production
 - **app_1**: Use `alembic upgrade head` in the data/db/migrations directory
+- **airflow_dags**: Uses pxy6_airflow database user to connect to app.pxy6.com's PostgreSQL database for data storage
 
 ### Airflow Integration
-- **Service Location**: `services/06_airflow/` - Apache Airflow infrastructure service
-- **DAGs Location**: `applications/airflow_dags/` - DAG definitions and Python dependencies
-- **Architecture**: The service builds a custom Airflow image that incorporates DAGs from applications/airflow_dags
-- **Purpose**: Orchestrates Shopify data integration workflows (past purchases, store metadata)
-- **Database**: Uses PostgreSQL for Airflow metadata; connects to main application database for data storage
-- **Components**: Webserver (UI), Scheduler (task execution), Init (database setup)
+- **Service Location**: `services/06_airflow/` - Apache Airflow 3.0.2 infrastructure service
+- **DAGs Location**: `applications/airflow_dags/` - Comprehensive Shopify data integration DAGs
+- **Architecture**: Built with custom operators, hooks, and GraphQL client for Shopify API integration
+- **Purpose**: Orchestrates complete Shopify data synchronization (products, customers, orders, metafields, collections)
+- **Database**: Uses PostgreSQL for Airflow metadata; stores Shopify data in app.pxy6.com database using pxy6_airflow user
+- **Components**: DAGs Deploy (one-shot deployment), Webserver (UI), Scheduler (task execution), Init (database setup)
+- **API Integration**: DAGs can be triggered from app.pxy6.com via REST API endpoints
+- **Data Pipeline**: 3 main DAGs - shopify_data_pipeline (orchestration), shopify_past_purchases (customer/orders), shopify_store_metadata (products/catalog)
+- **Hot Deployment**: DAGs can be deployed independently without restarting Airflow services - Airflow automatically detects new DAG files
 
 ### Deployment Information
 - **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments
@@ -177,3 +245,65 @@ This is a containerized multi-application deployment system with automated CI/CD
     - Helps catch configuration errors early
     - No local dependencies required
 - All checks must pass for commit to succeed
+
+## Git Commit Best Practices
+
+# Committing changes with git
+
+When the user asks you to create a new git commit, follow these steps carefully:
+
+1. You have the capability to call multiple tools in a single response. When multiple independent pieces of information are requested, batch your tool calls together for optimal performance. ALWAYS run the following bash commands in parallel, each using the Bash tool:
+  - Run a git status command to see all untracked files.
+  - Run a git diff command to see both staged and unstaged changes that will be committed.
+  - Run a git log command to see recent commit messages, so that you can follow this repository's commit message style.
+2. **Carefully review all changes** before committing:
+  - Analyze each changed file to understand what was modified and why
+  - Identify which changes are necessary for the task at hand
+  - Identify any unintended or unnecessary changes that should be reverted
+  - Check for any sensitive information that shouldn't be committed
+  - For complex changes, consider checking the original state of files to understand what was removed or modified
+3. **Clean up unnecessary changes** before committing:
+  - If you find changes that are not necessary for the current task, revert them using git restore or manual edits
+  - Only stage and commit the changes that are actually needed
+  - Ensure all changes align with the original task requirements
+4. **Draft and create the commit**:
+  - Summarize the nature of the changes (eg. new feature, enhancement to an existing feature, bug fix, refactoring, test, docs, etc.). Ensure the message accurately reflects the changes and their purpose (i.e. "add" means a wholly new feature, "update" means an enhancement to an existing feature, "fix" means a bug fix, etc.).
+  - Draft a concise (1-2 sentences) commit message that focuses on the "why" rather than the "what"
+  - Ensure it accurately reflects the changes and their purpose
+5. You have the capability to call multiple tools in a single response. When multiple independent pieces of information are requested, batch your tool calls together for optimal performance. ALWAYS run the following commands in parallel:
+   - Add only the relevant and necessary files to the staging area.
+   - Create the commit with a message ending with:
+   🤖 Generated with [Claude Code](https://claude.ai/code)
+
+   Co-Authored-By: Claude <noreply@anthropic.com>
+   - Run git status to make sure the commit succeeded.
+6. If the commit fails due to pre-commit hook changes, retry the commit ONCE to include these automated changes. If it fails again, it usually means a pre-commit hook is preventing the commit. If the commit succeeds but you notice that files were modified by the pre-commit hook, you MUST amend your commit to include them.
+
+Important notes:
+- NEVER update the git config
+- NEVER run additional commands to read or explore code, besides git bash commands
+- NEVER use the TodoWrite or Task tools
+- DO NOT push to the remote repository unless the user explicitly asks you to do so
+- IMPORTANT: Never use git commands with the -i flag (like git rebase -i or git add -i) since they require interactive input which is not supported.
+- If there are no changes to commit (i.e., no untracked files and no modifications), do not create an empty commit
+- **ALWAYS verify changes one by one** - don't blindly commit all changes without understanding what each change does
+- **Remove or revert unnecessary changes** before committing to keep the commit clean and focused
+- In order to ensure good formatting, ALWAYS pass the commit message via a HEREDOC, a la this example:
+<example>
+git commit -m "$(cat <<'EOF'
+   Commit message here.
+
+   🤖 Generated with [Claude Code](https://claude.ai/code)
+
+   Co-Authored-By: Claude <noreply@anthropic.com>
+   EOF
+   )"
+</example>
+
+## Testing Standards
+**CRITICAL: ALL tests must pass. Having "a majority of tests passing" is NEVER acceptable.**
+- When fixing tests, continue working until 100% of tests pass
+- Do not stop at partial test fixes - identify and fix root causes
+- Mock external dependencies properly instead of accepting failures
+- If tests fail due to missing setup, fix the setup
+- Never rationalize test failures as "acceptable" or "expected"

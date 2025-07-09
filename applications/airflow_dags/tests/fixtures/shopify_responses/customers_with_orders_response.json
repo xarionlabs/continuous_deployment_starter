@@ -1,0 +1,92 @@
+{
+  "data": {
+    "customers": {
+      "edges": [
+        {
+          "node": {
+            "id": "gid://shopify/Customer/9220042686803",
+            "email": "Russel.winfield@example.com",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "orders": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5MjIwMDQyNjg2ODAzLCJsYXN0X3ZhbHVlIjoiOTIyMDA0MjY4NjgwMyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Customer/9220042719571",
+            "email": "ayumu.hirano@example.com",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "orders": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5MjIwMDQyNzE5NTcxLCJsYXN0X3ZhbHVlIjoiOTIyMDA0MjcxOTU3MSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Customer/9220042752339",
+            "email": "karine.ruby@example.com",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "orders": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5MjIwMDQyNzUyMzM5LCJsYXN0X3ZhbHVlIjoiOTIyMDA0Mjc1MjMzOSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Customer/9220169728339",
+            "email": "erdi.ca.llixx@gmail.com",
+            "createdAt": "2025-06-10T09:25:57Z",
+            "orders": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Order/6691487023443",
+                    "name": "#1001",
+                    "processedAt": "2025-06-10T09:25:57Z",
+                    "lineItems": {
+                      "edges": [
+                        {
+                          "node": {
+                            "title": "Gift Card",
+                            "quantity": 1,
+                            "variant": {
+                              "id": "gid://shopify/ProductVariant/51160534647123",
+                              "title": "$10",
+                              "price": "10.00"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5MjIwMTY5NzI4MzM5LCJsYXN0X3ZhbHVlIjoiOTIyMDE2OTcyODMzOSJ9"
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "hasPreviousPage": false,
+        "startCursor": "eyJsYXN0X2lkIjo5MjIwMDQyNjg2ODAzLCJsYXN0X3ZhbHVlIjoiOTIyMDA0MjY4NjgwMyJ9",
+        "endCursor": "eyJsYXN0X2lkIjo5MjIwMTY5NzI4MzM5LCJsYXN0X3ZhbHVlIjoiOTIyMDE2OTcyODMzOSJ9"
+      }
+    }
+  },
+  "extensions": {
+    "cost": {
+      "requestedQueryCost": 485,
+      "actualQueryCost": 10,
+      "throttleStatus": {
+        "maximumAvailable": 2000,
+        "currentlyAvailable": 1990,
+        "restoreRate": 100
+      }
+    }
+  }
+}
