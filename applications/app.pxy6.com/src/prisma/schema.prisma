@@ -9,8 +9,8 @@ generator client {
 // enough when changing adapters.
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.sqlite"
+  provider = "postgres"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -90,7 +90,7 @@ model Product {
   shopifyCreatedAt   DateTime
   shopifyUpdatedAt   DateTime
   syncedAt           DateTime            @default(now())
-  
+
   // Relationships
   variants           ProductVariant[]
   images             ProductImage[]
@@ -98,7 +98,7 @@ model Product {
   metafields         ProductMetafield[]
   options            ProductOption[]
   orderLineItems     OrderLineItem[]
-  
+
   @@map("products")
 }
 
@@ -131,12 +131,12 @@ model ProductVariant {
   shopifyCreatedAt      DateTime
   shopifyUpdatedAt      DateTime
   syncedAt              DateTime  @default(now())
-  
+
   // Relationships
   product               Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   image                 ProductImage? @relation(fields: [imageId], references: [id])
   orderLineItems        OrderLineItem[]
-  
+
   @@map("product_variants")
 }
 
@@ -152,11 +152,11 @@ model ProductImage {
   shopifyCreatedAt DateTime
   shopifyUpdatedAt DateTime
   syncedAt         DateTime         @default(now())
-  
+
   // Relationships
   product          Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   variants         ProductVariant[]
-  
+
   @@map("product_images")
 }
 
@@ -178,10 +178,10 @@ model Collection {
   shopifyCreatedAt DateTime
   shopifyUpdatedAt DateTime
   syncedAt         DateTime            @default(now())
-  
+
   // Relationships
   products         ProductCollection[]
-  
+
   @@map("collections")
 }
 
@@ -191,11 +191,11 @@ model ProductCollection {
   collectionId String
   position     Int?
   createdAt    DateTime   @default(now())
-  
+
   // Relationships
   product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  
+
   @@unique([productId, collectionId])
   @@map("product_collections")
 }
@@ -212,10 +212,10 @@ model ProductMetafield {
   shopifyCreatedAt DateTime
   shopifyUpdatedAt DateTime
   syncedAt         DateTime @default(now())
-  
+
   // Relationships
   product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+
   @@unique([productId, namespace, key])
   @@map("product_metafields")
 }
@@ -228,10 +228,10 @@ model ProductOption {
   values    String   // Store as JSON string
   createdAt DateTime @default(now())
   syncedAt  DateTime @default(now())
-  
+
   // Relationships
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+
   @@map("product_options")
 }
 
@@ -259,10 +259,10 @@ model Customer {
   shopifyCreatedAt        DateTime
   shopifyUpdatedAt        DateTime
   syncedAt                DateTime  @default(now())
-  
+
   // Relationships
   orders                  Order[]
-  
+
   @@map("customers")
 }
 
@@ -305,11 +305,11 @@ model Order {
   shopifyCreatedAt        DateTime
   shopifyUpdatedAt        DateTime
   syncedAt                DateTime        @default(now())
-  
+
   // Relationships
   customer                Customer?       @relation(fields: [customerId], references: [id])
   lineItems               OrderLineItem[]
-  
+
   @@map("orders")
 }
 
@@ -340,12 +340,12 @@ model OrderLineItem {
   requiresShipping      Boolean        @default(true)
   legacyResourceId      String?
   syncedAt              DateTime       @default(now())
-  
+
   // Relationships
   order                 Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product               Product?       @relation(fields: [productId], references: [id])
   variant               ProductVariant? @relation(fields: [variantId], references: [id])
-  
+
   @@map("order_line_items")
 }
 
@@ -365,7 +365,7 @@ model SyncLog {
   recordsSkipped   Int?
   lastCursor   String?   // For pagination
   metadata     String?   // Store as JSON string
-  
+
   @@map("sync_logs")
 }
 
@@ -378,7 +378,7 @@ model SyncState {
   syncVersion  String?  // Track sync logic version
   metadata     String?  // Store as JSON string
   updatedAt    DateTime @updatedAt
-  
+
   @@map("sync_states")
 }
 
@@ -393,6 +393,6 @@ model WebhookEvent {
   errorMessage String?
   attempts     Int      @default(0)
   createdAt    DateTime @default(now())
-  
+
   @@map("webhook_events")
 }

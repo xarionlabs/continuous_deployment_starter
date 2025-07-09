@@ -12,21 +12,62 @@ import { authenticate } from "../shopify.server";
  */
 
 // Inline Airflow client functions to avoid import issues
-const createAirflowRequest = async (endpoint: string, options: RequestInit = {}) => {
+let jwtToken: string | null = null;
+
+const getJwtToken = async (): Promise<string> => {
+  if (jwtToken) return jwtToken;
+  
   const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
   const username = process.env.AIRFLOW_USERNAME || 'admin';
   const password = process.env.AIRFLOW_PASSWORD || 'admin';
+  const nodeEnv = process.env.NODE_ENV || 'development';
   
-  // Create basic auth header
-  const credentials = btoa(`${username}:${password}`);
+  // For local development with standalone Airflow, get JWT token
+  if (nodeEnv === 'development' || baseUrl.includes('localhost')) {
+    const authUrl = `${baseUrl.replace('/api/v2', '')}/auth/token`;
+    
+    const response = await fetch(authUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username,
+        password,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Airflow token request failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const tokenData = await response.json();
+    jwtToken = `Bearer ${tokenData.access_token}`;
+    return jwtToken;
+  }
+  
+  // For staging/live with Google OAuth, we'll need to implement OAuth flow
+  // For now, throw an error to indicate this needs to be implemented
+  throw new Error('Google OAuth authentication for staging/live environments not yet implemented');
+};
+
+const createAirflowRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
+  
+  // Get authentication token/cookie
+  const authToken = await getJwtToken();
+  
   const url = `${baseUrl}${endpoint}`;
   
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Basic ${credentials}`,
+      'Authorization': authToken, // Use Basic auth for local, will be different for OAuth
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
       ...options.headers,
     },
     signal: AbortSignal.timeout(30000),
@@ -34,6 +75,30 @@ const createAirflowRequest = async (endpoint: string, options: RequestInit = {})
 
   if (!response.ok) {
     const errorText = await response.text();
+    // If we get 401, try to refresh the auth
+    if (response.status === 401) {
+      jwtToken = null;
+      const newToken = await getJwtToken();
+      const retryResponse = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': newToken,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          ...options.headers,
+        },
+        signal: AbortSignal.timeout(30000),
+      });
+      
+      if (!retryResponse.ok) {
+        const retryErrorText = await retryResponse.text();
+        throw new Error(`Airflow API error: ${retryResponse.status} ${retryResponse.statusText} - ${retryErrorText}`);
+      }
+      
+      return retryResponse.json();
+    }
+    
     throw new Error(`Airflow API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
 

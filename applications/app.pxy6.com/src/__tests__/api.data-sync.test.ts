@@ -61,8 +61,13 @@ describe('API Data Sync Routes', () => {
     });
 
     it('should trigger data sync with shop data', async () => {
-      // Mock successful Airflow connection test
+      // Mock successful JWT token request
       (fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ access_token: 'test-jwt-token' }),
+        })
+        // Mock successful Airflow connection test
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ status: 'healthy' }),
@@ -103,8 +108,8 @@ describe('API Data Sync Routes', () => {
       expect(result.data.runId).toBe('test-run-123');
       expect(response.status).toBe(200);
 
-      // Verify shop data was passed to Airflow
-      const dagTriggerCall = (fetch as jest.Mock).mock.calls[1];
+      // Verify shop data was passed to Airflow (DAG trigger is the 3rd call after JWT token and health check)
+      const dagTriggerCall = (fetch as jest.Mock).mock.calls[2];
       const requestBody = JSON.parse(dagTriggerCall[1].body);
       expect(requestBody.conf.shop_domain).toBe('test-shop');
       expect(requestBody.conf.access_token).toBe('shpat_test123');
