@@ -45,8 +45,6 @@ setup(
         # Data processing utilities
         "pandas>=2.1.0,<3.0.0",
         "numpy>=1.24.0,<2.0.0",
-        # Security and validation
-        "cryptography>=41.0.0,<42.0.0",
     ],
     extras_require={
         "dev": [
