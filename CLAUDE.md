@@ -30,6 +30,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `docker build -t test-image tools/deployment/[tool_name]/` - Test specific release tool Dockerfile
 - `docker run --rm test-image /app/entrypoints/entrypoint_test.sh` - Run tests in built image
 
+### Containerized Tool Testing Commands
+**IMPORTANT**: Always prefer using Docker containers for testing deployment scripts and tools instead of local installations. This ensures consistent environments and avoids dependency conflicts.
+
+#### Deployment Manager CLI Tool
+- `docker build -t deployment-manager-test tools/deployment/deployment-manager/` - Build deployment manager image
+- `docker run --rm deployment-manager-test /app/entrypoints/entrypoint_test.sh` - Run tests in container
+- `docker run --rm deployment-manager-test release-tool --help` - Show CLI help in container
+- `docker run --rm -v $(pwd):/workspace deployment-manager-test release-tool [command]` - Run CLI commands with workspace access
+
+#### General Tool Testing Pattern
+- `docker build -t [tool-name]-test tools/[path-to-tool]/` - Build tool image for testing
+- `docker run --rm [tool-name]-test /app/entrypoints/entrypoint_test.sh` - Run tool tests
+- `docker run --rm -v $(pwd):/workspace [tool-name]-test [tool-command]` - Execute tool with workspace access
+
+**Benefits of containerized testing**:
+- No need for local Poetry, Python, or other language runtime installations
+- Consistent testing environment across different machines
+- Isolation from local system dependencies
+- Same environment as CI/CD pipeline
+- Easy cleanup after testing (no local dependency pollution)
+
 ### Application-Specific Commands
 
 #### app.pxy6.com (Shopify Remix App)

@@ -65,8 +65,8 @@
 # --job-timeout 30m
 
 # Container options for better resource management
---container-options "--memory=4g --cpus=2"
-
+# --container-options "--memory=4g --cpus=2"
+--container-architecture linux/amd64
 # Enable artifact server for testing artifact uploads/downloads
 --artifact-server-path /tmp/artifacts
 
