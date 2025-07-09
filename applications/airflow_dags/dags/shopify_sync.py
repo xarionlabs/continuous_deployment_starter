@@ -52,22 +52,35 @@ def shopify_sync_dag():
         hook = ShopifyHook()
         hook.setup_with_dag_config(dag_run_conf)
         
+        # Test connection first
+        if not hook.test_connection():
+            shop_domain = dag_run_conf.get('shop_domain', 'unknown')
+            hook.close()
+            raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
+        
         try:
-            # Test connection first
-            if not hook.test_connection():
-                shop_domain = dag_run_conf.get('shop_domain', 'unknown')
-                raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
-            
             # Extract customers using the hook
             customers_data = hook.paginate_customers_with_orders(batch_size=100)
             
             # Load customers to database
             for customer in customers_data:
-                upsert_customer(customer)
+                try:
+                    upsert_customer(customer)
+                except Exception as e:
+                    logger.error(f"Failed to upsert customer {customer.get('id', 'unknown')}: {str(e)}")
+                    hook.close()
+                    raise AirflowException(f"Database error while upserting customer: {str(e)}")
             
             logger.info(f"Successfully synced {len(customers_data)} customers for shop: {dag_run_conf.get('shop_domain')}")
             result = {"customers_synced": len(customers_data)}
             
+        except AirflowException:
+            # Re-raise Airflow exceptions to properly fail the task
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during customer sync: {str(e)}")
+            hook.close()
+            raise AirflowException(f"Customer sync failed: {str(e)}")
         finally:
             hook.close()
         
@@ -86,12 +99,13 @@ def shopify_sync_dag():
         hook = ShopifyHook()
         hook.setup_with_dag_config(dag_run_conf)
         
+        # Test connection first
+        if not hook.test_connection():
+            shop_domain = dag_run_conf.get('shop_domain', 'unknown')
+            hook.close()
+            raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
+        
         try:
-            # Test connection first
-            if not hook.test_connection():
-                shop_domain = dag_run_conf.get('shop_domain', 'unknown')
-                raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
-            
             # For now, get all customers with orders (which includes order data)
             # This will be more efficient than a separate orders query for most shops
             customers_with_orders = hook.paginate_customers_with_orders(batch_size=100)
@@ -103,22 +117,39 @@ def shopify_sync_dag():
                 for order_edge in customer_orders:
                     order = order_edge["node"]
                     # Filter for recent orders (last 7 days)
-                    order_date = datetime.fromisoformat(
-                        order.get("createdAt", "").replace("Z", "+00:00")
-                    )
-                    lookback_time = datetime.now() - timedelta(days=7)
-                    if order_date >= lookback_time:
-                        orders_data.append(order)
+                    try:
+                        order_date = datetime.fromisoformat(
+                            order.get("createdAt", "").replace("Z", "+00:00")
+                        )
+                        lookback_time = datetime.now() - timedelta(days=7)
+                        if order_date >= lookback_time:
+                            orders_data.append(order)
+                    except ValueError as e:
+                        logger.error(f"Failed to parse order date for order {order.get('id', 'unknown')}: {str(e)}")
+                        hook.close()
+                        raise AirflowException(f"Date parsing error: {str(e)}")
             
             # Load orders to database
             orders_count = 0
             for order in orders_data:
-                upsert_order(order)
-                orders_count += 1
+                try:
+                    upsert_order(order)
+                    orders_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to upsert order {order.get('id', 'unknown')}: {str(e)}")
+                    hook.close()
+                    raise AirflowException(f"Database error while upserting order: {str(e)}")
             
             logger.info(f"Successfully synced {orders_count} orders for shop: {dag_run_conf.get('shop_domain')}")
             result = {"orders_synced": orders_count}
             
+        except AirflowException:
+            # Re-raise Airflow exceptions to properly fail the task
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during order sync: {str(e)}")
+            hook.close()
+            raise AirflowException(f"Order sync failed: {str(e)}")
         finally:
             hook.close()
         
@@ -137,45 +168,64 @@ def shopify_sync_dag():
         hook = ShopifyHook()
         hook.setup_with_dag_config(dag_run_conf)
         
+        # Test connection first
+        if not hook.test_connection():
+            shop_domain = dag_run_conf.get('shop_domain', 'unknown')
+            hook.close()
+            raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
+        
         try:
-            # Test connection first
-            if not hook.test_connection():
-                shop_domain = dag_run_conf.get('shop_domain', 'unknown')
-                raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
-            
             # Extract products using the hook
             products_data = hook.paginate_all_product_data(
-                batch_size=50,
-                include_variants=True,
-                include_images=True,
-                include_metafields=True,
-                include_collections=True,
-                include_inventory=True
+                batch_size=50
             )
             
             # Load products to database
             products_count = 0
             for product in products_data:
-                upsert_product(product)
-                products_count += 1
-                
-                # Sync product variants
-                variants = product.get("variants", {}).get("edges", [])
-                for variant_edge in variants:
-                    variant = variant_edge["node"]
-                    variant["product_id"] = product["id"]
-                    upsert_product_variant(variant)
-                
-                # Sync product images
-                images = product.get("images", {}).get("edges", [])
-                for image_edge in images:
-                    image = image_edge["node"]
-                    image["product_id"] = product["id"]
-                    upsert_product_image(image)
+                try:
+                    upsert_product(product)
+                    products_count += 1
+                    
+                    # Sync product variants
+                    variants = product.get("variants", {}).get("edges", [])
+                    for variant_edge in variants:
+                        variant = variant_edge["node"]
+                        variant["product_id"] = product["id"]
+                        try:
+                            upsert_product_variant(variant)
+                        except Exception as e:
+                            logger.error(f"Failed to upsert product variant {variant.get('id', 'unknown')}: {str(e)}")
+                            hook.close()
+                            raise AirflowException(f"Database error while upserting product variant: {str(e)}")
+                    
+                    # Sync product images
+                    images = product.get("images", {}).get("edges", [])
+                    for image_edge in images:
+                        image = image_edge["node"]
+                        image["product_id"] = product["id"]
+                        try:
+                            upsert_product_image(image)
+                        except Exception as e:
+                            logger.error(f"Failed to upsert product image {image.get('id', 'unknown')}: {str(e)}")
+                            hook.close()
+                            raise AirflowException(f"Database error while upserting product image: {str(e)}")
+                            
+                except Exception as e:
+                    logger.error(f"Failed to upsert product {product.get('id', 'unknown')}: {str(e)}")
+                    hook.close()
+                    raise AirflowException(f"Database error while upserting product: {str(e)}")
             
             logger.info(f"Successfully synced {products_count} products for shop: {dag_run_conf.get('shop_domain')}")
             result = {"products_synced": products_count}
             
+        except AirflowException:
+            # Re-raise Airflow exceptions to properly fail the task
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during product sync: {str(e)}")
+            hook.close()
+            raise AirflowException(f"Product sync failed: {str(e)}")
         finally:
             hook.close()
         

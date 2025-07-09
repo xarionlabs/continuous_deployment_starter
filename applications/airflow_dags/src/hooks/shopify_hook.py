@@ -20,6 +20,8 @@ import structlog
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
+from ..utils.query_loader import load_query
+
 logger = structlog.get_logger(__name__)
 
 
@@ -332,12 +334,18 @@ class ShopifyHook(BaseHook):
             
         except requests.exceptions.RequestException as e:
             logger.error(f"HTTP request failed: {str(e)}")
+            logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
+            logger.error(f"Variables: {variables}")
             raise AirflowException(f"HTTP request failed: {str(e)}")
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {str(e)}")
+            logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
+            logger.error(f"Variables: {variables}")
             raise AirflowException(f"Failed to parse JSON response: {str(e)}")
         except Exception as e:
             logger.error(f"Unexpected error during GraphQL execution: {str(e)}")
+            logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
+            logger.error(f"Variables: {variables}")
             
             # Update metrics
             if self.enable_metrics:
@@ -542,429 +550,38 @@ class ShopifyHook(BaseHook):
         """Context manager exit"""
         self.close()
     
-    def get_customers_with_orders_query(
-        self,
-        limit: int = 50,
-        cursor: Optional[str] = None,
-        include_customer_journey: bool = True
-    ) -> str:
+    def get_customers_with_orders_query(self) -> str:
         """
         Get the getCustomersWithOrders GraphQL query for comprehensive customer data
         
-        Args:
-            limit: Number of customers to retrieve
-            cursor: Cursor for pagination
-            include_customer_journey: Whether to include customer journey data
-            
         Returns:
-            GraphQL query string
+            GraphQL query string loaded from .gql file
         """
-        customer_journey_fields = ""
-        if include_customer_journey:
-            customer_journey_fields = """
-                customerJourneySummary {
-                    customerOrderIndex
-                    daysToConversion
-                    firstVisit {
-                        id
-                        landingPage
-                        landingPageHtml
-                        referrer
-                        referrerName
-                        source
-                        sourceDescription
-                        sourceType
-                        utmParameters {
-                            campaign
-                            content
-                            medium
-                            source
-                            term
-                        }
-                    }
-                    lastVisit {
-                        id
-                        landingPage
-                        landingPageHtml
-                        referrer
-                        referrerName
-                        source
-                        sourceDescription
-                        sourceType
-                        utmParameters {
-                            campaign
-                            content
-                            medium
-                            source
-                            term
-                        }
-                    }
-                    momentsCount
-                    ready
-                }
-            """
-        
-        query = f"""
-        query getCustomersWithOrders($first: Int!, $after: String) {{
-            customers(first: $first, after: $after) {{
-                edges {{
-                    node {{
-                        id
-                        email
-                        firstName
-                        lastName
-                        phone
-                        createdAt
-                        updatedAt
-                        acceptsMarketing
-                        acceptsMarketingUpdatedAt
-                        state
-                        tags
-                        note
-                        verifiedEmail
-                        taxExempt
-                        totalSpentV2 {{
-                            amount
-                            currencyCode
-                        }}
-                        numberOfOrders
-                        addresses {{
-                            id
-                            firstName
-                            lastName
-                            company
-                            address1
-                            address2
-                            city
-                            province
-                            country
-                            zip
-                            phone
-                            name
-                            provinceCode
-                            countryCodeV2
-                            default
-                        }}
-                        orders(first: 50) {{
-                            edges {{
-                                node {{
-                                    id
-                                    name
-                                    email
-                                    createdAt
-                                    updatedAt
-                                    processedAt
-                                    closedAt
-                                    cancelled
-                                    cancelledAt
-                                    cancelReason
-                                    totalPriceV2 {{
-                                        amount
-                                        currencyCode
-                                    }}
-                                    subtotalPriceV2 {{
-                                        amount
-                                        currencyCode
-                                    }}
-                                    totalTaxV2 {{
-                                        amount
-                                        currencyCode
-                                    }}
-                                    totalShippingPriceV2 {{
-                                        amount
-                                        currencyCode
-                                    }}
-                                    financialStatus
-                                    fulfillmentStatus
-                                    tags
-                                    note
-                                    {customer_journey_fields}
-                                    lineItems(first: 100) {{
-                                        edges {{
-                                            node {{
-                                                id
-                                                name
-                                                quantity
-                                                originalTotalSet {{
-                                                    shopMoney {{
-                                                        amount
-                                                        currencyCode
-                                                    }}
-                                                }}
-                                                variant {{
-                                                    id
-                                                    title
-                                                    price
-                                                    sku
-                                                    product {{
-                                                        id
-                                                        title
-                                                        handle
-                                                        productType
-                                                        vendor
-                                                    }}
-                                                }}
-                                            }}
-                                        }}
-                                    }}
-                                }}
-                            }}
-                        }}
-                        metafields(first: 100) {{
-                            edges {{
-                                node {{
-                                    id
-                                    namespace
-                                    key
-                                    value
-                                    type
-                                    description
-                                    createdAt
-                                    updatedAt
-                                }}
-                            }}
-                        }}
-                    }}
-                    cursor
-                }}
-                pageInfo {{
-                    hasNextPage
-                    hasPreviousPage
-                    startCursor
-                    endCursor
-                }}
-            }}
-        }}
-        """
-        
-        return query
+        return load_query("getCustomersWithOrders")
     
-    def get_all_product_data_query(
-        self,
-        limit: int = 50,
-        cursor: Optional[str] = None,
-        include_variants: bool = True,
-        include_images: bool = True,
-        include_metafields: bool = True,
-        include_collections: bool = True,
-        include_inventory: bool = True
-    ) -> str:
+    def get_all_product_data_query(self) -> str:
         """
         Get the getAllProductData GraphQL query for comprehensive product data
         
-        Args:
-            limit: Number of products to retrieve
-            cursor: Cursor for pagination
-            include_variants: Whether to include variant data
-            include_images: Whether to include image data
-            include_metafields: Whether to include metafield data
-            include_collections: Whether to include collection data
-            include_inventory: Whether to include inventory data
-            
         Returns:
-            GraphQL query string
+            GraphQL query string loaded from .gql file
         """
-        variants_fields = ""
-        if include_variants:
-            inventory_fields = ""
-            if include_inventory:
-                inventory_fields = """
-                    inventoryItem {
-                        id
-                        tracked
-                        requiresShipping
-                        inventoryLevels(first: 10) {
-                            edges {
-                                node {
-                                    id
-                                    available
-                                    location {
-                                        id
-                                        name
-                                    }
-                                }
-                            }
-                        }
-                    }
-                """
-            
-            variants_fields = f"""
-                variants(first: 100) {{
-                    edges {{
-                        node {{
-                            id
-                            title
-                            sku
-                            barcode
-                            price
-                            compareAtPrice
-                            inventoryQuantity
-                            weight
-                            weightUnit
-                            availableForSale
-                            createdAt
-                            updatedAt
-                            selectedOptions {{
-                                name
-                                value
-                            }}
-                            {inventory_fields}
-                        }}
-                    }}
-                }}
-            """
-        
-        images_fields = ""
-        if include_images:
-            images_fields = """
-                images(first: 50) {
-                    edges {
-                        node {
-                            id
-                            url
-                            altText
-                            width
-                            height
-                            originalSrc
-                            transformedSrc
-                        }
-                    }
-                }
-            """
-        
-        metafields_fields = ""
-        if include_metafields:
-            metafields_fields = """
-                metafields(first: 100) {
-                    edges {
-                        node {
-                            id
-                            namespace
-                            key
-                            value
-                            type
-                            description
-                            createdAt
-                            updatedAt
-                        }
-                    }
-                }
-            """
-        
-        collections_fields = ""
-        if include_collections:
-            collections_fields = """
-                collections(first: 10) {
-                    edges {
-                        node {
-                            id
-                            title
-                            handle
-                        }
-                    }
-                }
-            """
-        
-        query = f"""
-        query getAllProductData($first: Int!, $after: String) {{
-            products(first: $first, after: $after) {{
-                edges {{
-                    node {{
-                        id
-                        title
-                        handle
-                        description
-                        descriptionHtml
-                        productType
-                        vendor
-                        tags
-                        status
-                        createdAt
-                        updatedAt
-                        publishedAt
-                        totalInventory
-                        onlineStoreUrl
-                        seo {{
-                            title
-                            description
-                        }}
-                        options {{
-                            id
-                            name
-                            values
-                            position
-                        }}
-                        {variants_fields}
-                        {images_fields}
-                        {metafields_fields}
-                        {collections_fields}
-                    }}
-                    cursor
-                }}
-                pageInfo {{
-                    hasNextPage
-                    hasPreviousPage
-                    startCursor
-                    endCursor
-                }}
-            }}
-        }}
-        """
-        
-        return query
+        return load_query("getAllProductData")
     
-    def get_product_images_query(
-        self,
-        product_id: str,
-        limit: int = 50
-    ) -> str:
+    def get_product_images_query(self) -> str:
         """
-        Get the getProductImages GraphQL query for detailed product image data
+        Get the getProductImagesById GraphQL query for detailed product image data
         
-        Args:
-            product_id: Shopify product ID
-            limit: Number of images to retrieve
-            
         Returns:
-            GraphQL query string
+            GraphQL query string loaded from .gql file
         """
-        query = f"""
-        query getProductImages($productId: ID!, $first: Int!) {{
-            product(id: $productId) {{
-                id
-                title
-                images(first: $first) {{
-                    edges {{
-                        node {{
-                            id
-                            url
-                            altText
-                            width
-                            height
-                            originalSrc
-                            transformedSrc
-                            createdAt
-                            updatedAt
-                        }}
-                    }}
-                    pageInfo {{
-                        hasNextPage
-                        hasPreviousPage
-                        startCursor
-                        endCursor
-                    }}
-                }}
-            }}
-        }}
-        """
-        
-        return query
+        return load_query("getProductImagesById")
     
     def get_customers_with_orders_data(
         self,
         limit: int = 50,
         cursor: Optional[str] = None,
-        include_customer_journey: bool = True
+        orders_limit: int = 50
     ) -> Dict[str, Any]:
         """
         Execute getCustomersWithOrders query and return data
@@ -972,32 +589,23 @@ class ShopifyHook(BaseHook):
         Args:
             limit: Number of customers to retrieve
             cursor: Cursor for pagination
-            include_customer_journey: Whether to include customer journey data
+            orders_limit: Number of orders to retrieve per customer
             
         Returns:
             Query result data
         """
-        query = self.get_customers_with_orders_query(
-            limit=limit,
-            cursor=cursor,
-            include_customer_journey=include_customer_journey
-        )
+        query = self.get_customers_with_orders_query()
         
-        variables = {"first": limit}
+        variables = {"limit": limit, "ordersFirst": orders_limit}
         if cursor:
-            variables["after"] = cursor
+            variables["cursor"] = cursor
         
         return self.execute_graphql(query, variables, "getCustomersWithOrders")
     
     def get_all_product_data(
         self,
         limit: int = 50,
-        cursor: Optional[str] = None,
-        include_variants: bool = True,
-        include_images: bool = True,
-        include_metafields: bool = True,
-        include_collections: bool = True,
-        include_inventory: bool = True
+        cursor: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Execute getAllProductData query and return data
@@ -1005,28 +613,15 @@ class ShopifyHook(BaseHook):
         Args:
             limit: Number of products to retrieve
             cursor: Cursor for pagination
-            include_variants: Whether to include variant data
-            include_images: Whether to include image data
-            include_metafields: Whether to include metafield data
-            include_collections: Whether to include collection data
-            include_inventory: Whether to include inventory data
             
         Returns:
             Query result data
         """
-        query = self.get_all_product_data_query(
-            limit=limit,
-            cursor=cursor,
-            include_variants=include_variants,
-            include_images=include_images,
-            include_metafields=include_metafields,
-            include_collections=include_collections,
-            include_inventory=include_inventory
-        )
+        query = self.get_all_product_data_query()
         
-        variables = {"first": limit}
+        variables = {"limit": limit}
         if cursor:
-            variables["after"] = cursor
+            variables["cursor"] = cursor
         
         return self.execute_graphql(query, variables, "getAllProductData")
     
@@ -1036,7 +631,7 @@ class ShopifyHook(BaseHook):
         limit: int = 50
     ) -> Dict[str, Any]:
         """
-        Execute getProductImages query and return data
+        Execute getProductImagesById query and return data
         
         Args:
             product_id: Shopify product ID
@@ -1045,14 +640,14 @@ class ShopifyHook(BaseHook):
         Returns:
             Query result data
         """
-        query = self.get_product_images_query(product_id, limit)
+        query = self.get_product_images_query()
         
         variables = {
             "productId": product_id,
-            "first": limit
+            "limit": limit
         }
         
-        return self.execute_graphql(query, variables, "getProductImages")
+        return self.execute_graphql(query, variables, "getProductImagesById")
     
     def _generate_cache_key(self, query: str, variables: Optional[Dict[str, Any]] = None) -> str:
         """Generate a cache key for the query and variables"""
@@ -1169,7 +764,7 @@ class ShopifyHook(BaseHook):
         self,
         batch_size: int = 50,
         max_pages: Optional[int] = None,
-        include_customer_journey: bool = True
+        orders_limit: int = 50
     ) -> List[Dict[str, Any]]:
         """
         Paginate through all customers with orders
@@ -1177,7 +772,7 @@ class ShopifyHook(BaseHook):
         Args:
             batch_size: Number of customers to fetch per request
             max_pages: Maximum number of pages to fetch
-            include_customer_journey: Whether to include customer journey data
+            orders_limit: Number of orders to retrieve per customer
             
         Returns:
             List of all customer data
@@ -1194,10 +789,10 @@ class ShopifyHook(BaseHook):
                 result = self.get_customers_with_orders_data(
                     limit=batch_size,
                     cursor=cursor,
-                    include_customer_journey=include_customer_journey
+                    orders_limit=orders_limit
                 )
                 
-                customers = result.get("customers", {})
+                customers = result.get("data", {}).get("customers", {})
                 edges = customers.get("edges", [])
                 
                 if not edges:
@@ -1225,7 +820,7 @@ class ShopifyHook(BaseHook):
                     
             except Exception as e:
                 logger.error(f"Error during customer pagination at page {page_count}: {str(e)}")
-                break
+                raise AirflowException(f"Customer pagination failed at page {page_count}: {str(e)}")
         
         logger.info(f"Successfully fetched {len(all_customers)} customers across {page_count} pages")
         return all_customers
@@ -1233,12 +828,7 @@ class ShopifyHook(BaseHook):
     def paginate_all_product_data(
         self,
         batch_size: int = 50,
-        max_pages: Optional[int] = None,
-        include_variants: bool = True,
-        include_images: bool = True,
-        include_metafields: bool = True,
-        include_collections: bool = True,
-        include_inventory: bool = True
+        max_pages: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Paginate through all products with comprehensive data
@@ -1246,11 +836,6 @@ class ShopifyHook(BaseHook):
         Args:
             batch_size: Number of products to fetch per request
             max_pages: Maximum number of pages to fetch
-            include_variants: Whether to include variant data
-            include_images: Whether to include image data
-            include_metafields: Whether to include metafield data
-            include_collections: Whether to include collection data
-            include_inventory: Whether to include inventory data
             
         Returns:
             List of all product data
@@ -1266,15 +851,10 @@ class ShopifyHook(BaseHook):
             try:
                 result = self.get_all_product_data(
                     limit=batch_size,
-                    cursor=cursor,
-                    include_variants=include_variants,
-                    include_images=include_images,
-                    include_metafields=include_metafields,
-                    include_collections=include_collections,
-                    include_inventory=include_inventory
+                    cursor=cursor
                 )
                 
-                products = result.get("products", {})
+                products = result.get("data", {}).get("products", {})
                 edges = products.get("edges", [])
                 
                 if not edges:
@@ -1302,7 +882,7 @@ class ShopifyHook(BaseHook):
                     
             except Exception as e:
                 logger.error(f"Error during product pagination at page {page_count}: {str(e)}")
-                break
+                raise AirflowException(f"Product pagination failed at page {page_count}: {str(e)}")
         
         logger.info(f"Successfully fetched {len(all_products)} products across {page_count} pages")
         return all_products
@@ -1329,7 +909,8 @@ class ShopifyHook(BaseHook):
         if data_type == "customers":
             all_customers = self.paginate_customers_with_orders(
                 batch_size=batch_size,
-                max_pages=max_pages
+                max_pages=max_pages,
+                orders_limit=50
             )
             
             # Filter for items updated since the given time

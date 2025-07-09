@@ -138,12 +138,7 @@ class ShopifyToPostgresOperator(BaseOperator):
         # Use the hook's built-in methods for data extraction
         if self.data_type == "products":
             data = shopify_hook.paginate_all_product_data(
-                batch_size=self.batch_size,
-                include_variants=True,
-                include_images=True,
-                include_metafields=True,
-                include_collections=True,
-                include_inventory=True
+                batch_size=self.batch_size
             )
         elif self.data_type == "customers":
             data = shopify_hook.paginate_customers_with_orders(
