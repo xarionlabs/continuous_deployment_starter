@@ -165,10 +165,9 @@ export class AirflowClient {
     shopId?: string;
   } = {}): Promise<DagRun> {
     const dagId = 'shopify_sync';
-    const runId = `manual_${Date.now()}`;
     
     const requestBody: TriggerDagRequest = {
-      dag_run_id: runId,
+      // Let Airflow generate the dag_run_id automatically
       conf: {
         sync_mode: config.syncMode || 'incremental',
         enable_products_sync: config.enableProducts !== false,

@@ -2,6 +2,7 @@ import { json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { withCors, withCorsLoader } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 
 /**
  * API Routes for Shopify Data Sync
@@ -126,10 +127,9 @@ const triggerDataSync = async (config: {
   shopId?: string;
 }) => {
   const dagId = 'shopify_sync';
-  const runId = `manual_${Date.now()}`;
   
   const requestBody = {
-    dag_run_id: runId,
+    // Let Airflow generate the dag_run_id automatically
     logical_date: new Date().toISOString(),
     conf: {
       sync_mode: config.syncMode || 'incremental',
@@ -152,61 +152,36 @@ const triggerDataSync = async (config: {
   });
 };
 
-const getDagRunStatus = async (runId: string) => {
-  const dagId = 'shopify_sync';
-  return createAirflowRequest(`/dags/${dagId}/dagRuns/${runId}`);
-};
+// getDagRunStatus and getTaskInstances moved to api.data-sync.status.$runId.tsx
 
-const getTaskInstances = async (runId: string) => {
-  const dagId = 'shopify_sync';
-  return createAirflowRequest(`/dags/${dagId}/dagRuns/${runId}/taskInstances`);
-};
+// This file only handles POST /api/data-sync (triggering sync)
+// Status checking is handled by api.data-sync.status.$runId.tsx
 
-// GET /api/data-sync/status/{runId}
-export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => {
-  const url = new URL(request.url);
-  const pathname = url.pathname;
-
+// Helper function to create sync log entry
+const createSyncLogEntry = async (entityType: string, operation: string, status: string, runId?: string, errorMessage?: string) => {
   try {
-    // GET /api/data-sync/status/{runId}
-    if (pathname.startsWith('/api/data-sync/status/')) {
-      const runId = pathname.split('/').pop();
-      
-      if (!runId) {
-        return json({
-          success: false,
-          error: 'Run ID is required',
-        }, { status: 400 });
-      }
-
-      const dagRun = await getDagRunStatus(runId);
-      const taskInstances = await getTaskInstances(runId);
-      
-      return json({
-        success: true,
-        data: {
-          dagRun,
-          taskInstances: taskInstances.task_instances,
-          totalTasks: taskInstances.total_entries,
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    return json({
-      success: false,
-      error: 'Endpoint not found',
-    }, { status: 404 });
-
-  } catch (error) {
-    console.error('Data sync API error:', error);
+    const now = new Date();
+    const logId = `sync_log_${entityType}_${operation}_${runId || Date.now()}`;
     
-    return json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    }, { status: 500 });
+    await (prisma as any).syncLog?.create({
+      data: {
+        id: logId,
+        entityType,
+        operation,
+        status,
+        startedAt: now,
+        completedAt: status === 'completed' || status === 'failed' ? now : null,
+        errorMessage,
+        recordsProcessed: 0,
+        recordsCreated: 0,
+        recordsUpdated: 0,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to create sync log entry:', error);
+    // Don't throw - this is just logging
   }
-});
+};
 
 // POST /api/data-sync - Trigger data sync
 export const action = withCors(async ({ request }: ActionFunctionArgs) => {
@@ -251,7 +226,7 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
       }, { status: 503 });
     }
 
-    // Trigger the DAG with shop-specific data
+    // Trigger the DAG with shop-specific data (let Airflow generate the runId)
     const dagRun = await triggerDataSync({
       syncMode,
       enableProducts,
@@ -263,10 +238,13 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
       shopId: shop, // Use full shop domain as shop ID
     });
 
+    // Log sync request with the actual runId from Airflow
+    await createSyncLogEntry('all', 'sync_request', 'requested', dagRun.dag_run_id);
+
     return json({
       success: true,
       data: {
-        runId: dagRun.run_id,
+        runId: dagRun.dag_run_id, // Use dag_run_id as the runId for polling
         dagRunId: dagRun.dag_run_id,
         state: dagRun.state,
         executionDate: dagRun.execution_date,

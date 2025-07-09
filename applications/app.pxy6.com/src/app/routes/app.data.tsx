@@ -1,9 +1,9 @@
 import {Page, Layout, Card, BlockStack, Text, Button, InlineStack, Spinner, Banner} from "@shopify/polaris";
 import {TitleBar} from "@shopify/app-bridge-react";
-import {useState, useCallback} from "react";
+import {useState, useCallback, useEffect} from "react";
 import type {LoaderFunctionArgs} from "@remix-run/node";
 import {json} from "@remix-run/node";
-import {useLoaderData} from "@remix-run/react";
+import {useLoaderData, useSearchParams} from "@remix-run/react";
 import prisma from "../db.server";
 
 // Use a fallback icon as RefreshMajor is not available
@@ -82,13 +82,18 @@ interface SyncStatus {
   runId?: string;
   status?: string;
   error?: string;
+  isCheckingStatus?: boolean;
 }
 
 function DataInsightsSection() {
   const loaderData = useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
   const [metrics] = useState<DataMetrics | null>(loaderData.metrics);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ isLoading: false });
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ isLoading: false, isCheckingStatus: true });
   const [error, setError] = useState<string | null>(null);
+  
+  // Check for dev override query parameter
+  const devOverride = searchParams.get('dev') === 'true' || searchParams.get('force') === 'true';
 
   const loadMetrics = useCallback(async () => {
     try {
@@ -105,26 +110,50 @@ function DataInsightsSection() {
     const maxAttempts = 60; // Poll for up to 10 minutes
     
     const poll = async () => {
+      attempts++;
+      
       try {
         const response = await fetch(`/api/data-sync/status/${runId}`);
+        
+        if (!response.ok) {
+          setSyncStatus(prev => ({
+            ...prev,
+            isLoading: false,
+            error: `Failed to check sync status: ${response.status} ${response.statusText}`,
+          }));
+          return;
+        }
+        
         const result = await response.json();
         
         if (result.success) {
           const dagRun = result.data.dagRun;
+          
           setSyncStatus({
-            isLoading: false,
+            isLoading: dagRun.state === 'running' || dagRun.state === 'queued',
             runId,
             status: dagRun.state,
           });
           
-          // If still running, continue polling
-          if (dagRun.state === 'running' && attempts < maxAttempts) {
-            attempts++;
+          // Continue polling if still running/queued and haven't exceeded max attempts
+          if ((dagRun.state === 'running' || dagRun.state === 'queued') && attempts < maxAttempts) {
             setTimeout(poll, 10000); // Poll every 10 seconds
           } else if (dagRun.state === 'success') {
             // Reload metrics after successful sync
             loadMetrics();
+          } else if (dagRun.state === 'failed') {
+            setSyncStatus(prev => ({
+              ...prev,
+              isLoading: false,
+              error: 'Sync failed',
+            }));
           }
+        } else {
+          setSyncStatus(prev => ({
+            ...prev,
+            isLoading: false,
+            error: result.error || 'Failed to check sync status',
+          }));
         }
       } catch (err) {
         console.error('Error polling sync status:', err);
@@ -139,8 +168,51 @@ function DataInsightsSection() {
     poll();
   }, [loadMetrics]);
 
+  const checkForRunningSyncs = useCallback(async () => {
+    try {
+      // Check for recent DAG runs that might still be running
+      const response = await fetch('/api/data-sync/running-status');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data.hasRunningSync) {
+          const { runId, status } = result.data;
+          setSyncStatus({
+            isLoading: status === 'running' || status === 'queued',
+            runId,
+            status,
+            isCheckingStatus: false,
+          });
+          
+          // If still running/queued, start polling
+          if (status === 'running' || status === 'queued') {
+            pollSyncStatus(runId);
+          }
+        } else {
+          // No running sync found, enable the button
+          setSyncStatus({
+            isLoading: false,
+            isCheckingStatus: false,
+          });
+        }
+      } else {
+        // API error, but still enable the button
+        setSyncStatus({
+          isLoading: false,
+          isCheckingStatus: false,
+        });
+      }
+    } catch (err) {
+      console.error('Error checking for running syncs:', err);
+      // Error occurred, but still enable the button
+      setSyncStatus({
+        isLoading: false,
+        isCheckingStatus: false,
+      });
+    }
+  }, [pollSyncStatus]);
+
   const handleDataSync = useCallback(async () => {
-    setSyncStatus({ isLoading: true });
+    setSyncStatus({ isLoading: true, isCheckingStatus: false });
     
     try {
       const response = await fetch('/api/data-sync', {
@@ -157,31 +229,50 @@ function DataInsightsSection() {
         }),
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        setSyncStatus({
+          isLoading: false,
+          error: `Failed to start sync: ${response.status} ${response.statusText}`,
+        });
+        return;
+      }
+      
       const result = await response.json();
       
       if (result.success) {
+        const runId = result.data.runId;
+        
         setSyncStatus({
           isLoading: false,
-          runId: result.data.runId,
+          runId: runId,
           status: 'running',
+          isCheckingStatus: false,
         });
         
         // Poll for status updates
-        pollSyncStatus(result.data.runId);
+        pollSyncStatus(runId);
       } else {
         setSyncStatus({
           isLoading: false,
           error: result.error || 'Failed to start sync',
+          isCheckingStatus: false,
         });
       }
     } catch (err) {
       setSyncStatus({
         isLoading: false,
         error: 'Failed to start sync',
+        isCheckingStatus: false,
       });
       console.error('Error starting sync:', err);
     }
   }, [pollSyncStatus]);
+
+  // Check for running syncs on page load
+  useEffect(() => {
+    checkForRunningSyncs();
+  }, [checkForRunningSyncs]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -204,6 +295,15 @@ function DataInsightsSection() {
     }).format(amount);
   };
 
+  const isDataFresh = (lastUpdated: string) => {
+    if (!lastUpdated || lastUpdated === new Date(0).toISOString()) {
+      return false; // No data or never synced
+    }
+    const lastUpdateTime = new Date(lastUpdated);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return lastUpdateTime > oneDayAgo;
+  };
+
   return (
     <Layout.Section>
       <Card>
@@ -216,13 +316,21 @@ function DataInsightsSection() {
               </Text>
             </div>
             <Button 
-              icon={syncStatus.isLoading ? <Spinner size="small" /> : <RefreshIcon/>} 
+              icon={(syncStatus.isLoading || !!syncStatus.isCheckingStatus) ? <Spinner size="small" /> : <RefreshIcon/>} 
               variant="secondary"
-              loading={syncStatus.isLoading}
+              loading={syncStatus.isLoading || !!syncStatus.isCheckingStatus}
               onClick={handleDataSync}
-              disabled={syncStatus.isLoading}
+              disabled={
+                !!syncStatus.isCheckingStatus || 
+                syncStatus.isLoading || 
+                (syncStatus.status === 'running' || syncStatus.status === 'queued') || 
+                (!devOverride && metrics && !syncStatus.isCheckingStatus && isDataFresh(metrics.freshness.lastUpdated))
+              }
             >
-              {syncStatus.isLoading ? 'Syncing...' : 'Sync Data'}
+              {syncStatus.isCheckingStatus ? 'Checking...' :
+               syncStatus.isLoading || syncStatus.status === 'running' || syncStatus.status === 'queued' ? 'Syncing...' : 
+               (!devOverride && metrics && isDataFresh(metrics.freshness.lastUpdated)) ? 'Data Fresh' : 
+               devOverride ? 'Sync Data (Dev)' : 'Sync Data'}
             </Button>
           </InlineStack>
           
@@ -233,15 +341,21 @@ function DataInsightsSection() {
             </Banner>
           )}
           
-          {syncStatus.status === 'running' && (
+          {(syncStatus.status === 'running' || syncStatus.status === 'queued') && (
             <Banner tone="info" title="Sync in Progress">
-              Data synchronization is currently running. Metrics will be updated when complete.
+              Data synchronization is currently {syncStatus.status}. Metrics will be updated when complete.
             </Banner>
           )}
           
           {syncStatus.status === 'success' && (
             <Banner tone="success" title="Sync Completed">
               Data synchronization completed successfully. Metrics have been updated.
+            </Banner>
+          )}
+          
+          {syncStatus.status === 'failed' && (
+            <Banner tone="critical" title="Sync Failed">
+              Data synchronization failed. Please try again or check the logs.
             </Banner>
           )}
           
@@ -276,11 +390,9 @@ function DataInsightsSection() {
               <div style={{ flex: 1, minWidth: 260, maxWidth: 350 }}>
                 <Card background="bg-surface-secondary" padding="400">
                   <BlockStack gap="100">
-                    <Text variant="headingSm" as="h4">Revenue & Data Freshness</Text>
-                    <Text as="p">Total Revenue: <b>{formatCurrency(metrics.revenue.total)}</b></Text>
-                    <Text as="p">Avg Order Value: <b>{formatCurrency(metrics.revenue.average)}</b></Text>
+                    <Text variant="headingSm" as="h4">Data Freshness</Text>
                     <Text as="p">Last Updated:</Text>
-                    <Text as="p"><b>{formatDate(metrics.freshness.lastUpdated)}</b></Text>
+                    <Text as="p"><b>{metrics.freshness.lastUpdated && metrics.freshness.lastUpdated !== new Date(0).toISOString() ? formatDate(metrics.freshness.lastUpdated) : 'Never'}</b></Text>
                   </BlockStack>
                 </Card>
               </div>
@@ -572,9 +684,36 @@ async function getShopifyDataMetrics(): Promise<DataMetrics> {
       },
       freshness: {
         dataAsOf: new Date().toISOString(),
-        lastUpdated: syncStates.reduce((latest: Date, state: any) => {
-          return state.lastSyncAt > latest ? state.lastSyncAt : latest;
-        }, new Date(0)).toISOString(),
+        lastUpdated: (() => {
+          // Try to get the most recent timestamp from multiple sources
+          let latestTimestamp = new Date(0);
+          
+          // Check sync states
+          if (syncStates.length > 0) {
+            const syncStateLatest = syncStates.reduce((latest: Date, state: any) => {
+              const stateDate = new Date(state.lastSyncAt);
+              return stateDate > latest ? stateDate : latest;
+            }, new Date(0));
+            if (syncStateLatest > latestTimestamp) {
+              latestTimestamp = syncStateLatest;
+            }
+          }
+          
+          // Check latest sync log
+          if (latestSyncLog?.completedAt) {
+            const syncLogDate = new Date(latestSyncLog.completedAt);
+            if (syncLogDate > latestTimestamp) {
+              latestTimestamp = syncLogDate;
+            }
+          } else if (latestSyncLog?.startedAt) {
+            const syncLogDate = new Date(latestSyncLog.startedAt);
+            if (syncLogDate > latestTimestamp) {
+              latestTimestamp = syncLogDate;
+            }
+          }
+          
+          return latestTimestamp.toISOString();
+        })(),
       },
     };
 
