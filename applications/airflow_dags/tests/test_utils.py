@@ -58,7 +58,7 @@ class TestShopifyClient:
         
         assert client.shop_name == 'test-shop'
         assert client.access_token == 'test-token'
-        assert client.shop_url == 'https://test-shop.myshopify.com/admin/api/2023-10/graphql.json'
+        assert client.shop_url == 'https://test-shop.myshopify.com/admin/api/2025-01/graphql.json'
     
     @patch('utils.shopify_client.Client')
     def test_rate_limiting(self, mock_client):

@@ -26,7 +26,7 @@ Example usage:
     customers = client.get_customers_with_orders(limit=50)
 
 Authentication patterns based on curl examples:
-    curl -X POST https://your-shop.myshopify.com/admin/api/2023-10/graphql.json \
+    curl -X POST https://your-shop.myshopify.com/admin/api/2025-01/graphql.json \
       -H 'Content-Type: application/json' \
       -H 'X-Shopify-Access-Token: your-access-token' \
       -d '{"query": "query { shop { name } }"}'
@@ -49,6 +49,7 @@ from gql.transport.requests import RequestsHTTPTransport
 from gql.transport.exceptions import TransportError
 
 from .config import get_shopify_config
+from .query_loader import load_query
 
 # Configure structured logging
 logger = structlog.get_logger(__name__)
@@ -111,7 +112,7 @@ class ShopifyGraphQLClient:
             self.shop_name = config['shop_name']
             self.access_token = config['access_token']
         
-        self.shop_url = f"https://{self.shop_name}.myshopify.com/admin/api/2023-10/graphql.json"
+        self.shop_url = f"https://{self.shop_name}.myshopify.com/admin/api/2025-01/graphql.json"
         
         # Configure transport with authentication
         self.transport = RequestsHTTPTransport(
@@ -263,121 +264,7 @@ class ShopifyGraphQLClient:
         Returns:
             Products data with pagination info
         """
-        query = """
-        query getAllProductData($limit: Int!, $cursor: String) {
-            products(first: $limit, after: $cursor) {
-                edges {
-                    node {
-                        id
-                        title
-                        handle
-                        description
-                        descriptionHtml
-                        productType
-                        vendor
-                        tags
-                        status
-                        createdAt
-                        updatedAt
-                        publishedAt
-                        totalInventory
-                        onlineStoreUrl
-                        seo {
-                            title
-                            description
-                        }
-                        options {
-                            id
-                            name
-                            values
-                            position
-                        }
-                        variants(first: 100) {
-                            edges {
-                                node {
-                                    id
-                                    title
-                                    sku
-                                    barcode
-                                    price
-                                    compareAtPrice
-                                    inventoryQuantity
-                                    weight
-                                    weightUnit
-                                    availableForSale
-                                    createdAt
-                                    updatedAt
-                                    selectedOptions {
-                                        name
-                                        value
-                                    }
-                                    inventoryItem {
-                                        id
-                                        tracked
-                                        inventoryLevels(first: 10) {
-                                            edges {
-                                                node {
-                                                    id
-                                                    available
-                                                    location {
-                                                        id
-                                                        name
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        images(first: 50) {
-                            edges {
-                                node {
-                                    id
-                                    url
-                                    altText
-                                    width
-                                    height
-                                    originalSrc
-                                    transformedSrc
-                                }
-                            }
-                        }
-                        metafields(first: 100) {
-                            edges {
-                                node {
-                                    id
-                                    namespace
-                                    key
-                                    value
-                                    type
-                                    description
-                                    createdAt
-                                    updatedAt
-                                }
-                            }
-                        }
-                        collections(first: 10) {
-                            edges {
-                                node {
-                                    id
-                                    title
-                                    handle
-                                }
-                            }
-                        }
-                    }
-                    cursor
-                }
-                pageInfo {
-                    hasNextPage
-                    hasPreviousPage
-                    startCursor
-                    endCursor
-                }
-            }
-        }
-        """
+        query = load_query("getAllProductData")
         
         variables = {"limit": min(limit, 250)}  # Shopify max limit
         if cursor:
@@ -400,35 +287,7 @@ class ShopifyGraphQLClient:
         Returns:
             Product images data
         """
-        query = """
-        query getProductImages($productId: ID!, $limit: Int!) {
-            product(id: $productId) {
-                id
-                title
-                images(first: $limit) {
-                    edges {
-                        node {
-                            id
-                            url
-                            altText
-                            width
-                            height
-                            originalSrc
-                            transformedSrc
-                            createdAt
-                            updatedAt
-                        }
-                    }
-                    pageInfo {
-                        hasNextPage
-                        hasPreviousPage
-                        startCursor
-                        endCursor
-                    }
-                }
-            }
-        }
-        """
+        query = load_query("getProductImagesById")
         
         variables = {
             "productId": product_id,
@@ -440,7 +299,8 @@ class ShopifyGraphQLClient:
     def get_customers_with_orders(
         self, 
         limit: int = 50, 
-        cursor: Optional[str] = None
+        cursor: Optional[str] = None,
+        orders_limit: int = 50
     ) -> Dict[str, Any]:
         """
         Get customers with their order history and detailed information.
@@ -448,187 +308,44 @@ class ShopifyGraphQLClient:
         Args:
             limit: Number of customers to retrieve
             cursor: Cursor for pagination
+            orders_limit: Number of orders to retrieve per customer
             
         Returns:
             Customers data with orders and pagination info
         """
-        query = """
-        query getCustomersWithOrders($limit: Int!, $cursor: String) {
-            customers(first: $limit, after: $cursor) {
-                edges {
-                    node {
-                        id
-                        email
-                        firstName
-                        lastName
-                        phone
-                        createdAt
-                        updatedAt
-                        acceptsMarketing
-                        acceptsMarketingUpdatedAt
-                        state
-                        tags
-                        note
-                        verifiedEmail
-                        taxExempt
-                        totalSpentV2 {
-                            amount
-                            currencyCode
-                        }
-                        numberOfOrders
-                        addresses {
-                            id
-                            firstName
-                            lastName
-                            company
-                            address1
-                            address2
-                            city
-                            province
-                            country
-                            zip
-                            phone
-                            name
-                            provinceCode
-                            countryCodeV2
-                            default
-                        }
-                        orders(first: 50) {
-                            edges {
-                                node {
-                                    id
-                                    name
-                                    email
-                                    createdAt
-                                    updatedAt
-                                    processedAt
-                                    closedAt
-                                    cancelled
-                                    cancelledAt
-                                    cancelReason
-                                    totalPriceV2 {
-                                        amount
-                                        currencyCode
-                                    }
-                                    subtotalPriceV2 {
-                                        amount
-                                        currencyCode
-                                    }
-                                    totalTaxV2 {
-                                        amount
-                                        currencyCode
-                                    }
-                                    totalShippingPriceV2 {
-                                        amount
-                                        currencyCode
-                                    }
-                                    financialStatus
-                                    fulfillmentStatus
-                                    tags
-                                    note
-                                    customerJourneySummary {
-                                        customerOrderIndex
-                                        daysToConversion
-                                        firstVisit {
-                                            id
-                                            landingPage
-                                            landingPageHtml
-                                            referrer
-                                            referrerName
-                                            source
-                                            sourceDescription
-                                            sourceType
-                                            utmParameters {
-                                                campaign
-                                                content
-                                                medium
-                                                source
-                                                term
-                                            }
-                                        }
-                                        lastVisit {
-                                            id
-                                            landingPage
-                                            landingPageHtml
-                                            referrer
-                                            referrerName
-                                            source
-                                            sourceDescription
-                                            sourceType
-                                            utmParameters {
-                                                campaign
-                                                content
-                                                medium
-                                                source
-                                                term
-                                            }
-                                        }
-                                        momentsCount
-                                        ready
-                                    }
-                                    lineItems(first: 100) {
-                                        edges {
-                                            node {
-                                                id
-                                                name
-                                                quantity
-                                                originalTotalSet {
-                                                    shopMoney {
-                                                        amount
-                                                        currencyCode
-                                                    }
-                                                }
-                                                variant {
-                                                    id
-                                                    title
-                                                    price
-                                                    sku
-                                                    product {
-                                                        id
-                                                        title
-                                                        handle
-                                                        productType
-                                                        vendor
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        metafields(first: 100) {
-                            edges {
-                                node {
-                                    id
-                                    namespace
-                                    key
-                                    value
-                                    type
-                                    description
-                                    createdAt
-                                    updatedAt
-                                }
-                            }
-                        }
-                    }
-                    cursor
-                }
-                pageInfo {
-                    hasNextPage
-                    hasPreviousPage
-                    startCursor
-                    endCursor
-                }
-            }
+        query = load_query("getCustomersWithOrders")
+        
+        variables = {
+            "limit": min(limit, 250),  # Shopify max limit
+            "ordersFirst": orders_limit
         }
+        if cursor:
+            variables["cursor"] = cursor
+        
+        return self.execute_query(query, variables, "getCustomersWithOrders")
+    
+    def get_all_product_images(
+        self, 
+        limit: int = 50, 
+        cursor: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
+        Get product images for all products using bulk query.
+        
+        Args:
+            limit: Number of products to retrieve
+            cursor: Cursor for pagination
+            
+        Returns:
+            Product images data with pagination info
+        """
+        query = load_query("getProductImages")
         
         variables = {"limit": min(limit, 250)}  # Shopify max limit
         if cursor:
             variables["cursor"] = cursor
         
-        return self.execute_query(query, variables, "getCustomersWithOrders")
+        return self.execute_query(query, variables, "getProductImages")
     
     def get_orders_with_details(
         self, 

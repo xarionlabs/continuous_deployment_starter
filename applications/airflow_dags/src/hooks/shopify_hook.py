@@ -41,7 +41,7 @@ class ShopifyHook(BaseHook):
         shopify_conn_id: str = default_conn_name,
         shop_domain: str = None,
         access_token: str = None,
-        api_version: str = "2023-10",
+        api_version: str = "2025-01",
         timeout: int = 30,
         max_retries: int = 3,
         rate_limit_calls_per_second: float = 2.0,

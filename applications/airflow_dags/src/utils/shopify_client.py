@@ -40,7 +40,7 @@ class ShopifyGraphQLClient:
             self.shop_name = config['shop_name']
             self.access_token = config['access_token']
         
-        self.shop_url = f"https://{self.shop_name}.myshopify.com/admin/api/2023-10/graphql.json"
+        self.shop_url = f"https://{self.shop_name}.myshopify.com/admin/api/2025-01/graphql.json"
         
         # Configure transport with authentication
         transport = RequestsHTTPTransport(

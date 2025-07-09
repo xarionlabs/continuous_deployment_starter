@@ -39,7 +39,7 @@ class TestShopifyGraphQLClient:
         """Setup test environment."""
         self.mock_shop_name = "test-shop"
         self.mock_access_token = "test-token"
-        self.mock_shop_url = f"https://{self.mock_shop_name}.myshopify.com/admin/api/2023-10/graphql.json"
+        self.mock_shop_url = f"https://{self.mock_shop_name}.myshopify.com/admin/api/2025-01/graphql.json"
         
         # Mock shop response
         self.mock_shop_response = {
@@ -189,7 +189,7 @@ class TestShopifyGraphQLClient:
         
         assert client.shop_name == 'env-shop'
         assert client.access_token == 'env-token'
-        assert client.shop_url == 'https://env-shop.myshopify.com/admin/api/2023-10/graphql.json'
+        assert client.shop_url == 'https://env-shop.myshopify.com/admin/api/2025-01/graphql.json'
     
     def test_rate_limit_calculation(self):
         """Test rate limit calculation and delay logic."""
@@ -919,7 +919,7 @@ class TestShopifyIntegration:
     def test_curl_pattern_reference(self):
         """Test that demonstrates the curl pattern for reference."""
         # This test demonstrates the authentication pattern that would be used in curl:
-        # curl -X POST https://your-shop.myshopify.com/admin/api/2023-10/graphql.json \
+        # curl -X POST https://your-shop.myshopify.com/admin/api/2025-01/graphql.json \
         #   -H 'Content-Type: application/json' \
         #   -H 'X-Shopify-Access-Token: your-access-token' \
         #   -d '{"query": "query { shop { name } }"}'
@@ -930,7 +930,7 @@ class TestShopifyIntegration:
         )
         
         # Verify the client is configured with the correct headers and URL
-        assert client.shop_url == "https://test-shop.myshopify.com/admin/api/2023-10/graphql.json"
+        assert client.shop_url == "https://test-shop.myshopify.com/admin/api/2025-01/graphql.json"
         assert client.transport.headers['X-Shopify-Access-Token'] == "test-token"
         assert client.transport.headers['Content-Type'] == "application/json"
         

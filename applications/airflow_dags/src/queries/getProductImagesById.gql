@@ -1,0 +1,27 @@
+query getProductImagesById($productId: ID!, $limit: Int!) {
+  product(id: $productId) {
+    id
+    title
+    images(first: $limit) {
+      edges {
+        node {
+          id
+          url
+          altText
+          width
+          height
+          originalSrc
+          transformedSrc
+          createdAt
+          updatedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+    }
+  }
+}
