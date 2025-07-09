@@ -72,12 +72,10 @@ def product_images_fixture(test_fixtures_dir):
 @pytest.fixture
 def mock_shopify_client():
     """Create a mock Shopify client for testing."""
-    from pxy6.utils.shopify_graphql import ShopifyGraphQLClient
+    # Return a mock client since we removed the actual client
+    from unittest.mock import Mock
     
-    client = ShopifyGraphQLClient(
-        shop_name="test-shop",
-        access_token="test-token"
-    )
+    client = Mock()
     return client
 
 

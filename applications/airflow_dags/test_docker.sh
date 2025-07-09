@@ -29,29 +29,23 @@ echo "🧪 Running specific test suites..."
 
 # Run unit tests
 echo "Running unit tests..."
-docker run --rm airflow-dags-test pytest tests/test_utils.py -v -k "not real_"
+docker run --rm airflow-dags-test pytest tests/ -v -k "not real_"
 
-# Run integration tests (without real connections)
-echo "Running integration tests (mocked)..."
-docker run --rm airflow-dags-test pytest tests/test_shopify_integration.py -v -k "not real_"
-
-# Test the new GraphQL client module directly
-echo "🧪 Testing GraphQL client module..."
+# Test the Shopify Hook module directly
+echo "🧪 Testing Shopify Hook module..."
 docker run --rm airflow-dags-test python -c "
 import sys
 sys.path.insert(0, '/app/src')
-from utils.shopify_graphql import ShopifyGraphQLClient
+from hooks.shopify_hook import ShopifyHook
 
 # Test initialization
-client = ShopifyGraphQLClient(shop_name='test-shop', access_token='test-token')
-print('✓ GraphQL client initialized successfully')
+hook = ShopifyHook(conn_id='shopify_default')
+print('✓ Shopify Hook initialized successfully')
 
-# Test rate limit status
-rate_limit = client.get_rate_limit_status()
-print(f'✓ Rate limit status: {rate_limit}')
-
-# Test string representation
-print(f'✓ Client: {client}')
+# Test that methods exist
+assert hasattr(hook, 'get_conn'), 'Missing get_conn method'
+assert hasattr(hook, 'execute_query'), 'Missing execute_query method'
+print('✓ Shopify Hook methods validated successfully')
 print('✓ All basic functionality tests passed')
 "
 

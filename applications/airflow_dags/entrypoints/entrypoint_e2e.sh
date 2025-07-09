@@ -64,19 +64,19 @@ python -c "
 import sys
 sys.path.insert(0, '/app/src')
 
-# Test Shopify client initialization (without actual API calls)
+# Test Shopify hook initialization (without actual API calls)
 try:
-    from utils.shopify_client import ShopifyGraphQLClient
-    # Test that we can create client instance
-    client = ShopifyGraphQLClient('test_shop', 'test_token')
-    print('✓ Shopify client can be instantiated')
+    from hooks.shopify_hook import ShopifyHook
+    # Test that we can create hook instance
+    hook = ShopifyHook(conn_id='shopify_default')
+    print('✓ Shopify hook can be instantiated')
 except Exception as e:
-    print(f'✗ Shopify client error: {e}')
+    print(f'✗ Shopify hook error: {e}')
     sys.exit(1)
 
 # Test database connection utilities
 try:
-    from utils.database import get_database_connection
+    from utils.database import get_postgres_hook
     print('✓ Database utilities available')
 except Exception as e:
     print(f'✗ Database utilities error: {e}')

@@ -17,8 +17,6 @@ from .utils.database import (
     upsert_customer, upsert_product, upsert_order,
     upsert_product_variant, upsert_product_image
 )
-from .utils.shopify_client import ShopifyGraphQLClient
-from .utils.config import AirflowConfig
 
 __all__ = [
     "ShopifyToPostgresOperator",
@@ -31,6 +29,4 @@ __all__ = [
     "upsert_order",
     "upsert_product_variant",
     "upsert_product_image",
-    "ShopifyGraphQLClient",
-    "AirflowConfig",
 ]

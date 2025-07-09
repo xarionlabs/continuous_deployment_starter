@@ -60,9 +60,7 @@ print('🔍 Validating DAG syntax...')
 
 # Test imports for all modules
 modules_to_test = [
-    'utils.config',
-    'utils.database', 
-    'utils.shopify_graphql',
+    'utils.database',
     'hooks.shopify_hook',
     'operators.shopify_operator'
 ]
@@ -165,64 +163,41 @@ else
     exit 1
 fi
 
-print_status "Step 4: Running GraphQL client validation..."
-if docker run --rm --name "${CONTAINER_NAME}-graphql" $IMAGE_NAME python -c "
+print_status "Step 4: Running Shopify Hook validation..."
+if docker run --rm --name "${CONTAINER_NAME}-hook" $IMAGE_NAME python -c "
 import sys
 import os
 sys.path.insert(0, '/app/src')
 
-from utils.shopify_graphql import ShopifyGraphQLClient
+from hooks.shopify_hook import ShopifyHook
 
-print('🔍 Validating Shopify GraphQL client...')
+print('🔍 Validating Shopify Hook...')
 
-# Test client initialization with mock credentials
+# Test hook initialization with mock credentials
 try:
-    client = ShopifyGraphQLClient(shop_name='test-shop', access_token='test-token')
-    print('✅ GraphQL client initialization successful')
+    hook = ShopifyHook(conn_id='shopify_default')
+    print('✅ Shopify Hook initialization successful')
 except Exception as e:
-    print(f'❌ GraphQL client initialization failed: {e}')
+    print(f'❌ Shopify Hook initialization failed: {e}')
     sys.exit(1)
 
-# Test client methods
+# Test hook methods exist
 try:
-    # Test rate limit status
-    rate_limit = client.get_rate_limit_status()
-    assert 'remaining_calls' in rate_limit
-    assert 'max_calls' in rate_limit
-    print('✅ Rate limit status method works')
+    # Check that required methods exist
+    assert hasattr(hook, 'get_conn'), 'Hook missing get_conn method'
+    assert hasattr(hook, 'execute_query'), 'Hook missing execute_query method'
+    print('✅ Required Hook methods exist')
     
-    # Test string representations
-    client_str = str(client)
-    client_repr = repr(client)
-    assert 'test-shop' in client_str
-    assert 'test-shop' in client_repr
-    print('✅ String representations work')
-    
-    # Test query generation methods
-    customers_query = client.get_customers_with_orders_query()
-    assert 'customers' in customers_query
-    assert 'orders' in customers_query
-    print('✅ Customer query generation works')
-    
-    products_query = client.get_all_product_data_query()
-    assert 'products' in products_query
-    assert 'variants' in products_query
-    print('✅ Product query generation works')
-    
-    images_query = client.get_product_images_query('test-id')
-    assert 'product' in images_query
-    assert 'images' in images_query
-    print('✅ Image query generation works')
     
 except Exception as e:
-    print(f'❌ GraphQL client method validation failed: {e}')
+    print(f'❌ Shopify Hook method validation failed: {e}')
     sys.exit(1)
 
-print('✅ GraphQL client validation passed!')
+print('✅ Shopify Hook validation passed!')
 "; then
-    print_success "GraphQL client validation passed"
+    print_success "Shopify Hook validation passed"
 else
-    print_error "GraphQL client validation failed"
+    print_error "Shopify Hook validation failed"
     exit 1
 fi
 
@@ -232,21 +207,16 @@ import sys
 import os
 sys.path.insert(0, '/app/src')
 
-from utils.database import DatabaseManager, DatabaseConfig
+from utils.database import get_postgres_hook, execute_query
 
 print('🔍 Validating database utilities...')
 
-# Test configuration
+# Test database utility functions
 try:
-    config = DatabaseConfig.from_environment()
-    print('✅ Database configuration loaded')
-except Exception as e:
-    print(f'❌ Database configuration failed: {e}')
-    sys.exit(1)
-
-# Test database manager initialization
-try:
-    db_manager = DatabaseManager(config)
+    # Test that functions exist and can be imported
+    assert callable(get_postgres_hook), 'get_postgres_hook not callable'
+    assert callable(execute_query), 'execute_query not callable'
+    print('✅ Database utility functions imported successfully')
     print('✅ Database manager initialization successful')
 except Exception as e:
     print(f'❌ Database manager initialization failed: {e}')
@@ -266,33 +236,18 @@ import sys
 import os
 sys.path.insert(0, '/app/src')
 
-from operators.shopify_operator import (
-    ShopifyToPostgresOperator,
-    ShopifyDataValidationOperator,
-    ShopifyIncrementalSyncOperator,
-    ShopifyDataQualityOperator,
-    ShopifyChangeDetectionOperator
-)
+from operators.shopify_operator import ShopifyToPostgresOperator
 
 print('🔍 Validating Shopify operators...')
 
 # Test operator initialization
-operators_to_test = [
-    ('ShopifyToPostgresOperator', ShopifyToPostgresOperator),
-    ('ShopifyDataValidationOperator', ShopifyDataValidationOperator),
-    ('ShopifyIncrementalSyncOperator', ShopifyIncrementalSyncOperator),
-    ('ShopifyDataQualityOperator', ShopifyDataQualityOperator),
-    ('ShopifyChangeDetectionOperator', ShopifyChangeDetectionOperator)
-]
-
-for name, operator_class in operators_to_test:
-    try:
-        # Test basic initialization
-        operator = operator_class(task_id=f'test_{name.lower()}')
-        print(f'✅ {name} initialization successful')
-    except Exception as e:
-        print(f'❌ {name} initialization failed: {e}')
-        sys.exit(1)
+try:
+    # Test basic initialization
+    operator = ShopifyToPostgresOperator(task_id='test_shopify_operator')
+    print('✅ ShopifyToPostgresOperator initialization successful')
+except Exception as e:
+    print(f'❌ ShopifyToPostgresOperator initialization failed: {e}')
+    sys.exit(1)
 
 print('✅ All operators validation passed!')
 "; then

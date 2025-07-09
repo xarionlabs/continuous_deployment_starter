@@ -25,7 +25,6 @@ setup(
         "asyncpg>=0.29.0,<1.0.0",
         # Configuration and validation
         "pydantic>=2.5.0,<3.0.0",
-        "pydantic-settings>=2.0.0,<3.0.0",
         # Retry and backoff utilities
         "backoff>=2.2.1,<3.0.0",
         # Date and time handling
