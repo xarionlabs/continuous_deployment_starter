@@ -100,46 +100,80 @@ function DataInsightsSection() {
     }
   }, []);
 
-  const simulateSyncProgress = useCallback(async (runId: string) => {
-    // Simulate sync progress over 3-5 seconds
-    const totalSteps = 5;
-    const stepDelay = 800; // 800ms per step
+  const pollSyncStatus = useCallback(async (runId: string) => {
+    let attempts = 0;
+    const maxAttempts = 60; // Poll for up to 10 minutes
     
-    for (let step = 1; step <= totalSteps; step++) {
-      await new Promise(resolve => setTimeout(resolve, stepDelay));
-      
-      if (step === totalSteps) {
-        // Final step - sync complete
-        setSyncStatus({
-          isLoading: false,
-          runId,
-          status: 'success',
-        });
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/data-sync/status/${runId}`);
+        const result = await response.json();
         
-        // Reload metrics after successful sync
-        setTimeout(() => {
-          loadMetrics();
-        }, 500);
+        if (result.success) {
+          const dagRun = result.data.dagRun;
+          setSyncStatus({
+            isLoading: false,
+            runId,
+            status: dagRun.state,
+          });
+          
+          // If still running, continue polling
+          if (dagRun.state === 'running' && attempts < maxAttempts) {
+            attempts++;
+            setTimeout(poll, 10000); // Poll every 10 seconds
+          } else if (dagRun.state === 'success') {
+            // Reload metrics after successful sync
+            loadMetrics();
+          }
+        }
+      } catch (err) {
+        console.error('Error polling sync status:', err);
+        setSyncStatus(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to check sync status',
+        }));
       }
-    }
+    };
+    
+    poll();
   }, [loadMetrics]);
 
   const handleDataSync = useCallback(async () => {
     setSyncStatus({ isLoading: true });
     
     try {
-      // Generate a mock run ID for tracking
-      const mockRunId = `mock_sync_${Date.now()}`;
-      
-      setSyncStatus({
-        isLoading: true,
-        runId: mockRunId,
-        status: 'running',
+      const response = await fetch('/api/data-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          syncMode: 'incremental',
+          enableProducts: true,
+          enableCustomers: true,
+          enableOrders: true,
+          note: 'Triggered from data dashboard',
+        }),
       });
       
-      // Start the simulated sync progress
-      simulateSyncProgress(mockRunId);
+      const result = await response.json();
       
+      if (result.success) {
+        setSyncStatus({
+          isLoading: false,
+          runId: result.data.runId,
+          status: 'running',
+        });
+        
+        // Poll for status updates
+        pollSyncStatus(result.data.runId);
+      } else {
+        setSyncStatus({
+          isLoading: false,
+          error: result.error || 'Failed to start sync',
+        });
+      }
     } catch (err) {
       setSyncStatus({
         isLoading: false,
@@ -147,7 +181,7 @@ function DataInsightsSection() {
       });
       console.error('Error starting sync:', err);
     }
-  }, [simulateSyncProgress]);
+  }, [pollSyncStatus]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
