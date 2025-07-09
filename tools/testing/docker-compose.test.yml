@@ -1,0 +1,213 @@
+version: '3.8'
+
+# Docker Compose setup for local CI/CD pipeline testing
+# This file provides a complete testing environment that mimics the production deployment
+
+services:
+  # PostgreSQL database for testing
+  postgres-test:
+    image: postgres:15
+    container_name: postgres-test
+    environment:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./test-data/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and session storage
+  redis-test:
+    image: redis:7-alpine
+    container_name: redis-test
+    ports:
+      - "6380:6379"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Local container registry for testing image builds
+  registry-test:
+    image: registry:2
+    container_name: registry-test
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_test_data:/var/lib/registry
+    networks:
+      - test-network
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_HTTP_ADDR: "0.0.0.0:5000"
+
+  # Mock GitHub Actions runner environment
+  act-runner:
+    image: catthehacker/ubuntu:act-22.04
+    container_name: act-runner
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ..:/github/workspace
+      - ../test-local/logs:/tmp/act-logs
+      - ../test-local/artifacts:/tmp/artifacts
+    networks:
+      - test-network
+    working_dir: /github/workspace
+    environment:
+      # GitHub Actions environment variables
+      GITHUB_WORKSPACE: /github/workspace
+      GITHUB_REPOSITORY: owner/continuous_deployment_starter
+      GITHUB_REPOSITORY_OWNER: owner
+      GITHUB_REF: refs/heads/main
+      GITHUB_SHA: fake_sha_for_testing
+      GITHUB_EVENT_NAME: push
+      GITHUB_ACTOR: test_actor
+      GITHUB_RUN_ID: 123456789
+      GITHUB_RUN_NUMBER: 1
+      GITHUB_TOKEN: fake_token_for_testing
+      RUNNER_OS: Linux
+      RUNNER_ARCH: X64
+      RUNNER_TEMP: /tmp
+      RUNNER_TOOL_CACHE: /opt/hostedtoolcache
+      # Container registry
+      REGISTRY: localhost:5000
+      # Database connection for testing
+      DATABASE_URL: postgresql://test_user:test_password@postgres-test:5432/test_db
+      # Redis connection
+      REDIS_URL: redis://redis-test:6379
+      # Testing environment
+      NODE_ENV: test
+      APP_ENV: test
+      TZ: Europe/Amsterdam
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      registry-test:
+        condition: service_started
+    command: sleep infinity
+
+  # Nginx for testing reverse proxy functionality
+  nginx-test:
+    image: nginx:alpine
+    container_name: nginx-test
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./test-configs/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./test-configs/ssl:/etc/nginx/ssl:ro
+    networks:
+      - test-network
+    depends_on:
+      - act-runner
+
+  # Test application instances (for integration testing)
+  test-app-1:
+    build:
+      context: ../applications/pxy6.com
+      dockerfile: Dockerfile
+    container_name: test-app-1
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: test
+      APP_ENV: test
+      DATABASE_URL: postgresql://test_user:test_password@postgres-test:5432/test_db
+      REDIS_URL: redis://redis-test:6379
+    networks:
+      - test-network
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    profiles:
+      - integration-test
+
+  test-app-2:
+    build:
+      context: ../applications/app.pxy6.com
+      dockerfile: Dockerfile
+    container_name: test-app-2
+    ports:
+      - "3002:3000"
+    environment:
+      NODE_ENV: test
+      APP_ENV: test
+      DATABASE_URL: postgresql://test_user:test_password@postgres-test:5432/test_db
+      REDIS_URL: redis://redis-test:6379
+      SHOPIFY_API_KEY: test_key
+      SHOPIFY_API_SECRET: test_secret
+    networks:
+      - test-network
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    profiles:
+      - integration-test
+
+  # Mock external services for testing
+  mock-services:
+    image: wiremock/wiremock:latest
+    container_name: mock-services
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./test-data/wiremock:/home/wiremock
+    networks:
+      - test-network
+    command: --global-response-templating --verbose
+    profiles:
+      - mock-services
+
+  # Test utilities and tools
+  test-utils:
+    image: alpine:latest
+    container_name: test-utils
+    volumes:
+      - ..:/workspace
+      - ./scripts:/scripts
+    networks:
+      - test-network
+    working_dir: /workspace
+    command: sleep infinity
+    environment:
+      DATABASE_URL: postgresql://test_user:test_password@postgres-test:5432/test_db
+      REDIS_URL: redis://redis-test:6379
+      REGISTRY_URL: registry-test:5000
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+
+networks:
+  test-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_test_data:
+    driver: local
+  registry_test_data:
+    driver: local

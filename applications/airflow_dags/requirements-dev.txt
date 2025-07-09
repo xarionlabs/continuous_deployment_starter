@@ -1,6 +1,0 @@
-pytest>=7.0.0
-pytest-mock>=3.0.0
-# Add other development/testing specific dependencies here
-# Example:
-# freezegun # For time-based testing
-# coverage # For test coverage reports

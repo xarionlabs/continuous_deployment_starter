@@ -1,0 +1,77 @@
+{
+  "after": "fake_sha_for_testing",
+  "before": "0000000000000000000000000000000000000000",
+  "commits": [
+    {
+      "added": [],
+      "author": {
+        "email": "test@example.com",
+        "name": "Test Actor",
+        "username": "test_actor"
+      },
+      "committer": {
+        "email": "test@example.com",
+        "name": "Test Actor",
+        "username": "test_actor"
+      },
+      "distinct": true,
+      "id": "fake_sha_for_testing",
+      "message": "Update application configuration [deploy-services: 04_app_pxy6_com,05_pxy6_web]\n\nThis commit deploys only the specified services instead of all services.",
+      "modified": [
+        "applications/app.pxy6.com/src/config.ts",
+        "applications/pxy6.com/src/config.ts"
+      ],
+      "removed": [],
+      "timestamp": "2025-01-01T12:00:00Z",
+      "tree_id": "fake_tree_id",
+      "url": "https://github.com/owner/continuous_deployment_starter/commit/fake_sha_for_testing"
+    }
+  ],
+  "compare": "https://github.com/owner/continuous_deployment_starter/compare/fake_sha_for_testing",
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "head_commit": {
+    "added": [],
+    "author": {
+      "email": "test@example.com",
+      "name": "Test Actor",
+      "username": "test_actor"
+    },
+    "committer": {
+      "email": "test@example.com",
+      "name": "Test Actor",
+      "username": "test_actor"
+    },
+    "distinct": true,
+    "id": "fake_sha_for_testing",
+    "message": "Update application configuration [deploy-services: 04_app_pxy6_com,05_pxy6_web]\n\nThis commit deploys only the specified services instead of all services.",
+    "modified": [
+      "applications/app.pxy6.com/src/config.ts",
+      "applications/pxy6.com/src/config.ts"
+    ],
+    "removed": [],
+    "timestamp": "2025-01-01T12:00:00Z",
+    "tree_id": "fake_tree_id",
+    "url": "https://github.com/owner/continuous_deployment_starter/commit/fake_sha_for_testing"
+  },
+  "pusher": {
+    "email": "test@example.com",
+    "name": "test_actor"
+  },
+  "ref": "refs/heads/main",
+  "repository": {
+    "full_name": "owner/continuous_deployment_starter",
+    "name": "continuous_deployment_starter",
+    "owner": {
+      "login": "owner",
+      "name": "Test Owner"
+    },
+    "default_branch": "main",
+    "html_url": "https://github.com/owner/continuous_deployment_starter"
+  },
+  "sender": {
+    "login": "test_actor",
+    "html_url": "https://github.com/test_actor"
+  }
+}

@@ -1,0 +1,74 @@
+# Act configuration for local GitHub Actions testing
+# This configuration provides better defaults for testing workflows locally
+
+# Use Ubuntu 22.04 for better compatibility
+-P ubuntu-latest=catthehacker/ubuntu:act-22.04
+
+# Set default working directory
+# --workdir /tmp/act
+
+# Enable verbose output for debugging
+--verbose
+
+# Set default environment variables
+--env GITHUB_TOKEN=fake_token_for_testing
+--env GITHUB_WORKSPACE=/github/workspace
+--env GITHUB_REPOSITORY=owner/continuous_deployment_starter
+--env GITHUB_REPOSITORY_OWNER=owner
+--env GITHUB_REF=refs/heads/main
+--env GITHUB_SHA=fake_sha_for_testing
+--env GITHUB_EVENT_NAME=push
+--env GITHUB_ACTOR=test_actor
+--env GITHUB_RUN_ID=123456789
+--env GITHUB_RUN_NUMBER=1
+--env GITHUB_WORKFLOW=test_workflow
+--env GITHUB_JOB=test_job
+--env GITHUB_ACTION=test_action
+--env GITHUB_EVENT_PATH=/github/workflow/event.json
+--env GITHUB_STEP_SUMMARY=/tmp/github_step_summary.txt
+--env GITHUB_OUTPUT=/tmp/github_output.txt
+--env GITHUB_ENV=/tmp/github_env.txt
+--env GITHUB_PATH=/tmp/github_path.txt
+--env RUNNER_OS=Linux
+--env RUNNER_ARCH=X64
+--env RUNNER_TEMP=/tmp
+--env RUNNER_TOOL_CACHE=/opt/hostedtoolcache
+
+# Container registry settings for local testing
+--env REGISTRY=ghcr.io
+
+# Set timezone to match production
+--env TZ=Europe/Amsterdam
+
+# Enable container networking for service tests
+--network host
+
+# Reuse containers for faster testing
+--reuse
+
+# Set default secrets file location
+--secret-file tools/testing/test-local/secrets.env
+
+# Set default variables file location
+--var-file tools/testing/test-local/variables.env
+
+# Bind mount local Docker socket for Docker-in-Docker operations
+# --bind /var/run/docker.sock:/var/run/docker.sock
+
+# Set platform for consistency
+--platform linux/amd64
+
+# Use JSON log format for better parsing
+# --log-format json
+
+# Set job timeout (30 minutes)
+# --job-timeout 30m
+
+# Container options for better resource management
+# --container-options "--memory=4g --cpus=2"
+--container-architecture linux/amd64
+# Enable artifact server for testing artifact uploads/downloads
+--artifact-server-path /tmp/artifacts
+
+# Default event payloads directory
+--eventpath tools/testing/events/push.json

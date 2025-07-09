@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### General Repository Commands
 - `docker-compose -f applications/[app_name]/docker-compose.yaml up --build` - Build and run an application locally
 - `find applications -type d -exec test -e '{}'/Dockerfile \; -print` - Find all applications with Dockerfiles
-- `./utilities/github-automation/see_workflow_logs.sh` - Check latest GitHub Actions workflow status and logs
+- `./tools/github-automation/see_workflow_logs.sh` - Check latest GitHub Actions workflow status and logs
 
 ### Workflow Testing Commands
 - `act` - Run GitHub Actions workflows locally using act
@@ -24,11 +24,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `[deploy-services: all]` - Deploy all services from all docker-compose files
 
 ### Docker Testing Commands
-- `./utilities/test-docker-builds.sh` - Test all Dockerfile builds locally
+- `./tools/development/test-docker-builds.sh` - Test all Dockerfile builds locally
 - `docker build -t test-image applications/[app_name]/` - Test specific application Dockerfile
-- `docker build -t test-image utilities/[utility_name]/` - Test specific utility Dockerfile
-- `docker build -t test-image release-tooling/[tool_name]/` - Test specific release tool Dockerfile
+- `docker build -t test-image tools/[utility_name]/` - Test specific utility Dockerfile
+- `docker build -t test-image tools/deployment/[tool_name]/` - Test specific release tool Dockerfile
 - `docker run --rm test-image /app/entrypoints/entrypoint_test.sh` - Run tests in built image
+
+### Containerized Tool Testing Commands
+**IMPORTANT**: Always prefer using Docker containers for testing deployment scripts and tools instead of local installations. This ensures consistent environments and avoids dependency conflicts.
+
+#### Deployment Manager CLI Tool
+- `docker build -t deployment-manager-test tools/deployment/deployment-manager/` - Build deployment manager image
+- `docker run --rm deployment-manager-test /app/entrypoints/entrypoint_test.sh` - Run tests in container
+- `docker run --rm deployment-manager-test release-tool --help` - Show CLI help in container
+- `docker run --rm -v $(pwd):/workspace deployment-manager-test release-tool [command]` - Run CLI commands with workspace access
+
+#### General Tool Testing Pattern
+- `docker build -t [tool-name]-test tools/[path-to-tool]/` - Build tool image for testing
+- `docker run --rm [tool-name]-test /app/entrypoints/entrypoint_test.sh` - Run tool tests
+- `docker run --rm -v $(pwd):/workspace [tool-name]-test [tool-command]` - Execute tool with workspace access
+
+**Benefits of containerized testing**:
+- No need for local Poetry, Python, or other language runtime installations
+- Consistent testing environment across different machines
+- Isolation from local system dependencies
+- Same environment as CI/CD pipeline
+- Easy cleanup after testing (no local dependency pollution)
 
 ### Application-Specific Commands
 
@@ -68,7 +89,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Note: This packages DAGs and dependencies for the Airflow service in `services/06_airflow/`
 
 #### Release Tool (Python CLI)
-- `cd release-tooling/deployment-manager` - Navigate to release tool directory
+- `cd tools/deployment/deployment-manager` - Navigate to release tool directory
 - `poetry install` - Install dependencies
 - `poetry run pytest` - Run tests
 - `poetry run release-tool --help` - Show CLI help
@@ -80,7 +101,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 ### Project Structure
 - `applications/` - Individual containerized applications
 - `services/` - Infrastructure service configurations (PostgreSQL, Nginx proxy, Airflow)
-- `utilities/` - Helper tools and automation scripts
+- `tools/` - Helper tools and automation scripts
 - `.github/workflows/` - CI/CD pipeline definitions
 
 **Note**: The `applications/airflow_dags/` directory contains DAG definitions that get packaged and deployed to the Airflow service defined in `services/06_airflow/`.
@@ -93,7 +114,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 
 ### Utility Types
 1. **user_management**: Python utility for managing users with Docker containerization
-2. **deployment-manager**: Python CLI tool for managing selective service deployments (located in release-tooling/deployment-manager)
+2. **deployment-manager**: Python CLI tool for managing selective service deployments (located in tools/deployment/deployment-manager)
 
 ### CI/CD Pipeline Flow
 1. **Build Workflow**: Detects changed applications, builds Docker images, runs tests, pushes to GHCR
@@ -139,6 +160,7 @@ This is a containerized multi-application deployment system with automated CI/CD
 - **app.pxy6.com**: Releases automatically deploy staging and live Shopify configurations, overwriting any manual deployments
 
 ### Git Hooks
+- `./tools/git-hooks/install-hooks.sh` - Install pre-commit hooks for the repository
 - **Pre-commit hook**: Automatically runs quality checks when changes are committed
   - **app.pxy6.com checks** (when files in `applications/app.pxy6.com/` are modified):
     - TypeScript type checking (`npm run typecheck`)
