@@ -6,11 +6,11 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: localpassword
-      POSTGRES_DB: app_pxy6_db
+      POSTGRES_DB: pxy6
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - db_network
+      - app_network
     restart: unless-stopped
 
   app:
@@ -22,26 +22,36 @@ services:
       - ./src:/app/src
       - ./entrypoints:/app/entrypoints
     entrypoint: ["./entrypoints/entrypoint.sh"]
-    env_file:
-      - src/.env
     environment:
+      SHOPIFY_API_KEY: 58f7b8ec9072c0d77a9293b607a010c2
+      DATABASE_PROVIDER: postgresql
       DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
+      PSQL_PXY6_PASSWORD: localpassword
       NODE_ENV: development
+      AIRFLOW_API_URL: http://localhost:8080/api/v2
+      AIRFLOW_USERNAME: admin
+      AIRFLOW_PASSWORD: admin
     ports:
       - "3000:3000"
     networks:
-      - db_network
+      - app_network
 
   tests:
     build: .
+    depends_on:
+      - db
     working_dir: /app
     volumes:
       - ./src:/app/src
       - ./entrypoints:/app/entrypoints
     networks:
-      - db_network
+      - app_network
     entrypoint: ["./entrypoints/entrypoint_test.sh"]
     environment:
+      SHOPIFY_API_KEY: 58f7b8ec9072c0d77a9293b607a010c2
+      DATABASE_PROVIDER: postgresql
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
+      PSQL_PXY6_PASSWORD: localpassword
       NODE_ENV: test
 
   e2e_tests:
@@ -53,14 +63,18 @@ services:
       - ./src:/app/src
       - ./entrypoints:/app/entrypoints
     networks:
-      - db_network
+      - app_network
     entrypoint: ["./entrypoints/entrypoint_e2e.sh"]
     environment:
+      SHOPIFY_API_KEY: 58f7b8ec9072c0d77a9293b607a010c2
+      DATABASE_PROVIDER: postgresql
+      DATABASE_URL: postgresql://postgres:localpassword@db:5432/pxy6
+      PSQL_PXY6_PASSWORD: localpassword
       NODE_ENV: test
 
 volumes:
   postgres_data:
 
 networks:
-  db_network:
+  app_network:
     driver: bridge

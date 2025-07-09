@@ -1,0 +1,40 @@
+query getCustomersWithOrders($limit: Int!, $cursor: String, $ordersFirst: Int!) {
+  customers(first: $limit, after: $cursor) {
+    edges {
+      node {
+        id
+        email
+        createdAt
+        orders(first: $ordersFirst, reverse: true) {
+          edges {
+            node {
+              id
+              name
+              processedAt
+              lineItems(first: 10) {
+                edges {
+                  node {
+                    title
+                    quantity
+                    variant {
+                      id
+                      title
+                      price
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}

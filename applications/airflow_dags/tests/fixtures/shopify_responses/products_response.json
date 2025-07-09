@@ -1,0 +1,2558 @@
+{
+  "data": {
+    "products": {
+      "edges": [
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326549843",
+            "handle": "gift-card",
+            "title": "Gift Card",
+            "description": "This is a gift card for the store",
+            "descriptionHtml": "This is a gift card for the store",
+            "productType": "giftcard",
+            "vendor": "Snowboard Vendor",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T21:22:09Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/gift-card",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "10.0",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "100.0",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 0,
+            "tracksInventory": false,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784083591507",
+              "alt": "Gift card that shows text: Generated data gift card",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/gift_card.png?v=1749544977",
+                "altText": "Gift card that shows text: Generated data gift card",
+                "width": 2881,
+                "height": 2881
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783757651",
+                    "handle": "frontpage",
+                    "title": "Home page",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160534647123",
+                    "title": "$10",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "10.00",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": -1,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T09:26:01Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Denominations",
+                        "value": "$10"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160534679891",
+                    "title": "$25",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "25.00",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 0,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Denominations",
+                        "value": "$25"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160534712659",
+                    "title": "$50",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "50.00",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 0,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Denominations",
+                        "value": "$50"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160534745427",
+                    "title": "$100",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "100.00",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 0,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Denominations",
+                        "value": "$100"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822608211",
+                "name": "Denominations",
+                "values": [
+                  "$10",
+                  "$25",
+                  "$50",
+                  "$100"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Gift card that shows text: Generated data gift card",
+                    "id": "gid://shopify/MediaImage/54784083591507",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/gift_card.png?v=1749544977",
+                      "width": 2881,
+                      "height": 2881
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": true,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2NTQ5ODQzLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjU0OTg0MyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326582611",
+            "handle": "the-inventory-not-tracked-snowboard",
+            "title": "The Inventory Not Tracked Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T09:14:00Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-inventory-not-tracked-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "949.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "949.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 0,
+            "tracksInventory": false,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784083657043",
+              "alt": "Top and bottom view of a snowboard. The top view shows a centred hexagonal logo for Hydrogen that\n          appears to radiate outwards, as well as some overlapping hexagons at the bottom. The bottom view shows an\n          abstract angular grid in purples.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/snowboard_purple_hydrogen.png?v=1749544977",
+                "altText": "Top and bottom view of a snowboard. The top view shows a centred hexagonal logo for Hydrogen that\n          appears to radiate outwards, as well as some overlapping hexagons at the bottom. The bottom view shows an\n          abstract angular grid in purples.",
+                "width": 3097,
+                "height": 3908
+              }
+            },
+            "collections": {
+              "edges": []
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160534778195",
+                    "title": "Default Title",
+                    "sku": "sku-untracked-1",
+                    "barcode": null,
+                    "price": "949.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 0,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822640979",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows a centred hexagonal logo for Hydrogen that\n          appears to radiate outwards, as well as some overlapping hexagons at the bottom. The bottom view shows an\n          abstract angular grid in purples.",
+                    "id": "gid://shopify/MediaImage/54784083657043",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/snowboard_purple_hydrogen.png?v=1749544977",
+                      "width": 3097,
+                      "height": 3908
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2NTgyNjExLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjU4MjYxMSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326615379",
+            "handle": "the-archived-snowboard",
+            "title": "The Archived Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "Snowboard Vendor",
+            "status": "ARCHIVED",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T21:22:10Z",
+            "publishedAt": null,
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Archived",
+              "Premium",
+              "Snow",
+              "Snowboard",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://2e9g6yrvp2qynrfx-96519618899.shopifypreview.com/products_preview?preview_key=df5628ee48905ab2feaebebaec705fa2&_bt=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaUp3ZUhrMkxYUmxjM1F0YzNSdmNtVXViWGx6YUc5d2FXWjVMbU52YlFZNkJrVlUiLCJleHAiOiIyMDI1LTA3LTA4VDA4OjM5OjAwLjYzOFoiLCJwdXIiOiJwZXJtYW5lbnRfcGFzc3dvcmRfYnlwYXNzIn19--f58b39fb8c352034a1fcd595f5e37399535173fe",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "629.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "629.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784083886419",
+              "alt": "The top and bottom view of a snowboard.The top view is a gradient light purple and dark purple\n        with a cube geometric pattern. The bottom view blue with light blue octagon geometric pattern.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_52f8e304-92d9-4a36-82af-50df8fe31c69.jpg?v=1749544977",
+                "altText": "The top and bottom view of a snowboard.The top view is a gradient light purple and dark purple\n        with a cube geometric pattern. The bottom view blue with light blue octagon geometric pattern.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160534974803",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "629.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 50,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822673747",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "The top and bottom view of a snowboard.The top view is a gradient light purple and dark purple\n        with a cube geometric pattern. The bottom view blue with light blue octagon geometric pattern.",
+                    "id": "gid://shopify/MediaImage/54784083886419",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_52f8e304-92d9-4a36-82af-50df8fe31c69.jpg?v=1749544977",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2NjE1Mzc5LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjYxNTM3OSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326648147",
+            "handle": "the-compare-at-price-snowboard",
+            "title": "The Compare at Price Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T20:44:13Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-compare-at-price-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "785.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "785.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": {
+              "minVariantCompareAtPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantCompareAtPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "totalInventory": 10,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784083919187",
+              "alt": "Top and bottom view of a snowboard. The top view shows pixelated clouds, with the top-most one being\n        the shape of the Shopify bag logo. The bottom view has a pixelated cloudy sky with blue, pink and purple\n        colours.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/snowboard_sky.png?v=1749544978",
+                "altText": "Top and bottom view of a snowboard. The top view shows pixelated clouds, with the top-most one being\n        the shape of the Shopify bag logo. The bottom view has a pixelated cloudy sky with blue, pink and purple\n        colours.",
+                "width": 3097,
+                "height": 3908
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535040339",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "785.95",
+                    "compareAtPrice": "885.95",
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822706515",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows pixelated clouds, with the top-most one being\n        the shape of the Shopify bag logo. The bottom view has a pixelated cloudy sky with blue, pink and purple\n        colours.",
+                    "id": "gid://shopify/MediaImage/54784083919187",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/snowboard_sky.png?v=1749544978",
+                      "width": 3097,
+                      "height": 3908
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2NjQ4MTQ3LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjY0ODE0NyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326680915",
+            "handle": "the-minimal-snowboard",
+            "title": "The Minimal Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T08:48:00Z",
+            "publishedAt": null,
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://2e9g6yrvp2qynrfx-96519618899.shopifypreview.com/products_preview?preview_key=042693afc9fe3df01fda87e86cf0fb24&_bt=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaUp3ZUhrMkxYUmxjM1F0YzNSdmNtVXViWGx6YUc5d2FXWjVMbU52YlFZNkJrVlUiLCJleHAiOiIyMDI1LTA3LTA4VDA4OjM5OjAwLjU4MVoiLCJwdXIiOiJwZXJtYW5lbnRfcGFzc3dvcmRfYnlwYXNzIn19--402d2d37048d9f67e9a6095a38c0d929140cea77",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": null,
+            "collections": {
+              "edges": []
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160534942035",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "885.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 50,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822739283",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": []
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2NjgwOTE1LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjY4MDkxNSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326713683",
+            "handle": "selling-plans-ski-wax",
+            "title": "Selling Plans Ski Wax",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "accessories",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T20:44:02Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/selling-plans-ski-wax",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "9.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "49.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 30,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784083951955",
+              "alt": "A bar of golden yellow wax",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/snowboard_wax.png?v=1749544978",
+                "altText": "A bar of golden yellow wax",
+                "width": 2881,
+                "height": 2881
+              }
+            },
+            "collections": {
+              "edges": []
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535335251",
+                    "title": "Selling Plans Ski Wax",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "24.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Selling Plans Ski Wax"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535368019",
+                    "title": "Special Selling Plans Ski Wax",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "49.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Special Selling Plans Ski Wax"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535433555",
+                    "title": "Sample Selling Plans Ski Wax",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "9.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Sample Selling Plans Ski Wax"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822772051",
+                "name": "Title",
+                "values": [
+                  "Selling Plans Ski Wax",
+                  "Special Selling Plans Ski Wax",
+                  "Sample Selling Plans Ski Wax"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "A bar of golden yellow wax",
+                    "id": "gid://shopify/MediaImage/54784083951955",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/snowboard_wax.png?v=1749544978",
+                      "width": 2881,
+                      "height": 2881
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "A bar of purple wax",
+                    "id": "gid://shopify/MediaImage/54784084246867",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/wax-special.png?v=1749544978",
+                      "width": 2881,
+                      "height": 2881
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "a small cube of wax",
+                    "id": "gid://shopify/MediaImage/54784084312403",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/sample-normal-wax.png?v=1749544978",
+                      "width": 2881,
+                      "height": 2881
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/SellingPlanGroup/77433241939",
+                    "name": "Preorder",
+                    "merchantCode": "Preorder",
+                    "description": null,
+                    "options": [
+                      "preorder"
+                    ],
+                    "sellingPlans": {
+                      "edges": [
+                        {
+                          "node": {
+                            "id": "gid://shopify/SellingPlan/690204901715",
+                            "name": "Preorder ski wax, delivered in a month",
+                            "description": null,
+                            "options": [
+                              "1 Week(s)"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/SellingPlanGroup/77433274707",
+                    "name": "Prepaid",
+                    "merchantCode": "Prepaid",
+                    "description": null,
+                    "options": [
+                      "Delivery every"
+                    ],
+                    "sellingPlans": {
+                      "edges": [
+                        {
+                          "node": {
+                            "id": "gid://shopify/SellingPlan/690204934483",
+                            "name": "A year supply of prepaid ski wax, delivered monthly",
+                            "description": null,
+                            "options": [
+                              "1 Week(s)"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/SellingPlanGroup/77433307475",
+                    "name": "Try Before You Buy",
+                    "merchantCode": "Try Before You Buy",
+                    "description": null,
+                    "options": [
+                      "Trial for"
+                    ],
+                    "sellingPlans": {
+                      "edges": [
+                        {
+                          "node": {
+                            "id": "gid://shopify/SellingPlan/690204967251",
+                            "name": "Try our product risk-free for a week before needing to pay",
+                            "description": null,
+                            "options": [
+                              "1 Week(s)"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/SellingPlanGroup/77433340243",
+                    "name": "Subscription",
+                    "merchantCode": "Subscription",
+                    "description": null,
+                    "options": [
+                      "Delivery every"
+                    ],
+                    "sellingPlans": {
+                      "edges": [
+                        {
+                          "node": {
+                            "id": "gid://shopify/SellingPlan/690205000019",
+                            "name": "Ski wax subscription, billed and delivered weekly",
+                            "description": null,
+                            "options": [
+                              "1 Week(s)"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2NzEzNjgzLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjcxMzY4MyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326746451",
+            "handle": "the-complete-snowboard",
+            "title": "The Complete Snowboard",
+            "description": "This PREMIUM snowboard is so SUPERDUPER awesome!",
+            "descriptionHtml": "This <b>PREMIUM</b> <i>snowboard</i> is so <b>SUPER</b><i>DUPER</i> awesome!",
+            "productType": "snowboard",
+            "vendor": "Snowboard Vendor",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T20:44:00Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": "Complete Snowboard",
+              "description": "snowboard winter sport snowboarding"
+            },
+            "tags": [
+              "Premium",
+              "Snow",
+              "Snowboard",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-complete-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "699.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "699.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784084083027",
+              "alt": "Top and bottom view of a snowboard. The top view shows abstract circles and lines in shades of\n          teal. The bottom view shows abstract circles and lines in shades of purple and blue with the text “SHOPIFY”\n          in a sans serif typeface on top.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_589fc064-24a2-4236-9eaf-13b2bd35d21d.jpg?v=1749544977",
+                "altText": "Top and bottom view of a snowboard. The top view shows abstract circles and lines in shades of\n          teal. The bottom view shows abstract circles and lines in shades of purple and blue with the text “SHOPIFY”\n          in a sans serif typeface on top.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535073107",
+                    "title": "Ice",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "699.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Color",
+                        "value": "Ice"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535105875",
+                    "title": "Dawn",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "699.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Color",
+                        "value": "Dawn"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535138643",
+                    "title": "Powder",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "699.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Color",
+                        "value": "Powder"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535171411",
+                    "title": "Electric",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "699.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Color",
+                        "value": "Electric"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535204179",
+                    "title": "Sunset",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "699.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 10,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Color",
+                        "value": "Sunset"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822804819",
+                "name": "Color",
+                "values": [
+                  "Ice",
+                  "Dawn",
+                  "Powder",
+                  "Electric",
+                  "Sunset"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows abstract circles and lines in shades of\n          teal. The bottom view shows abstract circles and lines in shades of purple and blue with the text “SHOPIFY”\n          in a sans serif typeface on top.",
+                    "id": "gid://shopify/MediaImage/54784084083027",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_589fc064-24a2-4236-9eaf-13b2bd35d21d.jpg?v=1749544977",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754090835",
+                    "namespace": "global",
+                    "key": "title_tag",
+                    "value": "Complete Snowboard",
+                    "type": "string"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754156371",
+                    "namespace": "global",
+                    "key": "description_tag",
+                    "value": "snowboard winter sport snowboarding",
+                    "type": "string"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754451283",
+                    "namespace": "test_data",
+                    "key": "snowboard_length",
+                    "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+                    "type": "dimension"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754484051",
+                    "namespace": "test_data",
+                    "key": "snowboard_weight",
+                    "value": "{\"value\":7.0,\"unit\":\"POUNDS\"}",
+                    "type": "weight"
+                  }
+                }
+              ]
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2NzQ2NDUxLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjc0NjQ1MSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326779219",
+            "handle": "the-collection-snowboard-hydrogen",
+            "title": "The Collection Snowboard: Hydrogen",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "Hydrogen Vendor",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T21:26:07Z",
+            "publishedAt": "2025-06-10T08:42:57Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-collection-snowboard-hydrogen",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "600.0",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "600.0",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784084017491",
+              "alt": "Top and bottom view of a snowboard. The top view shows stylized hydrogen bonds and the bottom view\n        shows “H2” in a brush script typeface.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_0a40b01b-5021-48c1-80d1-aa8ab4876d3d.jpg?v=1749544977",
+                "altText": "Top and bottom view of a snowboard. The top view shows stylized hydrogen bonds and the bottom view\n        shows “H2” in a brush script typeface.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783954259",
+                    "handle": "hydrogen",
+                    "title": "Hydrogen",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535007571",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "600.00",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 50,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822837587",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows stylized hydrogen bonds and the bottom view\n        shows “H2” in a brush script typeface.",
+                    "id": "gid://shopify/MediaImage/54784084017491",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_0a40b01b-5021-48c1-80d1-aa8ab4876d3d.jpg?v=1749544977",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754877267",
+                    "namespace": "test_data",
+                    "key": "binding_mount",
+                    "value": "Optimistic",
+                    "type": "single_line_text_field"
+                  }
+                }
+              ]
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2Nzc5MjE5LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjc3OTIxOSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326811987",
+            "handle": "the-draft-snowboard",
+            "title": "The Draft Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "Snowboard Vendor",
+            "status": "DRAFT",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T21:13:32Z",
+            "publishedAt": null,
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://2e9g6yrvp2qynrfx-96519618899.shopifypreview.com/products_preview?preview_key=e2e0c6a37185ae019833994a4a618bec&_bt=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaUp3ZUhrMkxYUmxjM1F0YzNSdmNtVXViWGx6YUc5d2FXWjVMbU52YlFZNkJrVlUiLCJleHAiOiIyMDI1LTA3LTA4VDA4OjM5OjAwLjY1N1oiLCJwdXIiOiJwZXJtYW5lbnRfcGFzc3dvcmRfYnlwYXNzIn19--8ebcb3df20eab4b1f9181d7c5388e87234fef08c",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "2629.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "2629.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 20,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784084214099",
+              "alt": "Top and bottom view of a snowboard.The top view shows the text “hydrogen” in overlapping blue,\n          pink and black font. The bottom view is a purple to blue gradient with white geometric pattern overlay.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_5127218a-8f6c-498f-b489-09242c0fab0a.jpg?v=1749544978",
+                "altText": "Top and bottom view of a snowboard.The top view shows the text “hydrogen” in overlapping blue,\n          pink and black font. The bottom view is a purple to blue gradient with white geometric pattern overlay.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": []
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535302483",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "2629.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 20,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822935891",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard.The top view shows the text “hydrogen” in overlapping blue,\n          pink and black font. The bottom view is a purple to blue gradient with white geometric pattern overlay.",
+                    "id": "gid://shopify/MediaImage/54784084214099",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_5127218a-8f6c-498f-b489-09242c0fab0a.jpg?v=1749544978",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2ODExOTg3LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjgxMTk4NyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326844755",
+            "handle": "the-hidden-snowboard",
+            "title": "The Hidden Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "Snowboard Vendor",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T21:22:19Z",
+            "publishedAt": null,
+            "seo": {
+              "title": "Hidden Snowboard",
+              "description": "hidden snowboard winter sport snowboarding"
+            },
+            "tags": [
+              "Premium",
+              "Snow",
+              "Snowboard",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://2e9g6yrvp2qynrfx-96519618899.shopifypreview.com/products_preview?preview_key=65b1bc05611161ca457162ac6be3045b&_bt=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaUp3ZUhrMkxYUmxjM1F0YzNSdmNtVXViWGx6YUc5d2FXWjVMbU52YlFZNkJrVlUiLCJleHAiOiIyMDI1LTA3LTA4VDA4OjM5OjAwLjYwNFoiLCJwdXIiOiJwZXJtYW5lbnRfcGFzc3dvcmRfYnlwYXNzIn19--bf418eaa08a1883570cc141934f01d5b8e67356d",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "749.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "749.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784084181331",
+              "alt": "The top view and bottom view of a snowboard. The top view is black with a singular peach cube.\n        The bottom view has a graphic of a stack of blocks in a gradient from light blue, to pink to peach.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_c8ff0b5d-c712-429a-be00-b29bd55cbc9d.jpg?v=1749544977",
+                "altText": "The top view and bottom view of a snowboard. The top view is black with a singular peach cube.\n        The bottom view has a graphic of a stack of blocks in a gradient from light blue, to pink to peach.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535269715",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "749.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 50,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822870355",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "The top view and bottom view of a snowboard. The top view is black with a singular peach cube.\n        The bottom view has a graphic of a stack of blocks in a gradient from light blue, to pink to peach.",
+                    "id": "gid://shopify/MediaImage/54784084181331",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_c8ff0b5d-c712-429a-be00-b29bd55cbc9d.jpg?v=1749544977",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754123603",
+                    "namespace": "test_data",
+                    "key": "snowboard_weight",
+                    "value": "{\"value\":8.0,\"unit\":\"POUNDS\"}",
+                    "type": "weight"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754189139",
+                    "namespace": "global",
+                    "key": "title_tag",
+                    "value": "Hidden Snowboard",
+                    "type": "string"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754221907",
+                    "namespace": "global",
+                    "key": "description_tag",
+                    "value": "hidden snowboard winter sport snowboarding",
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2ODQ0NzU1LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjg0NDc1NSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326877523",
+            "handle": "the-out-of-stock-snowboard",
+            "title": "The Out of Stock Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T20:43:57Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-out-of-stock-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 0,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784084115795",
+              "alt": "Top and bottom view of a snowboard. The top view shows a toggle at the top in shades of blue and\n        yellow. The bottom view shows an abstract illustration of toggles in blues and yellows.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_f44a9605-cd62-464d-b095-d45cdaa0d0d7.jpg?v=1749544977",
+                "altText": "Top and bottom view of a snowboard. The top view shows a toggle at the top in shades of blue and\n        yellow. The bottom view shows an abstract illustration of toggles in blues and yellows.",
+                "width": 3908,
+                "height": 3908
+              }
+            },
+            "collections": {
+              "edges": []
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535236947",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "885.95",
+                    "compareAtPrice": null,
+                    "availableForSale": false,
+                    "inventoryQuantity": 0,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822903123",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows a toggle at the top in shades of blue and\n        yellow. The bottom view shows an abstract illustration of toggles in blues and yellows.",
+                    "id": "gid://shopify/MediaImage/54784084115795",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_f44a9605-cd62-464d-b095-d45cdaa0d0d7.jpg?v=1749544977",
+                      "width": 3908,
+                      "height": 3908
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2ODc3NTIzLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjg3NzUyMyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952326910291",
+            "handle": "the-videographer-snowboard",
+            "title": "The Videographer Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:55Z",
+            "updatedAt": "2025-06-10T20:44:05Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-videographer-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "885.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784084148563",
+              "alt": "The top and bottom view of a snowboard. The top has view is turquoise and black with graphics of\n        trees. The bottom view is turquoise with the word hydrogen written in cursive.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main.jpg?v=1749544977",
+                "altText": "The top and bottom view of a snowboard. The top has view is turquoise and black with graphics of\n        trees. The bottom view is turquoise with the word hydrogen written in cursive.",
+                "width": 1024,
+                "height": 1024
+              }
+            },
+            "collections": {
+              "edges": []
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535400787",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "885.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 50,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:55Z",
+                    "updatedAt": "2025-06-10T08:42:55Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544822968659",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "The top and bottom view of a snowboard. The top has view is turquoise and black with graphics of\n        trees. The bottom view is turquoise with the word hydrogen written in cursive.",
+                    "id": "gid://shopify/MediaImage/54784084148563",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main.jpg?v=1749544977",
+                      "width": 1024,
+                      "height": 1024
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "mediaContentType": "EXTERNAL_VIDEO",
+                    "alt": "Video of the Snowboard.",
+                    "id": "gid://shopify/ExternalVideo/54784084377939",
+                    "embedUrl": "https://www.youtube.com/embed/0jeoo7Ol3aI",
+                    "host": "YOUTUBE"
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI2OTEwMjkxLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjkxMDI5MSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952327074131",
+            "handle": "the-collection-snowboard-oxygen",
+            "title": "The Collection Snowboard: Oxygen",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "Hydrogen Vendor",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:56Z",
+            "updatedAt": "2025-06-10T21:14:38Z",
+            "publishedAt": "2025-06-10T08:42:57Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-collection-snowboard-oxygen",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "1025.0",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "1025.0",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784085229907",
+              "alt": "Top and bottom view of a snowboard. The top view shows a stylized scene of trees, mountains, sky and\n        a sun in red colours. The bottom view has blue wavy lines in the background with the text “Oxygen” in a\n        stylized script typeface.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_d624f226-0a89-4fe1-b333-0d1548b43c06.jpg?v=1749544978",
+                "altText": "Top and bottom view of a snowboard. The top view shows a stylized scene of trees, mountains, sky and\n        a sun in red colours. The bottom view has blue wavy lines in the background with the text “Oxygen” in a\n        stylized script typeface.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783954259",
+                    "handle": "hydrogen",
+                    "title": "Hydrogen",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535531859",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "1025.00",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 50,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:56Z",
+                    "updatedAt": "2025-06-10T08:42:56Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544823132499",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows a stylized scene of trees, mountains, sky and\n        a sun in red colours. The bottom view has blue wavy lines in the background with the text “Oxygen” in a\n        stylized script typeface.",
+                    "id": "gid://shopify/MediaImage/54784085229907",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_d624f226-0a89-4fe1-b333-0d1548b43c06.jpg?v=1749544978",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754910035",
+                    "namespace": "test_data",
+                    "key": "binding_mount",
+                    "value": "Optimistic",
+                    "type": "single_line_text_field"
+                  }
+                }
+              ]
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI3MDc0MTMxLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNzA3NDEzMSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952327139667",
+            "handle": "the-multi-location-snowboard",
+            "title": "The Multi-location Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:56Z",
+            "updatedAt": "2025-06-10T21:13:36Z",
+            "publishedAt": "2025-06-10T08:42:56Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Premium",
+              "Snow",
+              "Snowboard",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-multi-location-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "729.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "729.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 100,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784085590355",
+              "alt": "Top and bottom view of a snowboard. The top view shows a pixelated Shopify bag logo and a\n        pixelated character reviewing a clipboard with a questioning expression with a bright green-blue background.\n        The bottom view is a pattern of many pixel characters with a bright green-blue background.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_0a4e9096-021a-4c1e-8750-24b233166a12.jpg?v=1749544978",
+                "altText": "Top and bottom view of a snowboard. The top view shows a pixelated Shopify bag logo and a\n        pixelated character reviewing a clipboard with a questioning expression with a bright green-blue background.\n        The bottom view is a pattern of many pixel characters with a bright green-blue background.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535630163",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "729.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 100,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:56Z",
+                    "updatedAt": "2025-06-10T08:42:56Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544823198035",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows a pixelated Shopify bag logo and a\n        pixelated character reviewing a clipboard with a questioning expression with a bright green-blue background.\n        The bottom view is a pattern of many pixel characters with a bright green-blue background.",
+                    "id": "gid://shopify/MediaImage/54784085590355",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_0a4e9096-021a-4c1e-8750-24b233166a12.jpg?v=1749544978",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI3MTM5NjY3LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNzEzOTY2NyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952327172435",
+            "handle": "the-collection-snowboard-liquid",
+            "title": "The Collection Snowboard: Liquid",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "Hydrogen Vendor",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:56Z",
+            "updatedAt": "2025-06-10T08:48:00Z",
+            "publishedAt": "2025-06-10T08:42:57Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-collection-snowboard-liquid",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "749.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "749.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 50,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784085786963",
+              "alt": "Top and bottom view of a snowboard. The top view shows a stylized scene of water, trees, mountains,\n        sky and a moon in blue colours. The bottom view has a blue liquid, drippy background with the text “liquid” in\n        a stylized script typeface.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_b13ad453-477c-4ed1-9b43-81f3345adfd6.jpg?v=1749544978",
+                "altText": "Top and bottom view of a snowboard. The top view shows a stylized scene of water, trees, mountains,\n        sky and a moon in blue colours. The bottom view has a blue liquid, drippy background with the text “liquid” in\n        a stylized script typeface.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                },
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783954259",
+                    "handle": "hydrogen",
+                    "title": "Hydrogen",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535695699",
+                    "title": "Default Title",
+                    "sku": null,
+                    "barcode": null,
+                    "price": "749.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 50,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:56Z",
+                    "updatedAt": "2025-06-10T08:42:56Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544823230803",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows a stylized scene of water, trees, mountains,\n        sky and a moon in blue colours. The bottom view has a blue liquid, drippy background with the text “liquid” in\n        a stylized script typeface.",
+                    "id": "gid://shopify/MediaImage/54784085786963",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_b13ad453-477c-4ed1-9b43-81f3345adfd6.jpg?v=1749544978",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754942803",
+                    "namespace": "test_data",
+                    "key": "binding_mount",
+                    "value": "Optimistic",
+                    "type": "single_line_text_field"
+                  }
+                }
+              ]
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI3MTcyNDM1LCJsYXN0X3ZhbHVlIjoiOTk1MjMyNzE3MjQzNSJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952327205203",
+            "handle": "the-3p-fulfilled-snowboard",
+            "title": "The 3p Fulfilled Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "pxy6-test-store",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:56Z",
+            "updatedAt": "2025-06-10T20:43:55Z",
+            "publishedAt": "2025-06-10T08:42:57Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Accessory",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-3p-fulfilled-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "2629.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "2629.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 20,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784085852499",
+              "alt": "Top and bottom view of a snowboard. The top view shows 7 stacked hexagons and the bottom view\n          shows a small, centred hexagonal logo for Hydrogen.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_b9e0da7f-db89-4d41-83f0-7f417b02831d.jpg?v=1749544978",
+                "altText": "Top and bottom view of a snowboard. The top view shows 7 stacked hexagons and the bottom view\n          shows a small, centred hexagonal logo for Hydrogen.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": []
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535728467",
+                    "title": "Default Title",
+                    "sku": "sku-hosted-1",
+                    "barcode": null,
+                    "price": "2629.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 20,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:56Z",
+                    "updatedAt": "2025-06-10T08:43:01Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544823263571",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows 7 stacked hexagons and the bottom view\n          shows a small, centred hexagonal logo for Hydrogen.",
+                    "id": "gid://shopify/MediaImage/54784085852499",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_b9e0da7f-db89-4d41-83f0-7f417b02831d.jpg?v=1749544978",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": []
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI3MjA1MjAzLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNzIwNTIwMyJ9"
+        },
+        {
+          "node": {
+            "id": "gid://shopify/Product/9952327237971",
+            "handle": "the-multi-managed-snowboard",
+            "title": "The Multi-managed Snowboard",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "snowboard",
+            "vendor": "Multi-managed Vendor",
+            "status": "ACTIVE",
+            "createdAt": "2025-06-10T08:42:56Z",
+            "updatedAt": "2025-06-10T20:43:48Z",
+            "publishedAt": "2025-06-10T08:42:57Z",
+            "seo": {
+              "title": null,
+              "description": null
+            },
+            "tags": [
+              "Premium",
+              "Snow",
+              "Snowboard",
+              "Sport",
+              "Winter"
+            ],
+            "onlineStoreUrl": null,
+            "onlineStorePreviewUrl": "https://pxy6-test-store.myshopify.com/products/the-multi-managed-snowboard",
+            "priceRangeV2": {
+              "minVariantPrice": {
+                "amount": "629.95",
+                "currencyCode": "EUR"
+              },
+              "maxVariantPrice": {
+                "amount": "629.95",
+                "currencyCode": "EUR"
+              }
+            },
+            "compareAtPriceRange": null,
+            "totalInventory": 100,
+            "tracksInventory": true,
+            "featuredMedia": {
+              "id": "gid://shopify/MediaImage/54784085885267",
+              "alt": "Top and bottom view of a snowboard. The top view shows an illustration with varied outlined shapes\n        in black. The bottom view shows a black box character with an H pointing, and surrounded by black outlined\n        illustrative elements.",
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_9129b69a-0c7b-4f66-b6cf-c4222f18028a.jpg?v=1749544978",
+                "altText": "Top and bottom view of a snowboard. The top view shows an illustration with varied outlined shapes\n        in black. The bottom view shows a black box character with an H pointing, and surrounded by black outlined\n        illustrative elements.",
+                "width": 1600,
+                "height": 1600
+              }
+            },
+            "collections": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Collection/648783921491",
+                    "handle": "automated-collection",
+                    "title": "Automated Collection",
+                    "description": ""
+                  }
+                }
+              ]
+            },
+            "variants": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/ProductVariant/51160535761235",
+                    "title": "Default Title",
+                    "sku": "sku-managed-1",
+                    "barcode": null,
+                    "price": "629.95",
+                    "compareAtPrice": null,
+                    "availableForSale": true,
+                    "inventoryQuantity": 100,
+                    "inventoryPolicy": "DENY",
+                    "createdAt": "2025-06-10T08:42:56Z",
+                    "updatedAt": "2025-06-10T08:43:01Z",
+                    "image": null,
+                    "selectedOptions": [
+                      {
+                        "name": "Title",
+                        "value": "Default Title"
+                      }
+                    ],
+                    "metafields": {
+                      "edges": []
+                    }
+                  }
+                }
+              ]
+            },
+            "options": [
+              {
+                "id": "gid://shopify/ProductOption/12544823296339",
+                "name": "Title",
+                "values": [
+                  "Default Title"
+                ],
+                "position": 1
+              }
+            ],
+            "media": {
+              "edges": [
+                {
+                  "node": {
+                    "mediaContentType": "IMAGE",
+                    "alt": "Top and bottom view of a snowboard. The top view shows an illustration with varied outlined shapes\n        in black. The bottom view shows a black box character with an H pointing, and surrounded by black outlined\n        illustrative elements.",
+                    "id": "gid://shopify/MediaImage/54784085885267",
+                    "image": {
+                      "url": "https://cdn.shopify.com/s/files/1/0965/1961/8899/files/Main_9129b69a-0c7b-4f66-b6cf-c4222f18028a.jpg?v=1749544978",
+                      "width": 1600,
+                      "height": 1600
+                    }
+                  }
+                }
+              ]
+            },
+            "metafields": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Metafield/67027754975571",
+                    "namespace": "test_data",
+                    "key": "snowboard_length",
+                    "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+                    "type": "dimension"
+                  }
+                }
+              ]
+            },
+            "isGiftCard": false,
+            "requiresSellingPlan": false,
+            "sellingPlanGroups": {
+              "edges": []
+            }
+          },
+          "cursor": "eyJsYXN0X2lkIjo5OTUyMzI3MjM3OTcxLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNzIzNzk3MSJ9"
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "hasPreviousPage": false,
+        "startCursor": "eyJsYXN0X2lkIjo5OTUyMzI2NTQ5ODQzLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNjU0OTg0MyJ9",
+        "endCursor": "eyJsYXN0X2lkIjo5OTUyMzI3MjM3OTcxLCJsYXN0X3ZhbHVlIjoiOTk1MjMyNzIzNzk3MSJ9"
+      }
+    }
+  },
+  "extensions": {
+    "cost": {
+      "requestedQueryCost": 830,
+      "actualQueryCost": 496,
+      "throttleStatus": {
+        "maximumAvailable": 2000,
+        "currentlyAvailable": 1504,
+        "restoreRate": 100
+      }
+    }
+  }
+}

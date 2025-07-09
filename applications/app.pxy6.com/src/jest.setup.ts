@@ -1,3 +1,6 @@
+// Import whatwg-fetch polyfill for testing
+import 'whatwg-fetch';
+
 // Mock the authenticate.webhook function
 jest.mock('~/shopify.server', () => ({
   authenticate: {

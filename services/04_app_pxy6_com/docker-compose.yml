@@ -9,6 +9,9 @@ services:
       NODE_ENV: production
       SHOPIFY_APP_URL: https://${APP_PXY6_VIRTUAL_HOST}/
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
+      AIRFLOW_API_URL: https://${AIRFLOW_WEB_VIRTUAL_HOST}/api/v2
+      AIRFLOW_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-admin}
+      AIRFLOW_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-admin}
     labels:
       - "io.containers.autoupdate=registry"
     expose:
