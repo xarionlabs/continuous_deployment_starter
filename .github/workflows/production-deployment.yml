@@ -41,8 +41,6 @@ jobs:
           
           # Check if target environment is accessible
           if [ "${{ inputs.environment }}" = "live" ]; then
-            echo "Performing production readiness checks..."
-            
             # Check if all required secrets are available
             if [ -z "${{ vars.HOST }}" ] || [ -z "${{ secrets.KEY }}" ]; then
               echo "::error::Missing required deployment credentials"
@@ -50,8 +48,7 @@ jobs:
               exit 1
             fi
             
-            # Additional production checks can be added here
-            echo "Production readiness checks passed"
+            echo "::notice::Production readiness checks passed"
           fi
           
           echo "passed=true" >> $GITHUB_OUTPUT
@@ -75,7 +72,6 @@ jobs:
           EOF
           )
           
-          echo "Rollback info collected: $ROLLBACK_INFO"
           echo "info=$ROLLBACK_INFO" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
@@ -120,12 +116,10 @@ jobs:
           echo "::group::Post-deployment Health Check"
           
           # Wait for services to stabilize
-          echo "Waiting 30 seconds for services to stabilize..."
           sleep 30
           
           # Health check logic would go here
           # For now, we'll simulate basic connectivity tests
-          echo "Performing basic connectivity tests..."
           
           # In a real scenario, you would:
           # - Check service endpoints
@@ -133,7 +127,7 @@ jobs:
           # - Test critical application functions
           # - Monitor error rates
           
-          echo "Health checks passed"
+          echo "::notice::Health checks passed"
           echo "::endgroup::"
         timeout-minutes: 10
 
@@ -148,10 +142,10 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           
-          git tag -a "$DEPLOYMENT_TAG" -m "Successful deployment to ${{ inputs.environment }} at $(date)"
-          git push origin "$DEPLOYMENT_TAG"
+          git tag -a "$DEPLOYMENT_TAG" -m "Successful deployment to ${{ inputs.environment }} at $(date)" >/dev/null 2>&1
+          git push origin "$DEPLOYMENT_TAG" >/dev/null 2>&1
           
-          echo "Created deployment tag: $DEPLOYMENT_TAG"
+          echo "::notice::Created deployment tag: $DEPLOYMENT_TAG"
           echo "::endgroup::"
 
       - name: Rollback on Failure

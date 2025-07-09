@@ -65,8 +65,6 @@ command_exists() {
 
 # Function to validate system prerequisites
 validate_prerequisites() {
-    log_info "Validating system prerequisites..."
-    
     local required_commands=("podman" "git" "jq")
     local missing_commands=()
     
@@ -87,16 +85,13 @@ validate_prerequisites() {
         return 1
     fi
     
-    log_success "All prerequisites validated"
     return 0
 }
 
 # Function to perform health checks
 perform_health_checks() {
-    log_info "Performing health checks..."
-    
     # Check disk space
-    local available_space=$(df / | tail -1 | awk '{print $4}')
+    local available_space=$(df / | tail -1 | awk '{print $4}' 2>/dev/null || echo "0")
     local required_space=1048576  # 1GB in KB
     
     if [ "$available_space" -lt "$required_space" ]; then
@@ -105,14 +100,13 @@ perform_health_checks() {
     fi
     
     # Check memory
-    local available_memory=$(free | grep '^Mem:' | awk '{print $7}')
+    local available_memory=$(free | grep '^Mem:' | awk '{print $7}' 2>/dev/null || echo "0")
     local required_memory=524288  # 512MB in KB
     
     if [ "$available_memory" -lt "$required_memory" ]; then
         log_warning "Low available memory. Available: ${available_memory}KB, Recommended: ${required_memory}KB"
     fi
     
-    log_success "Health checks completed"
     return 0
 }
 
@@ -125,26 +119,24 @@ retry_command() {
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
-        log_info "Attempt $attempt of $max_attempts: $description"
-        
-        if eval "$command"; then
-            log_success "$description succeeded on attempt $attempt"
+        if eval "$command" >/dev/null 2>&1; then
             return 0
         else
             local exit_code=$?
-            log_warning "$description failed on attempt $attempt (exit code: $exit_code)"
             
             if [ $attempt -lt $max_attempts ]; then
-                log_info "Waiting $delay seconds before retry..."
                 sleep $delay
                 delay=$((delay * 2))  # Exponential backoff
+            else
+                log_error "$description failed after $max_attempts attempts (exit code: $exit_code)"
+                # Show error output only on final failure
+                eval "$command"
             fi
         fi
         
         attempt=$((attempt + 1))
     done
     
-    log_error "$description failed after $max_attempts attempts"
     return 1
 }
 
@@ -159,9 +151,9 @@ cleanup() {
         
         # Log system state for debugging
         log_info "System state at failure:"
-        log_info "Disk usage: $(df -h / | tail -1)"
-        log_info "Memory usage: $(free -h | head -2 | tail -1)"
-        log_info "Running containers: $(podman ps --format '{{.Names}}' | wc -l)"
+        log_info "Disk usage: $(df -h / | tail -1 2>/dev/null || echo 'unknown')"
+        log_info "Memory usage: $(free -h | head -2 | tail -1 2>/dev/null || echo 'unknown')"
+        log_info "Running containers: $(podman ps --format '{{.Names}}' | wc -l 2>/dev/null || echo '0')"
     fi
     
     exit $exit_code
@@ -237,15 +229,10 @@ main() {
     fi
 
     log_step "Initializing Deployment on Host"
-    log_info "Affected Services: '$SCRIPT_AFFECTED_SERVICES'"
-    log_info "Deploy Services: '$SCRIPT_DEPLOY_SERVICES'"
-log_info "Project Directory on Host: $PROJECT_DIR_ON_HOST"
-log_info "Services Definitions on Host: $SERVICES_DEF_DIR_ON_HOST"
-log_info "Systemd User Units Directory on Host: $SYSTEMD_USER_UNITS_DIR_ON_HOST"
-log_info "Release Tool Image: $RELEASE_TOOL_FULL_IMAGE_NAME"
-# Avoid logging full VARS_JSON_STR and SECRETS_JSON_STR for security, just acknowledge receipt
-    log_info "VARS_JSON_STR received: $(if [ -z "$SCRIPT_VARS_JSON_STR" ] || [ "$SCRIPT_VARS_JSON_STR" == "{}" ]; then echo "false"; else echo "true"; fi)"
-    log_info "SECRETS_JSON_STR received: $(if [ -z "$SCRIPT_SECRETS_JSON_STR" ] || [ "$SCRIPT_SECRETS_JSON_STR" == "{}" ]; then echo "false"; else echo "true"; fi)"
+    [ -n "$SCRIPT_AFFECTED_SERVICES" ] && log_info "Affected Services: '$SCRIPT_AFFECTED_SERVICES'"
+    [ -n "$SCRIPT_DEPLOY_SERVICES" ] && log_info "Deploy Services: '$SCRIPT_DEPLOY_SERVICES'"
+    log_info "Project Directory: $PROJECT_DIR_ON_HOST"
+    log_info "Release Tool Image: $RELEASE_TOOL_FULL_IMAGE_NAME"
 
 
 # Ensure critical directories exist on the host
@@ -261,59 +248,42 @@ if ! retry_command "podman pull '$RELEASE_TOOL_FULL_IMAGE_NAME'" "Pulling releas
     log_error "Failed to pull release tool image: $RELEASE_TOOL_FULL_IMAGE_NAME. Deployment aborted."
     exit 1
 fi
-log_success "Successfully pulled $RELEASE_TOOL_FULL_IMAGE_NAME"
 
 
-log_step "Refreshing Podman Secrets (Host Script)"
+log_step "Refreshing Podman Secrets"
 _SCRIPT_PATH="$HOST_SCRIPTS_DIR/refresh_podman_secrets.sh"
 if [ -f "$_SCRIPT_PATH" ]; then
-    if retry_command "'$_SCRIPT_PATH' '$SCRIPT_SECRETS_JSON_STR'" "Refreshing podman secrets"; then
-        log_success "Podman secrets refreshed successfully"
-    else
+    if ! retry_command "'$_SCRIPT_PATH' '$SCRIPT_SECRETS_JSON_STR'" "Refreshing podman secrets"; then
         log_error "Failed to refresh podman secrets"
         exit 1
     fi
 else
-    log_warning "refresh_podman_secrets.sh not found at $_SCRIPT_PATH. Skipping."
+    log_warning "refresh_podman_secrets.sh not found. Skipping."
 fi
 
 
-log_step "Creating/Updating Environment Variables File (Host Script)"
+log_step "Creating/Updating Environment Variables File"
 _SCRIPT_PATH="$HOST_SCRIPTS_DIR/create_env_variables.sh"
 if [ -f "$_SCRIPT_PATH" ]; then
-    # This script is assumed to create/update .env in $PROJECT_DIR_ON_HOST
-    # It might need VARS_JSON_STR if it's designed to consume it directly.
-    # For now, assuming it handles sourcing variables or uses a predefined GHA var file.
-    # VARS_JSON_STR is available globally in this script if create_env_variables.sh needs it as an argument.
-    (cd "$PROJECT_DIR_ON_HOST" && "$_SCRIPT_PATH" "$SCRIPT_VARS_JSON_STR")
+    (cd "$PROJECT_DIR_ON_HOST" && "$_SCRIPT_PATH" "$SCRIPT_VARS_JSON_STR" >/dev/null 2>&1) || log_warning "Environment variables script failed"
 else
-    log_warning "create_env_variables.sh not found at $_SCRIPT_PATH. Skipping."
+    log_warning "create_env_variables.sh not found. Skipping."
 fi
 
 
 log_step "Sourcing Environment Files"
 set -o allexport # Export all sourced variables
-if [ -f "$PROJECT_DIR_ON_HOST/.env" ]; then
-    log_info "Sourcing $PROJECT_DIR_ON_HOST/.env"
-    source "$PROJECT_DIR_ON_HOST/.env"
-else
-    log_warning "$PROJECT_DIR_ON_HOST/.env not found."
-fi
-if [ -f "$PROJECT_DIR_ON_HOST/services/version.env" ]; then
-    log_info "Sourcing $PROJECT_DIR_ON_HOST/services/version.env"
-    source "$PROJECT_DIR_ON_HOST/services/version.env"
-else
-    log_warning "$PROJECT_DIR_ON_HOST/services/version.env not found."
-fi
+[ -f "$PROJECT_DIR_ON_HOST/.env" ] && source "$PROJECT_DIR_ON_HOST/.env" 2>/dev/null || log_warning ".env not found"
+[ -f "$PROJECT_DIR_ON_HOST/services/version.env" ] && source "$PROJECT_DIR_ON_HOST/services/version.env" 2>/dev/null || log_warning "version.env not found"
 set +o allexport
 
 
-log_step "Checking Service Environment Variables (Host Script)"
+log_step "Checking Service Environment Variables"
 _SCRIPT_PATH="$HOST_SCRIPTS_DIR/check-service-envs.sh"
 if [ -f "$_SCRIPT_PATH" ]; then
-    "$_SCRIPT_PATH"
+    "$_SCRIPT_PATH" >/dev/null 2>&1 || log_warning "Service environment check failed"
 else
-    log_warning "check-service-envs.sh not found at $_SCRIPT_PATH. Skipping."
+    log_warning "check-service-envs.sh not found. Skipping."
 fi
 
 
@@ -345,28 +315,26 @@ QUADLET_COMMAND="podman run --rm \
     --vars-json '$SCRIPT_VARS_JSON_STR' \
     $DEPLOY_SERVICES_ARG"
 
-if retry_command "$QUADLET_COMMAND" "Generating quadlet units"; then
-    log_success "Quadlet units generated successfully"
-else
+if ! retry_command "$QUADLET_COMMAND" "Generating quadlet units"; then
     log_error "Failed to generate quadlet units"
     exit 1
 fi
 
 
-log_step "Running Quadlet Dry Run (Host Command)"
+log_step "Running Quadlet Dry Run"
 if [ -x "$QUADLET_EXEC" ]; then
-    "$QUADLET_EXEC" --dryrun --user --no-header "$SYSTEMD_USER_UNITS_DIR_ON_HOST"
+    "$QUADLET_EXEC" --dryrun --user --no-header "$SYSTEMD_USER_UNITS_DIR_ON_HOST" >/dev/null 2>&1 || log_warning "Quadlet dry run failed"
 else
-    log_warning "$QUADLET_EXEC not found. Skipping dry run."
+    log_warning "Quadlet not found. Skipping dry run."
 fi
 
 
-log_step "Generating Meta Services (e.g., all-containers.target) (Host Script)"
+log_step "Generating Meta Services"
 _SCRIPT_PATH="$HOST_SCRIPTS_DIR/generate_meta_services.sh"
 if [ -f "$_SCRIPT_PATH" ]; then
-    "$_SCRIPT_PATH"
+    "$_SCRIPT_PATH" >/dev/null 2>&1 || log_warning "Meta services generation failed"
 else
-    log_warning "generate_meta_services.sh not found at $_SCRIPT_PATH. Skipping."
+    log_warning "generate_meta_services.sh not found. Skipping."
 fi
 
 
@@ -389,9 +357,7 @@ PULL_COMMAND="podman run --rm \
     --affected-services '$SCRIPT_AFFECTED_SERVICES' \
     --units-dir '/app/units'"
 
-if retry_command "$PULL_COMMAND" "Pulling container images"; then
-    log_success "Container images pulled successfully"
-else
+if ! retry_command "$PULL_COMMAND" "Pulling container images"; then
     log_error "Failed to pull container images"
     exit 1
 fi
@@ -415,26 +381,21 @@ RESTART_COMMAND="podman run --rm \
     '$RELEASE_TOOL_FULL_IMAGE_NAME' manage-services restart \
     --affected-services '$SCRIPT_AFFECTED_SERVICES'"
 
-if retry_command "$RESTART_COMMAND" "Restarting services"; then
-    log_success "Services restarted successfully"
-else
+if ! retry_command "$RESTART_COMMAND" "Restarting services"; then
     log_error "Failed to restart services"
     exit 1
 fi
 
 
-log_step "Triggering Podman Auto-Update (Host Command)"
+log_step "Triggering Podman Auto-Update"
 if ! retry_command "podman auto-update" "Podman auto-update"; then
-    log_warning "Podman auto-update command failed or found no updates, continuing..."
+    log_warning "Podman auto-update failed or found no updates, continuing..."
 fi
 
 log_step "Post-Deployment Validation"
 # Validate that affected services are running
 if [ -n "$SCRIPT_AFFECTED_SERVICES" ]; then
-    log_info "Validating affected services: $SCRIPT_AFFECTED_SERVICES"
-    
     # Wait for services to stabilize
-    log_info "Waiting 10 seconds for services to stabilize..."
     sleep 10
     
     # Check service status
@@ -442,9 +403,7 @@ if [ -n "$SCRIPT_AFFECTED_SERVICES" ]; then
     failed_services=()
     
     for service in "${services_array[@]}"; do
-        if systemctl --user is-active "$service" >/dev/null 2>&1; then
-            log_success "Service $service is running"
-        else
+        if ! systemctl --user is-active "$service" >/dev/null 2>&1; then
             log_error "Service $service is not running"
             failed_services+=("$service")
         fi
@@ -461,15 +420,11 @@ if [ -n "$SCRIPT_AFFECTED_SERVICES" ]; then
         
         exit 1
     fi
-else
-    log_info "No specific services to validate"
 fi
 
 # Final system health check
-log_info "Performing final system health check..."
-log_info "Active containers: $(podman ps --format '{{.Names}}' | wc -l)"
-log_info "System load: $(uptime | awk -F'load average:' '{print $2}')"
-log_info "Available disk space: $(df -h / | tail -1 | awk '{print $4}')"
+log_info "Active containers: $(podman ps --format '{{.Names}}' | wc -l 2>/dev/null || echo '0')"
+log_info "Available disk space: $(df -h / | tail -1 | awk '{print $4}' 2>/dev/null || echo 'unknown')"
 
 log_step "Deployment Script Finished Successfully"
     # exit 0 # Implicit exit 0 if no errors due to set -e

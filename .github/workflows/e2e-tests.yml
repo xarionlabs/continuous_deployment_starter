@@ -54,8 +54,6 @@ jobs:
           
           # Remove trailing newline and convert to JSON
           VALID_E2E_APPS=$(echo "$VALID_E2E_APPS" | sed '/^$/d')
-          echo "Valid e2e applications found:"
-          echo "$VALID_E2E_APPS"
           echo "applications=$(echo "$VALID_E2E_APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
       - name: Run e2e tests for each application
@@ -77,17 +75,15 @@ jobs:
           # Create a temporary .env file with all environment variables
           echo "APP_ENV=$ENVIRONMENT" > .env
           echo "APP_VERSION=$TAG" >> .env
-          python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)[1:-1]}') for k, v in data.items()]" >> .env
+          python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)[1:-1]}') for k, v in data.items()]" >> .env 2>/dev/null || true
           
           log_with_timestamp "Environment variables loaded into .env file"
-          # Don't log the actual .env contents for security
-          echo "Environment file created with $(wc -l < .env) variables"
           
           # Get applications array
           APPS=$(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]')
           
           if [ -z "$APPS" ]; then
-            log_with_timestamp "No applications found with e2e tests"
+            echo "::notice::No applications found with e2e tests"
             exit 0
           fi
           
@@ -105,10 +101,18 @@ jobs:
               --network host \
               --env-file .env \
               --entrypoint /app/entrypoints/entrypoint_e2e.sh \
-              "$REGISTRY/${{ github.repository }}/$app:$TAG"; then
+              "$REGISTRY/${{ github.repository }}/$app:$TAG" 2>/dev/null; then
               log_with_timestamp "E2E tests passed for $app"
             else
               log_with_timestamp "E2E tests failed for $app in $ENVIRONMENT environment"
+              # Show test output only on failure
+              echo "::group::Test output for debugging"
+              docker run --rm \
+                --network host \
+                --env-file .env \
+                --entrypoint /app/entrypoints/entrypoint_e2e.sh \
+                "$REGISTRY/${{ github.repository }}/$app:$TAG" || true
+              echo "::endgroup::"
               failed_apps+=("$app")
             fi
             
@@ -116,7 +120,7 @@ jobs:
           done
           
           # Clean up environment file
-          rm -f .env
+          rm -f .env 2>/dev/null || true
           
           # Report results
           if [ ${#failed_apps[@]} -gt 0 ]; then

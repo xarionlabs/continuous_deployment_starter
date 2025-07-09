@@ -46,7 +46,7 @@ jobs:
       - name: skip-workflow
         id: skip-workflow
         run: |
-          if git log -1 --pretty=%B | grep -i "\[.*skip-build.*\]" > /dev/null; then
+          if git log -1 --pretty=%B | grep -i "\[.*skip-build.*\]" >/dev/null 2>&1; then
             echo "skip=true" >> $GITHUB_OUTPUT
           else
             echo "skip=false" >> $GITHUB_OUTPUT
@@ -58,7 +58,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "force=${{ github.event.inputs.force_build_all }}" >> $GITHUB_OUTPUT
           else
-            if git log -1 --pretty=%B | grep -i "\[force-build\]" > /dev/null; then
+            if git log -1 --pretty=%B | grep -i "\[force-build\]" >/dev/null 2>&1; then
               echo "force=true" >> $GITHUB_OUTPUT
             else
               echo "force=false" >> $GITHUB_OUTPUT
@@ -68,9 +68,9 @@ jobs:
       - name: check-release-only
         id: release-only-check
         run: |
-          if git log -1 --pretty=%B | grep -i "\[release-only\]" > /dev/null; then
+          if git log -1 --pretty=%B | grep -i "\[release-only\]" >/dev/null 2>&1; then
             echo "release_only=true" >> $GITHUB_OUTPUT
-            echo "Release-only mode detected - will skip builds and use latest images"
+            echo "::notice::Release-only mode detected - will skip builds and use latest images"
           else
             echo "release_only=false" >> $GITHUB_OUTPUT
           fi
@@ -79,11 +79,11 @@ jobs:
         id: deploy-services-check
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          if echo "$COMMIT_MSG" | grep -i "\[deploy-services:" > /dev/null; then
+          if echo "$COMMIT_MSG" | grep -i "\[deploy-services:" >/dev/null 2>&1; then
             # Extract service names from [deploy-services: service1,service2,service3]
             SERVICES=$(echo "$COMMIT_MSG" | grep -oiE '\[deploy-services:\s*[^\]]+\]' | sed -E 's/\[deploy-services:\s*([^\]]+)\]/\1/' | tr -d ' ')
             echo "deploy_services=$SERVICES" >> $GITHUB_OUTPUT
-            echo "Deploy-services mode detected - will deploy only specified services: $SERVICES"
+            echo "::notice::Deploy-services mode detected - will deploy only specified services: $SERVICES"
           else
             echo "deploy_services=" >> $GITHUB_OUTPUT
           fi
@@ -118,24 +118,16 @@ jobs:
         id: find_valid_apps
         run: |
           # Find all valid application directories (those with Dockerfiles)
-          VALID_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/applications\///" | sort)
-          echo "Valid applications found:"
-          echo "$VALID_APPS"
+          VALID_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/applications\///" | sort)
           
           # Find all valid utility directories (those with Dockerfiles)
-          VALID_UTILITIES=$(find utilities -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/utilities\///" | sort)
-          echo "Valid utilities found:"
-          echo "$VALID_UTILITIES"
+          VALID_UTILITIES=$(find utilities -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/utilities\///" | sort)
           
           # Find all valid release-tooling directories (those with Dockerfiles)
-          VALID_RELEASE_TOOLS=$(find release-tooling -type d -exec test -e '{}'/Dockerfile \; -print | sed "s/release-tooling\///" | sort)
-          echo "Valid release-tooling found:"
-          echo "$VALID_RELEASE_TOOLS"
+          VALID_RELEASE_TOOLS=$(find release-tooling -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/release-tooling\///" | sort)
           
           # Combine applications, utilities, and release-tooling
           ALL_BUILDABLE=$(echo -e "$VALID_APPS\n$VALID_UTILITIES\n$VALID_RELEASE_TOOLS" | sed '/^$/d')
-          echo "All buildable items:"
-          echo "$ALL_BUILDABLE"
           
           echo "valid_apps=$(echo "$ALL_BUILDABLE" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
@@ -151,7 +143,7 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             # Get the list of changed files
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} 2>/dev/null || echo "")
             
             # Find which valid items have changes
             CHANGED_ITEMS=""
@@ -176,13 +168,16 @@ jobs:
 
       - name: Print applications and utilities to build
         run: |
-          echo "Applications and utilities to build:"
-          echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'
-          echo "has_changes output: '${{ steps.find_applications.outputs.has_changes }}'"
-          echo "force_build output: '${{ needs.skip-check.outputs.force_build }}'"
-          echo "skip output: '${{ needs.skip-check.outputs.skip }}'"
-          echo "release_only output: '${{ needs.skip-check.outputs.release_only }}'"
-          echo "deploy_services output: '${{ needs.skip-check.outputs.deploy_services }}'"
+          if [ "${{ steps.find_applications.outputs.has_changes }}" = "true" ]; then
+            echo "::notice::Applications and utilities to build: $(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]' | tr '\n' ' ')"
+          else
+            echo "::notice::No applications or utilities to build"
+          fi
+          
+          [ "${{ needs.skip-check.outputs.force_build }}" = "true" ] && echo "::notice::Force build enabled"
+          [ "${{ needs.skip-check.outputs.skip }}" = "true" ] && echo "::notice::Build skipped"
+          [ "${{ needs.skip-check.outputs.release_only }}" = "true" ] && echo "::notice::Release-only mode"
+          [ -n "${{ needs.skip-check.outputs.deploy_services }}" ] && echo "::notice::Deploy services: ${{ needs.skip-check.outputs.deploy_services }}"
 
   build-application:
     needs: [skip-check, define-tag, find-changed-applications]
@@ -265,10 +260,14 @@ jobs:
           echo "::group::Running tests for ${{ matrix.ITEM }}"
           
           # Run tests with timeout and proper error handling
-          if timeout 600 docker run --rm --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }}; then
-            echo "Tests passed for ${{ matrix.ITEM }}"
+          if timeout 600 docker run --rm --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }} 2>/dev/null; then
+            echo "::notice::Tests passed for ${{ matrix.ITEM }}"
           else
             echo "::error::Tests failed for ${{ matrix.ITEM }}"
+            # Show test output only on failure
+            echo "::group::Test output for debugging"
+            docker run --rm --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }} || true
+            echo "::endgroup::"
             exit 1
           fi
           

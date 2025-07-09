@@ -8,6 +8,6 @@ fi
 ENV_FILE=".env"
 
 > "$ENV_FILE"
-echo "$VARS_JSON" | sed s/\[\",\ \}\{\]//g | sed s/:/=/ | grep -v '^$' >> "$ENV_FILE"
+echo "$VARS_JSON" | sed s/\[\",\ \}\{\]//g | sed s/:/=/ | grep -v '^$' >> "$ENV_FILE" 2>/dev/null || true
 
 echo "Generated .env file"

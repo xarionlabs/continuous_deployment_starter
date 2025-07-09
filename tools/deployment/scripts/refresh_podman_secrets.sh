@@ -14,7 +14,7 @@ fi
 EXISTING_SECRETS=$(podman secret ls --format '{{.Name}}')
 if [[ -n "$EXISTING_SECRETS" ]]; then
     echo "Removing existing Podman secrets..."
-    echo "$EXISTING_SECRETS" | xargs -n1 podman secret rm || true
+    echo "$EXISTING_SECRETS" | xargs -n1 podman secret rm >/dev/null 2>&1 || true
 fi
 
 PARSED_SECRETS=$(jq -r 'to_entries|map("\(.key)=\(.value|@json)")|.[]' <<< "$SECRETS_JSON")
@@ -28,7 +28,7 @@ echo "Adding secrets to Podman..."
 while IFS= read -r SECRET_ROW; do
     SECRET_NAME=$(echo "$SECRET_ROW" | cut -d '=' -f 1)
     VALUE=$(echo "$SECRET_ROW" | cut -d '=' -f 2- | jq -r .)
-     echo -n "$VALUE" | podman secret create "$SECRET_NAME" -
+     echo -n "$VALUE" | podman secret create "$SECRET_NAME" - >/dev/null 2>&1
      echo "Created Podman secret: $SECRET_NAME"
 done <<< "$PARSED_SECRETS"
 
