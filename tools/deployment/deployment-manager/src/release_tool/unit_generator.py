@@ -383,8 +383,14 @@ def generate_all_quadlet_files(
         print(f"Error: Services directory '{services_dir_path}' does not exist.", flush=True)
         return False
 
-    output_dir_path = Path(os.path.expanduser(str(output_dir_path)))
+    # Use absolute path without ~ expansion for container environment
+    output_dir_path = Path(output_dir_path).resolve()
     output_dir_path.mkdir(parents=True, exist_ok=True)
+    
+    # Verify directory is writable
+    if not output_dir_path.is_dir() or not os.access(output_dir_path, os.W_OK):
+        print(f"Error: Output directory is not writable: {output_dir_path}", flush=True)
+        return False
 
     all_ok = True
     global_env_vars_dict: Optional[Dict[str, str]] = None
@@ -486,10 +492,13 @@ def generate_all_quadlet_files(
             try:
                 with open(output_file_path, 'w', encoding='utf-8') as f:
                     f.write(file_content)
-                print(f"Generated unit file: {output_file_path.name}", flush=True)
+                # Verify file was written
+                if not output_file_path.exists() or output_file_path.stat().st_size == 0:
+                    print(f"Error: Generated file is missing or empty: {output_file_path.name}", flush=True)
+                    return False
             except IOError as e:
                 print(f"Error writing unit file {output_file_path.name}: {e}", flush=True)
-                all_ok = False
+                return False
 
         # After generating the primary .container file, create a .service file
         # that simply refers to it, if one doesn't exist or needs update.
@@ -655,9 +664,12 @@ Description=Service for {sane_service_name} container
             try:
                 with open(service_unit_file, 'w', encoding='utf-8') as f:
                     f.write(service_unit_wrapper.generate_file_content())
-                print(f"Generated service file: {service_unit_file.name}", flush=True)
+                # Verify file was written
+                if not service_unit_file.exists() or service_unit_file.stat().st_size == 0:
+                    print(f"Error: Generated service file is missing or empty: {service_unit_file.name}", flush=True)
+                    return False
             except IOError as e:
                 print(f"Error writing service file {service_unit_file.name}: {e}", flush=True)
-                all_ok = False
+                return False
 
     return all_ok
