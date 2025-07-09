@@ -56,6 +56,10 @@ def shopify_sync_dag():
 
         # Get DAG run configuration
         dag_run_conf = context["dag_run"].conf or {}
+        shop_domain = dag_run_conf.get("shop_domain")
+        
+        if not shop_domain:
+            raise AirflowException("Shop domain is required for sync operations")
 
         # Initialize hook with DAG configuration
         hook = ShopifyHook()
@@ -63,7 +67,6 @@ def shopify_sync_dag():
 
         # Test connection first
         if not hook.test_connection():
-            shop_domain = dag_run_conf.get("shop_domain", "unknown")
             hook.close()
             raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
 
@@ -74,7 +77,7 @@ def shopify_sync_dag():
             # Load customers to database
             for customer in customers_data:
                 try:
-                    upsert_customer(customer)
+                    upsert_customer(customer, shop_domain)
                 except Exception as e:
                     logger.error(f"Failed to upsert customer {customer.get('id', 'unknown')}: {str(e)}")
                     hook.close()
@@ -105,6 +108,10 @@ def shopify_sync_dag():
 
         # Get DAG run configuration
         dag_run_conf = context["dag_run"].conf or {}
+        shop_domain = dag_run_conf.get("shop_domain")
+        
+        if not shop_domain:
+            raise AirflowException("Shop domain is required for sync operations")
 
         # Initialize hook with DAG configuration
         hook = ShopifyHook()
@@ -112,7 +119,6 @@ def shopify_sync_dag():
 
         # Test connection first
         if not hook.test_connection():
-            shop_domain = dag_run_conf.get("shop_domain", "unknown")
             hook.close()
             raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
 
@@ -134,7 +140,7 @@ def shopify_sync_dag():
             orders_count = 0
             for order in orders_data:
                 try:
-                    upsert_order(order)
+                    upsert_order(order, shop_domain)
                     orders_count += 1
                 except Exception as e:
                     logger.error(f"Failed to upsert order {order.get('id', 'unknown')}: {str(e)}")
@@ -164,6 +170,10 @@ def shopify_sync_dag():
 
         # Get DAG run configuration
         dag_run_conf = context["dag_run"].conf or {}
+        shop_domain = dag_run_conf.get("shop_domain")
+        
+        if not shop_domain:
+            raise AirflowException("Shop domain is required for sync operations")
 
         # Initialize hook with DAG configuration
         hook = ShopifyHook()
@@ -171,7 +181,6 @@ def shopify_sync_dag():
 
         # Test connection first
         if not hook.test_connection():
-            shop_domain = dag_run_conf.get("shop_domain", "unknown")
             hook.close()
             raise AirflowException(f"Failed to connect to Shopify shop: {shop_domain}")
 
@@ -183,7 +192,7 @@ def shopify_sync_dag():
             products_count = 0
             for product in products_data:
                 try:
-                    upsert_product(product)
+                    upsert_product(product, shop_domain)
                     products_count += 1
 
                     # Sync product variants
@@ -192,7 +201,7 @@ def shopify_sync_dag():
                         variant = variant_edge["node"]
                         variant["product_id"] = product["id"]
                         try:
-                            upsert_product_variant(variant)
+                            upsert_product_variant(variant, shop_domain)
                         except Exception as e:
                             logger.error(f"Failed to upsert product variant {variant.get('id', 'unknown')}: {str(e)}")
                             hook.close()
@@ -217,7 +226,7 @@ def shopify_sync_dag():
                                 "updatedAt": None,
                             }
                             try:
-                                upsert_product_image(image_data)
+                                upsert_product_image(image_data, shop_domain)
                             except Exception as e:
                                 logger.error(
                                     f"Failed to upsert product image {image_data.get('id', 'unknown')}: {str(e)}"
@@ -247,24 +256,32 @@ def shopify_sync_dag():
         return result
 
     @task
-    def generate_sync_summary(customer_result: dict, order_result: dict, product_result: dict) -> dict:
+    def generate_sync_summary(customer_result: dict, order_result: dict, product_result: dict, **context) -> dict:
         """Generate summary of sync operation and update sync tracking tables"""
         try:
+            # Get DAG run configuration
+            dag_run_conf = context["dag_run"].conf or {}
+            shop_domain = dag_run_conf.get("shop_domain")
+            
+            if not shop_domain:
+                raise AirflowException("Shop domain is required for sync tracking")
+
             summary = {
                 "sync_timestamp": datetime.now().isoformat(),
                 "customers_synced": customer_result.get("customers_synced", 0),
                 "orders_synced": order_result.get("orders_synced", 0),
                 "products_synced": product_result.get("products_synced", 0),
                 "status": "completed",
+                "shop": shop_domain,
             }
 
             # Record sync states for each entity type
             sync_time = datetime.now()
 
             # Update sync states
-            upsert_sync_state("customers", sync_time)
-            upsert_sync_state("orders", sync_time)
-            upsert_sync_state("products", sync_time)
+            upsert_sync_state("customers", shop_domain, sync_time)
+            upsert_sync_state("orders", shop_domain, sync_time)
+            upsert_sync_state("products", shop_domain, sync_time)
 
             # Record overall sync log
             total_records = summary["customers_synced"] + summary["orders_synced"] + summary["products_synced"]
@@ -272,6 +289,7 @@ def shopify_sync_dag():
                 entity_type="all",
                 operation="full_sync",
                 status="completed",
+                shop=shop_domain,
                 records_processed=total_records,
                 records_created=total_records,  # Assuming upserts create new records
                 records_updated=0,
@@ -283,7 +301,9 @@ def shopify_sync_dag():
         except Exception as e:
             logger.error(f"Failed to generate sync summary: {str(e)}")
             # Record failed sync log
-            upsert_sync_log(entity_type="all", operation="full_sync", status="failed", error_message=str(e))
+            dag_run_conf = context.get("dag_run", {}).conf or {}
+            shop_domain = dag_run_conf.get("shop_domain", "unknown")
+            upsert_sync_log(entity_type="all", operation="full_sync", status="failed", shop=shop_domain, error_message=str(e))
             raise AirflowException(f"Failed to generate sync summary: {str(e)}")
 
     # Define task dependencies

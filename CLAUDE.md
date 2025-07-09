@@ -51,6 +51,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Same environment as CI/CD pipeline
 - Easy cleanup after testing (no local dependency pollution)
 
+### Database Connection Information
+
+#### PostgreSQL Database Access
+- **Docker Container**: `airflow_dags-db-1`
+- **Username**: `pxy6_airflow`
+- **Password**: `localdatabase`
+- **Database**: `pxy6`
+
+#### Database Connection Commands
+```bash
+# Connect to PostgreSQL in Docker container
+docker exec airflow_dags-db-1 psql -U pxy6_airflow -d pxy6
+
+# Check table structure
+docker exec airflow_dags-db-1 psql -U pxy6_airflow -d pxy6 -c "\d [table_name]"
+
+# List all tables
+docker exec airflow_dags-db-1 psql -U pxy6_airflow -d pxy6 -c "\dt"
+```
+
+#### Database Migration Notes
+- The database is used by both the Shopify app (`app.pxy6.com`) and Airflow DAGs (`airflow_dags`)
+- Prisma schema changes in `app.pxy6.com` need to be applied to affect the database structure
+- Run `shopify app dev` in the `app.pxy6.com` directory to apply migrations
+
 ### Application-Specific Commands
 
 #### app.pxy6.com (Shopify Remix App)

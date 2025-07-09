@@ -67,8 +67,9 @@ model LoiClicks {
 
 model Product {
   id                 String              @id // Shopify product ID
+  shop               String              // Shopify shop domain
   title              String
-  handle             String              @unique
+  handle             String
   description        String?
   descriptionHtml    String?
   productType        String?
@@ -99,11 +100,13 @@ model Product {
   options            ProductOption[]
   orderLineItems     OrderLineItem[]
 
+  @@unique([shop, handle])
   @@map("products")
 }
 
 model ProductVariant {
   id                    String    @id // Shopify variant ID
+  shop                  String    // Shopify shop domain
   productId             String
   title                 String
   price                 Decimal
@@ -142,6 +145,7 @@ model ProductVariant {
 
 model ProductImage {
   id               String           @id // Shopify image ID
+  shop             String           // Shopify shop domain
   productId        String
   src              String
   altText          String?
@@ -162,8 +166,9 @@ model ProductImage {
 
 model Collection {
   id               String              @id // Shopify collection ID
+  shop             String              // Shopify shop domain
   title            String
-  handle           String              @unique
+  handle           String
   description      String?
   descriptionHtml  String?
   sortOrder        String?
@@ -182,6 +187,7 @@ model Collection {
   // Relationships
   products         ProductCollection[]
 
+  @@unique([shop, handle])
   @@map("collections")
 }
 
@@ -202,6 +208,7 @@ model ProductCollection {
 
 model ProductMetafield {
   id               String   @id // Shopify metafield ID
+  shop             String   // Shopify shop domain
   productId        String
   namespace        String
   key              String
@@ -216,12 +223,13 @@ model ProductMetafield {
   // Relationships
   product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, namespace, key])
+  @@unique([shop, productId, namespace, key])
   @@map("product_metafields")
 }
 
 model ProductOption {
   id        String   @id // Shopify option ID
+  shop      String   // Shopify shop domain
   productId String
   name      String
   position  Int?
@@ -237,6 +245,7 @@ model ProductOption {
 
 model Customer {
   id                      String    @id // Shopify customer ID
+  shop                    String    // Shopify shop domain
   email                   String?
   firstName               String?
   lastName                String?
@@ -263,11 +272,13 @@ model Customer {
   // Relationships
   orders                  Order[]
 
+  @@unique([shop, email])
   @@map("customers")
 }
 
 model Order {
   id                      String          @id // Shopify order ID
+  shop                    String          // Shopify shop domain
   customerId              String?
   orderNumber             Int?
   name                    String?         // Order name like "#1001"
@@ -310,11 +321,13 @@ model Order {
   customer                Customer?       @relation(fields: [customerId], references: [id])
   lineItems               OrderLineItem[]
 
+  @@unique([shop, orderNumber])
   @@map("orders")
 }
 
 model OrderLineItem {
   id                    String         @id // Shopify line item ID
+  shop                  String         // Shopify shop domain
   orderId               String
   productId             String?
   variantId             String?
@@ -353,6 +366,7 @@ model OrderLineItem {
 
 model SyncLog {
   id           String    @id @default(cuid())
+  shop         String    // Shopify shop domain
   entityType   String    // products, customers, orders, etc.
   operation    String    // full_sync, incremental_sync, single_entity
   status       String    // started, completed, failed
@@ -371,7 +385,8 @@ model SyncLog {
 
 model SyncState {
   id           String   @id @default(cuid())
-  entityType   String   @unique // products, customers, orders, etc.
+  shop         String   // Shopify shop domain
+  entityType   String   // products, customers, orders, etc.
   lastSyncAt   DateTime
   lastCursor   String?  // For pagination
   isActive     Boolean  @default(false)
@@ -379,6 +394,7 @@ model SyncState {
   metadata     String?  // Store as JSON string
   updatedAt    DateTime @updatedAt
 
+  @@unique([shop, entityType])
   @@map("sync_states")
 }
 
@@ -394,5 +410,6 @@ model WebhookEvent {
   attempts     Int      @default(0)
   createdAt    DateTime @default(now())
 
+  @@index([shop, processed])
   @@map("webhook_events")
 }

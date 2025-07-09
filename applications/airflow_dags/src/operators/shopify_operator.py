@@ -84,6 +84,13 @@ class ShopifyToPostgresOperator(BaseOperator):
         """
         logger.info(f"Starting Shopify to Postgres sync for {self.data_type}")
         
+        # Get shop domain from DAG run configuration
+        dag_run_conf = context.get("dag_run", {}).conf or {}
+        shop_domain = dag_run_conf.get("shop_domain")
+        
+        if not shop_domain:
+            raise AirflowException("Shop domain is required for sync operations")
+        
         # Initialize hooks
         shopify_hook = ShopifyHook(shopify_conn_id=self.shopify_conn_id)
         
@@ -93,7 +100,7 @@ class ShopifyToPostgresOperator(BaseOperator):
         
         try:
             # Run the sync operation
-            result = self._sync_data(shopify_hook)
+            result = self._sync_data(shopify_hook, shop_domain)
             
             logger.info(f"Sync completed successfully: {result}")
             return result
@@ -105,12 +112,13 @@ class ShopifyToPostgresOperator(BaseOperator):
         finally:
             shopify_hook.close()
     
-    def _sync_data(self, shopify_hook: ShopifyHook) -> Dict[str, Any]:
+    def _sync_data(self, shopify_hook: ShopifyHook, shop_domain: str) -> Dict[str, Any]:
         """
         Sync data from Shopify to PostgreSQL
         
         Args:
             shopify_hook: Shopify hook instance
+            shop_domain: Shop domain for multi-tenancy
             
         Returns:
             Dictionary with sync results
@@ -119,7 +127,7 @@ class ShopifyToPostgresOperator(BaseOperator):
         data = self._extract_data(shopify_hook)
         
         # Process and load data
-        result = self._load_data(data)
+        result = self._load_data(data, shop_domain)
         
         return result
     
@@ -160,12 +168,13 @@ class ShopifyToPostgresOperator(BaseOperator):
         logger.info(f"Extracted {len(data)} {self.data_type} records")
         return data
     
-    def _load_data(self, data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _load_data(self, data: List[Dict[str, Any]], shop_domain: str) -> Dict[str, Any]:
         """
         Load data into PostgreSQL
         
         Args:
             data: List of records to load
+            shop_domain: Shop domain for multi-tenancy
             
         Returns:
             Dictionary with load results
@@ -178,11 +187,11 @@ class ShopifyToPostgresOperator(BaseOperator):
         for record in data:
             try:
                 if self.data_type == "products":
-                    upsert_product(record)
+                    upsert_product(record, shop_domain)
                 elif self.data_type == "customers":
-                    upsert_customer(record)
+                    upsert_customer(record, shop_domain)
                 elif self.data_type == "orders":
-                    upsert_order(record)
+                    upsert_order(record, shop_domain)
                 
                 loaded_count += 1
                 

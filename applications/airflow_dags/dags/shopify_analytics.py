@@ -56,19 +56,23 @@ def shopify_analytics_dag():
 
         # Get DAG run configuration (may be passed from shopify_sync)
         dag_run_conf = context["dag_run"].conf or {}
+        shop = dag_run_conf.get("shop")
+        
+        if not shop:
+            raise ValueError("Shop parameter is required for analytics calculations")
 
         try:
             # Basic customer counts
-            total_customers = execute_query("SELECT COUNT(*) as count FROM customers")
+            total_customers = execute_query("SELECT COUNT(*) as count FROM customers WHERE shop = %s", [shop])
             total_customers_count = total_customers[0]["count"] if total_customers else 0
 
             # Customers with orders
-            customers_with_orders = execute_query("SELECT COUNT(*) as count FROM customers WHERE number_of_orders > 0")
+            customers_with_orders = execute_query("SELECT COUNT(*) as count FROM customers WHERE shop = %s AND \"ordersCount\" > 0", [shop])
             customers_with_orders_count = customers_with_orders[0]["count"] if customers_with_orders else 0
 
             # New customers this month
             new_customers_month = execute_query(
-                "SELECT COUNT(*) as count FROM customers WHERE created_at >= date_trunc('month', CURRENT_DATE)"
+                "SELECT COUNT(*) as count FROM customers WHERE shop = %s AND \"shopifyCreatedAt\" >= date_trunc('month', CURRENT_DATE)", [shop]
             )
             new_customers_month_count = new_customers_month[0]["count"] if new_customers_month else 0
 
@@ -99,29 +103,33 @@ def shopify_analytics_dag():
 
         # Get DAG run configuration (may be passed from shopify_sync)
         dag_run_conf = context["dag_run"].conf or {}
+        shop = dag_run_conf.get("shop")
+        
+        if not shop:
+            raise ValueError("Shop parameter is required for analytics calculations")
 
         try:
             # Basic order counts
-            total_orders = execute_query("SELECT COUNT(*) as count FROM orders")
+            total_orders = execute_query("SELECT COUNT(*) as count FROM orders WHERE shop = %s", [shop])
             total_orders_count = total_orders[0]["count"] if total_orders else 0
 
             # Revenue metrics
             revenue_query = execute_query(
                 """
                 SELECT 
-                    SUM(total_price_amount) as total_revenue,
-                    AVG(total_price_amount) as avg_order_value,
+                    SUM(\"totalPrice\") as total_revenue,
+                    AVG(\"totalPrice\") as avg_order_value,
                     COUNT(*) as orders_with_revenue
                 FROM orders 
-                WHERE total_price_amount > 0
-            """
+                WHERE shop = %s AND \"totalPrice\" > 0
+            """, [shop]
             )
 
             revenue_data = revenue_query[0] if revenue_query else {}
 
             # Orders this week
             orders_week = execute_query(
-                "SELECT COUNT(*) as count FROM orders WHERE created_at >= date_trunc('week', CURRENT_DATE)"
+                "SELECT COUNT(*) as count FROM orders WHERE shop = %s AND \"shopifyCreatedAt\" >= date_trunc('week', CURRENT_DATE)", [shop]
             )
             orders_week_count = orders_week[0]["count"] if orders_week else 0
 
@@ -148,27 +156,32 @@ def shopify_analytics_dag():
 
         # Get DAG run configuration (may be passed from shopify_sync)
         dag_run_conf = context["dag_run"].conf or {}
+        shop = dag_run_conf.get("shop")
+        
+        if not shop:
+            raise ValueError("Shop parameter is required for analytics calculations")
 
         try:
             # Basic product counts
-            total_products = execute_query("SELECT COUNT(*) as count FROM products")
+            total_products = execute_query("SELECT COUNT(*) as count FROM products WHERE shop = %s", [shop])
             total_products_count = total_products[0]["count"] if total_products else 0
 
             # Active products
-            active_products = execute_query("SELECT COUNT(*) as count FROM products WHERE status = 'ACTIVE'")
+            active_products = execute_query("SELECT COUNT(*) as count FROM products WHERE shop = %s AND status = 'ACTIVE'", [shop])
             active_products_count = active_products[0]["count"] if active_products else 0
 
             # Products with variants
             products_with_variants = execute_query(
                 """
-                SELECT COUNT(DISTINCT product_id) as count 
+                SELECT COUNT(DISTINCT \"productId\") as count 
                 FROM product_variants
-            """
+                WHERE shop = %s
+            """, [shop]
             )
             products_with_variants_count = products_with_variants[0]["count"] if products_with_variants else 0
 
             # Total variants
-            total_variants = execute_query("SELECT COUNT(*) as count FROM product_variants")
+            total_variants = execute_query("SELECT COUNT(*) as count FROM product_variants WHERE shop = %s", [shop])
             total_variants_count = total_variants[0]["count"] if total_variants else 0
 
             metrics = {

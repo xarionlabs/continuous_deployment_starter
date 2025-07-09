@@ -46,20 +46,22 @@ def execute_insert(query: str, parameters: Optional[List[Any]] = None) -> None:
 
 
 # Shopify data upsert functions
-def upsert_customer(customer_data: Dict[str, Any]):
+def upsert_customer(customer_data: Dict[str, Any], shop: str):
     """Insert or update customer data"""
     if not customer_data or not customer_data.get("id"):
         raise ValueError("Customer data must contain valid 'id' field")
+    if not shop:
+        raise ValueError("Shop parameter is required")
 
     query = """
     INSERT INTO customers (
-        id, email, "firstName", "lastName", phone, "acceptsMarketing", 
+        id, shop, email, "firstName", "lastName", phone, "acceptsMarketing", 
         "acceptsMarketingUpdatedAt", "marketingOptInLevel", "ordersCount", state,
         "totalSpent", "totalSpentCurrency", "averageOrderValue", tags, note,
         "verifiedEmail", "multipassIdentifier", "taxExempt", "taxExemptions",
         "legacyResourceId", "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s,
         %s, %s, %s, %s,
         %s, %s, %s, %s, %s,
         %s, %s, %s, %s,
@@ -106,6 +108,7 @@ def upsert_customer(customer_data: Dict[str, Any]):
 
     params = [
         customer_data["id"],  # Use full Shopify GID
+        shop,  # Shop domain
         customer_data.get("email"),
         customer_data.get("firstName"),
         customer_data.get("lastName"),
@@ -133,20 +136,22 @@ def upsert_customer(customer_data: Dict[str, Any]):
     execute_insert(query, params)
 
 
-def upsert_product(product_data: Dict[str, Any]):
+def upsert_product(product_data: Dict[str, Any], shop: str):
     """Insert or update product data"""
     if not product_data or not product_data.get("id"):
         raise ValueError("Product data must contain valid 'id' field")
+    if not shop:
+        raise ValueError("Shop parameter is required")
 
     query = """
     INSERT INTO products (
-        id, title, handle, description, "descriptionHtml", "productType", vendor,
+        id, shop, title, handle, description, "descriptionHtml", "productType", vendor,
         tags, status, "totalInventory", "onlineStoreUrl", "templateSuffix",
         "giftCardTemplateSuffix", "tracksQuantity", "onlineStorePreviewUrl", 
         "requiresSellingPlan", "isGiftCard", "legacyResourceId", "shopifyCreatedAt",
         "shopifyUpdatedAt", "publishedAt", "createdAt", "updatedAt", "syncedAt"
     ) VALUES (
-        %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s, %s,
         %s, %s, %s, %s, %s,
         %s, %s, %s,
         %s, %s, %s, %s,
@@ -192,6 +197,7 @@ def upsert_product(product_data: Dict[str, Any]):
 
     params = [
         product_data["id"],  # Use full Shopify GID
+        shop,  # Shop domain
         title,
         handle,
         product_data.get("description"),
@@ -220,14 +226,16 @@ def upsert_product(product_data: Dict[str, Any]):
     execute_insert(query, params)
 
 
-def upsert_order(order_data: Dict[str, Any]):
+def upsert_order(order_data: Dict[str, Any], shop: str):
     """Insert or update order data"""
     if not order_data or not order_data.get("id"):
         raise ValueError("Order data must contain valid 'id' field")
+    if not shop:
+        raise ValueError("Shop parameter is required")
 
     query = """
     INSERT INTO orders (
-        id, "customerId", "orderNumber", name, email, phone, "financialStatus", 
+        id, shop, "customerId", "orderNumber", name, email, phone, "financialStatus", 
         "fulfillmentStatus", currency, "totalPrice", "subtotalPrice", "totalDiscounts",
         "totalLineItemsPrice", "totalTax", "totalShippingPrice", "totalWeight",
         "taxesIncluded", confirmed, cancelled, "cancelledAt", "cancelReason",
@@ -236,7 +244,7 @@ def upsert_order(order_data: Dict[str, Any]):
         note, "noteAttributes", "processedAt", "legacyResourceId", 
         "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s, %s,
         %s, %s, %s, %s, %s,
         %s, %s, %s, %s,
         %s, %s, %s, %s, %s,
@@ -306,6 +314,7 @@ def upsert_order(order_data: Dict[str, Any]):
 
     params = [
         order_data["id"],  # Use full Shopify GID
+        shop,  # Shop domain
         order_data.get("customer", {}).get("id") if order_data.get("customer") else None,
         order_data.get("orderNumber"),
         order_data.get("name"),
@@ -348,21 +357,23 @@ def upsert_order(order_data: Dict[str, Any]):
     execute_insert(query, params)
 
 
-def upsert_product_variant(variant_data: Dict[str, Any]):
+def upsert_product_variant(variant_data: Dict[str, Any], shop: str):
     """Insert or update product variant data"""
     if not variant_data or not variant_data.get("id"):
         raise ValueError("Variant data must contain valid 'id' field")
+    if not shop:
+        raise ValueError("Shop parameter is required")
 
     query = """
     INSERT INTO product_variants (
-        id, "productId", title, price, "compareAtPrice", sku, barcode, grams,
+        id, shop, "productId", title, price, "compareAtPrice", sku, barcode, grams,
         weight, "weightUnit", "inventoryQuantity", "inventoryManagement", 
         "inventoryPolicy", "fulfillmentService", "requiresShipping", taxable,
         "taxCode", position, option1, option2, option3, "imageId",
         "availableForSale", "displayName", "legacyResourceId", 
         "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %s, %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s, %s, %s,
         %s, %s, %s, %s,
         %s, %s, %s, %s,
         %s, %s, %s, %s, %s, %s,
@@ -444,6 +455,7 @@ def upsert_product_variant(variant_data: Dict[str, Any]):
 
     params = [
         variant_data["id"],  # Use full Shopify GID
+        shop,  # Shop domain
         variant_data.get("product_id")
         or (variant_data.get("product", {}).get("id") if isinstance(variant_data.get("product"), dict) else None),
         variant_data.get("title"),
@@ -477,17 +489,19 @@ def upsert_product_variant(variant_data: Dict[str, Any]):
     execute_insert(query, params)
 
 
-def upsert_product_image(image_data: Dict[str, Any]):
+def upsert_product_image(image_data: Dict[str, Any], shop: str):
     """Insert or update product image data"""
     if not image_data or not image_data.get("id"):
         raise ValueError("Image data must contain valid 'id' field")
+    if not shop:
+        raise ValueError("Shop parameter is required")
 
     query = """
     INSERT INTO product_images (
-        id, "productId", src, "altText", width, height, position,
+        id, shop, "productId", src, "altText", width, height, position,
         "legacyResourceId", "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s, %s,
         %s, %s, %s, %s
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -516,6 +530,7 @@ def upsert_product_image(image_data: Dict[str, Any]):
 
     params = [
         image_data["id"],  # Use full Shopify GID
+        shop,  # Shop domain
         image_data.get("product_id")
         or (image_data.get("product", {}).get("id") if isinstance(image_data.get("product"), dict) else None),
         image_data.get("src") or image_data.get("url"),
@@ -536,6 +551,7 @@ def upsert_sync_log(
     entity_type: str,
     operation: str,
     status: str,
+    shop: str,
     records_processed: int = 0,
     records_created: int = 0,
     records_updated: int = 0,
@@ -544,9 +560,9 @@ def upsert_sync_log(
     """Insert a sync log entry"""
     query = """
     INSERT INTO sync_logs (
-        id, "entityType", operation, status, "startedAt", "completedAt", 
+        id, shop, "entityType", operation, status, "startedAt", "completedAt", 
         "recordsProcessed", "recordsCreated", "recordsUpdated", "errorMessage"
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
     now = datetime.now()
@@ -557,6 +573,7 @@ def upsert_sync_log(
 
     params = [
         log_id,
+        shop,
         entity_type,
         operation,
         status,
@@ -571,13 +588,13 @@ def upsert_sync_log(
     execute_insert(query, params)
 
 
-def upsert_sync_state(entity_type: str, last_sync_at: datetime = None):
+def upsert_sync_state(entity_type: str, shop: str, last_sync_at: datetime = None):
     """Insert or update sync state for an entity type"""
     query = """
     INSERT INTO sync_states (
-        id, "entityType", "lastSyncAt", "isActive", "updatedAt"
-    ) VALUES (%s, %s, %s, %s, %s)
-    ON CONFLICT ("entityType") DO UPDATE SET
+        id, shop, "entityType", "lastSyncAt", "isActive", "updatedAt"
+    ) VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (shop, "entityType") DO UPDATE SET
         "lastSyncAt" = EXCLUDED."lastSyncAt",
         "isActive" = EXCLUDED."isActive",
         "updatedAt" = EXCLUDED."updatedAt"
@@ -588,6 +605,6 @@ def upsert_sync_state(entity_type: str, last_sync_at: datetime = None):
     # Generate a unique ID based on entity type and timestamp
     sync_id = f"sync_state_{entity_type}_{int(sync_time.timestamp())}"
 
-    params = [sync_id, entity_type, sync_time, True, datetime.now()]
+    params = [sync_id, shop, entity_type, sync_time, True, datetime.now()]
 
     execute_insert(query, params)
