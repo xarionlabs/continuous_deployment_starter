@@ -303,6 +303,12 @@ if [ ! -d "$SERVICES_DEF_DIR_ON_HOST" ]; then
     exit 1
 fi
 
+# Validate systemd user units directory is writable
+if [ ! -w "$SYSTEMD_USER_UNITS_DIR_ON_HOST" ]; then
+    log_error "Systemd user units directory is not writable: $SYSTEMD_USER_UNITS_DIR_ON_HOST"
+    exit 1
+fi
+
 QUADLET_COMMAND="podman run --rm \
     --security-opt label=disable \
     -v '$SERVICES_DEF_DIR_ON_HOST:/app/services:ro,Z' \
@@ -318,6 +324,25 @@ QUADLET_COMMAND="podman run --rm \
 if ! retry_command "$QUADLET_COMMAND" "Generating quadlet units"; then
     log_error "Failed to generate quadlet units"
     exit 1
+fi
+
+# Verify quadlet files were actually generated
+if [ -n "$SCRIPT_AFFECTED_SERVICES" ]; then
+    IFS=' ' read -r -a services_array <<< "$SCRIPT_AFFECTED_SERVICES"
+    for service in "${services_array[@]}"; do
+        container_file="$SYSTEMD_USER_UNITS_DIR_ON_HOST/${service}.container"
+        service_file="$SYSTEMD_USER_UNITS_DIR_ON_HOST/${service}.service"
+        
+        if [ ! -f "$container_file" ] || [ ! -s "$container_file" ]; then
+            log_error "Generated quadlet container file is missing or empty: $container_file"
+            exit 1
+        fi
+        
+        if [ ! -f "$service_file" ] || [ ! -s "$service_file" ]; then
+            log_error "Generated quadlet service file is missing or empty: $service_file"
+            exit 1
+        fi
+    done
 fi
 
 
