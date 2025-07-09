@@ -230,7 +230,6 @@ function DataInsightsSection() {
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
         setSyncStatus({
           isLoading: false,
           error: `Failed to start sync: ${response.status} ${response.statusText}`,
@@ -288,12 +287,6 @@ function DataInsightsSection() {
     return new Intl.NumberFormat('en-US').format(num);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
 
   const isDataFresh = (lastUpdated: string) => {
     if (!lastUpdated || lastUpdated === new Date(0).toISOString()) {
@@ -316,20 +309,20 @@ function DataInsightsSection() {
               </Text>
             </div>
             <Button 
-              icon={(syncStatus.isLoading || !!syncStatus.isCheckingStatus) ? <Spinner size="small" /> : <RefreshIcon/>} 
+              icon={(syncStatus.isLoading || Boolean(syncStatus.isCheckingStatus)) ? <Spinner size="small" /> : <RefreshIcon/>} 
               variant="secondary"
-              loading={syncStatus.isLoading || !!syncStatus.isCheckingStatus}
+              loading={syncStatus.isLoading || Boolean(syncStatus.isCheckingStatus)}
               onClick={handleDataSync}
-              disabled={
-                !!syncStatus.isCheckingStatus || 
+              disabled={Boolean(
+                syncStatus.isCheckingStatus || 
                 syncStatus.isLoading || 
                 (syncStatus.status === 'running' || syncStatus.status === 'queued') || 
-                (!devOverride && metrics && !syncStatus.isCheckingStatus && isDataFresh(metrics.freshness.lastUpdated))
-              }
+                (!devOverride && metrics && !syncStatus.isCheckingStatus && isDataFresh(metrics.freshness.lastUpdated || ''))
+              )}
             >
               {syncStatus.isCheckingStatus ? 'Checking...' :
                syncStatus.isLoading || syncStatus.status === 'running' || syncStatus.status === 'queued' ? 'Syncing...' : 
-               (!devOverride && metrics && isDataFresh(metrics.freshness.lastUpdated)) ? 'Data Fresh' : 
+               (!devOverride && metrics && isDataFresh(metrics.freshness.lastUpdated || '')) ? 'Data Fresh' : 
                devOverride ? 'Sync Data (Dev)' : 'Sync Data'}
             </Button>
           </InlineStack>

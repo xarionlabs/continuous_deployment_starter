@@ -120,7 +120,7 @@ export const loader = withCorsLoader(async ({ request, params }: LoaderFunctionA
   
   try {
     // Authenticate with Shopify to ensure only valid app users can check status
-    const { session } = await authenticate.admin(request);
+    await authenticate.admin(request);
     
     if (!runId) {
       return json({

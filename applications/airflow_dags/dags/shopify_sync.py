@@ -260,12 +260,12 @@ def shopify_sync_dag():
 
             # Record sync states for each entity type
             sync_time = datetime.now()
-            
+
             # Update sync states
             upsert_sync_state("customers", sync_time)
             upsert_sync_state("orders", sync_time)
             upsert_sync_state("products", sync_time)
-            
+
             # Record overall sync log
             total_records = summary["customers_synced"] + summary["orders_synced"] + summary["products_synced"]
             upsert_sync_log(
@@ -274,21 +274,16 @@ def shopify_sync_dag():
                 status="completed",
                 records_processed=total_records,
                 records_created=total_records,  # Assuming upserts create new records
-                records_updated=0
+                records_updated=0,
             )
 
             logger.info(f"Sync summary: {summary}")
             return summary
-            
+
         except Exception as e:
             logger.error(f"Failed to generate sync summary: {str(e)}")
             # Record failed sync log
-            upsert_sync_log(
-                entity_type="all",
-                operation="full_sync",
-                status="failed",
-                error_message=str(e)
-            )
+            upsert_sync_log(entity_type="all", operation="full_sync", status="failed", error_message=str(e))
             raise AirflowException(f"Failed to generate sync summary: {str(e)}")
 
     # Define task dependencies

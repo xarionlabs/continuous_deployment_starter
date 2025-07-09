@@ -76,8 +76,7 @@ describe('API Data Sync Routes', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({
-            run_id: 'test-run-123',
-            dag_run_id: 'manual_1234567890',
+            dag_run_id: 'test-run-123',
             state: 'queued',
             execution_date: '2024-01-01T00:00:00Z',
             conf: {

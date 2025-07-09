@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { withCors, withCorsLoader } from "../utils/cors.injector";
+import type { ActionFunctionArgs } from "@remix-run/node";
+import { withCors } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 

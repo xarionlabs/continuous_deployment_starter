@@ -152,7 +152,7 @@ const getRecentSyncRequest = async () => {
 export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => {
   try {
     // Authenticate with Shopify to ensure only valid app users can check status
-    const { session } = await authenticate.admin(request);
+    await authenticate.admin(request);
     
     // Check our sync log table for recent sync requests
     const recentSync = await getRecentSyncRequest();

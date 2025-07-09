@@ -222,11 +222,11 @@ class ShopifyHook(BaseHook):
     def _calculate_throttle_backoff(self, attempt: int, retry_after: Optional[int] = None) -> float:
         """
         Calculate backoff time for throttle retries with exponential backoff and jitter
-        
+
         Args:
             attempt: Current retry attempt (1-based)
             retry_after: Retry-After header value from response (seconds)
-            
+
         Returns:
             Backoff time in seconds
         """
@@ -234,15 +234,15 @@ class ShopifyHook(BaseHook):
             # Use Shopify's suggested retry time if provided, add small jitter
             jitter = random.uniform(0.1, 0.5)
             return min(retry_after + jitter, self.max_throttle_wait)
-        
+
         # Exponential backoff: base_delay * (backoff_factor ^ (attempt - 1))
         base_delay = 1.0  # Start with 1 second as recommended by Shopify
         backoff_time = base_delay * (self.throttle_backoff_factor ** (attempt - 1))
-        
+
         # Add jitter to prevent thundering herd
         jitter = random.uniform(0.1, 0.3) * backoff_time
         total_wait = backoff_time + jitter
-        
+
         # Cap at max_throttle_wait
         return min(total_wait, self.max_throttle_wait)
 
@@ -351,12 +351,12 @@ class ShopifyHook(BaseHook):
                         if self.enable_metrics:
                             self._metrics["rate_limit_hits"] += 1
                             self._metrics["throttle_retries"] += 1
-                        
+
                         retry_after = response.headers.get("Retry-After")
                         retry_after_int = int(retry_after) if retry_after else None
-                        
+
                         backoff_time = self._calculate_throttle_backoff(throttle_attempt + 1, retry_after_int)
-                        
+
                         logger.warning(
                             f"Rate limited (429) on attempt {throttle_attempt + 1}/{self.throttle_retry_attempts + 1}, "
                             f"waiting {backoff_time:.2f} seconds before retry"
@@ -402,12 +402,14 @@ class ShopifyHook(BaseHook):
 
             except requests.exceptions.HTTPError as e:
                 # Only retry on 429, re-raise other HTTP errors immediately
-                if hasattr(e.response, 'status_code') and e.response.status_code == 429:
+                if hasattr(e.response, "status_code") and e.response.status_code == 429:
                     # This should have been handled above, but just in case
                     continue
                 else:
                     # Non-429 HTTP errors should not be retried
-                    logger.error(f"HTTP error {e.response.status_code if hasattr(e.response, 'status_code') else 'unknown'}: {str(e)}")
+                    logger.error(
+                        f"HTTP error {e.response.status_code if hasattr(e.response, 'status_code') else 'unknown'}: {str(e)}"
+                    )
                     logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
                     logger.error(f"Variables: {variables}")
                     if self.enable_metrics:
