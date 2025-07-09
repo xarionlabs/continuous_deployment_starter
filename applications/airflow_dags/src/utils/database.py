@@ -498,6 +498,18 @@ def upsert_product_image(image_data: Dict[str, Any]):
         "syncedAt" = CURRENT_TIMESTAMP
     """
 
+    # Handle required NOT NULL fields with defaults
+    created_at = image_data.get("createdAt")
+    updated_at = image_data.get("updatedAt")
+
+    # If updatedAt is null/missing, use createdAt as fallback, or current time as last resort
+    if not updated_at:
+        updated_at = created_at if created_at else datetime.now().isoformat()
+
+    # If createdAt is null/missing, use current time
+    if not created_at:
+        created_at = datetime.now().isoformat()
+
     params = [
         image_data["id"],  # Use full Shopify GID
         image_data.get("product_id")
@@ -508,8 +520,8 @@ def upsert_product_image(image_data: Dict[str, Any]):
         image_data.get("height"),
         image_data.get("position"),
         image_data.get("legacyResourceId"),
-        image_data.get("createdAt"),
-        image_data.get("updatedAt"),
+        created_at,
+        updated_at,
         datetime.now(),
     ]
 
