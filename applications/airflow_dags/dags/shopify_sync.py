@@ -196,17 +196,32 @@ def shopify_sync_dag():
                             hook.close()
                             raise AirflowException(f"Database error while upserting product variant: {str(e)}")
 
-                    # Sync product images
-                    images = product.get("images", {}).get("edges", [])
-                    for image_edge in images:
-                        image = image_edge["node"]
-                        image["product_id"] = product["id"]
-                        try:
-                            upsert_product_image(image)
-                        except Exception as e:
-                            logger.error(f"Failed to upsert product image {image.get('id', 'unknown')}: {str(e)}")
-                            hook.close()
-                            raise AirflowException(f"Database error while upserting product image: {str(e)}")
+                    # Sync product images from media field
+                    media_items = product.get("media", {}).get("edges", [])
+                    for media_edge in media_items:
+                        media = media_edge["node"]
+                        # Only process MediaImage items
+                        if media.get("mediaContentType") == "IMAGE" and media.get("image"):
+                            image_data = {
+                                "id": media.get("id"),
+                                "product_id": product["id"],
+                                "src": media.get("image", {}).get("url"),
+                                "altText": media.get("alt"),
+                                "width": media.get("image", {}).get("width"),
+                                "height": media.get("image", {}).get("height"),
+                                "position": None,  # Media doesn't have position in this query
+                                "legacyResourceId": None,
+                                "createdAt": None,  # Media doesn't have created/updated in this query
+                                "updatedAt": None,
+                            }
+                            try:
+                                upsert_product_image(image_data)
+                            except Exception as e:
+                                logger.error(
+                                    f"Failed to upsert product image {image_data.get('id', 'unknown')}: {str(e)}"
+                                )
+                                hook.close()
+                                raise AirflowException(f"Database error while upserting product image: {str(e)}")
 
                 except Exception as e:
                     logger.error(f"Failed to upsert product {product.get('id', 'unknown')}: {str(e)}")
