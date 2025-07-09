@@ -18,324 +18,499 @@ logger = logging.getLogger(__name__)
 # Database connection utilities
 def get_postgres_hook() -> PostgresHook:
     """Get a PostgresHook instance for pxy6 database"""
-    return PostgresHook(postgres_conn_id='pxy6_postgres')
+    return PostgresHook(postgres_conn_id="pxy6_postgres")
 
 
 def execute_query(query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """Execute a query using Airflow PostgresHook"""
-    hook = get_postgres_hook()
-    return hook.get_records(query, parameters)
+    try:
+        hook = get_postgres_hook()
+        return hook.get_records(query, parameters)
+    except Exception as e:
+        logger.error(f"Database query failed: {str(e)}")
+        raise
 
 
-def execute_insert(query: str, parameters: Optional[Dict[str, Any]] = None) -> None:
+def execute_insert(query: str, parameters: Optional[List[Any]] = None) -> None:
     """Execute an insert/update query using Airflow PostgresHook"""
-    hook = get_postgres_hook()
-    hook.run(query, parameters)
+    try:
+        hook = get_postgres_hook()
+        hook.run(query, parameters=parameters)
+    except Exception as e:
+        logger.error(f"Database insert failed: {str(e)}")
+        raise
 
 
 # Shopify data upsert functions
 def upsert_customer(customer_data: Dict[str, Any]):
     """Insert or update customer data"""
-    
+    if not customer_data or not customer_data.get("id"):
+        raise ValueError("Customer data must contain valid 'id' field")
+
     query = """
     INSERT INTO customers (
-        id, email, first_name, last_name, phone, created_at, updated_at,
-        accepts_marketing, state, tags, total_spent_amount, total_spent_currency,
-        number_of_orders, verified_email, tax_exempt, addresses, metafields,
-        shopify_created_at, shopify_updated_at
+        id, email, "firstName", "lastName", phone, "acceptsMarketing", 
+        "acceptsMarketingUpdatedAt", "marketingOptInLevel", "ordersCount", state,
+        "totalSpent", "totalSpentCurrency", "averageOrderValue", tags, note,
+        "verifiedEmail", "multipassIdentifier", "taxExempt", "taxExemptions",
+        "legacyResourceId", "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %(id)s, %(email)s, %(first_name)s, %(last_name)s, %(phone)s, %(created_at)s, %(updated_at)s,
-        %(accepts_marketing)s, %(state)s, %(tags)s, %(total_spent_amount)s, %(total_spent_currency)s,
-        %(number_of_orders)s, %(verified_email)s, %(tax_exempt)s, %(addresses)s, %(metafields)s,
-        %(shopify_created_at)s, %(shopify_updated_at)s
+        %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s, %s,
+        %s, %s, %s, %s
     )
     ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
+        "firstName" = EXCLUDED."firstName",
+        "lastName" = EXCLUDED."lastName",
         phone = EXCLUDED.phone,
-        updated_at = EXCLUDED.updated_at,
-        accepts_marketing = EXCLUDED.accepts_marketing,
+        "acceptsMarketing" = EXCLUDED."acceptsMarketing",
+        "acceptsMarketingUpdatedAt" = EXCLUDED."acceptsMarketingUpdatedAt",
+        "marketingOptInLevel" = EXCLUDED."marketingOptInLevel",
+        "ordersCount" = EXCLUDED."ordersCount",
         state = EXCLUDED.state,
+        "totalSpent" = EXCLUDED."totalSpent",
+        "totalSpentCurrency" = EXCLUDED."totalSpentCurrency",
+        "averageOrderValue" = EXCLUDED."averageOrderValue",
         tags = EXCLUDED.tags,
-        total_spent_amount = EXCLUDED.total_spent_amount,
-        total_spent_currency = EXCLUDED.total_spent_currency,
-        number_of_orders = EXCLUDED.number_of_orders,
-        verified_email = EXCLUDED.verified_email,
-        tax_exempt = EXCLUDED.tax_exempt,
-        addresses = EXCLUDED.addresses,
-        metafields = EXCLUDED.metafields,
-        shopify_updated_at = EXCLUDED.shopify_updated_at,
-        last_sync_at = CURRENT_TIMESTAMP
+        note = EXCLUDED.note,
+        "verifiedEmail" = EXCLUDED."verifiedEmail",
+        "multipassIdentifier" = EXCLUDED."multipassIdentifier",
+        "taxExempt" = EXCLUDED."taxExempt",
+        "taxExemptions" = EXCLUDED."taxExemptions",
+        "legacyResourceId" = EXCLUDED."legacyResourceId",
+        "shopifyUpdatedAt" = EXCLUDED."shopifyUpdatedAt",
+        "syncedAt" = CURRENT_TIMESTAMP
     """
-    
+
     # Process customer data to extract fields
-    total_spent = customer_data.get('totalSpentV2', {})
-    
-    params = {
-        'id': int(customer_data['id'].split('/')[-1]),
-        'email': customer_data.get('email'),
-        'first_name': customer_data.get('firstName'),
-        'last_name': customer_data.get('lastName'),
-        'phone': customer_data.get('phone'),
-        'created_at': datetime.now(),
-        'updated_at': datetime.now(),
-        'accepts_marketing': customer_data.get('acceptsMarketing', False),
-        'state': customer_data.get('state'),
-        'tags': customer_data.get('tags'),
-        'total_spent_amount': float(total_spent.get('amount', 0)) if total_spent.get('amount') else 0,
-        'total_spent_currency': total_spent.get('currencyCode'),
-        'number_of_orders': customer_data.get('numberOfOrders', 0),
-        'verified_email': customer_data.get('verifiedEmail', False),
-        'tax_exempt': customer_data.get('taxExempt', False),
-        'addresses': json.dumps(customer_data.get('addresses', [])),
-        'metafields': json.dumps(customer_data.get('metafields', {})),
-        'shopify_created_at': customer_data.get('createdAt'),
-        'shopify_updated_at': customer_data.get('updatedAt')
-    }
-    
+    total_spent = customer_data.get("totalSpentV2", {})
+
+    # Handle required NOT NULL fields with defaults
+    created_at = customer_data.get("createdAt")
+    updated_at = customer_data.get("updatedAt")
+
+    # If updatedAt is null/missing, use createdAt as fallback, or current time as last resort
+    if not updated_at:
+        updated_at = created_at if created_at else datetime.now().isoformat()
+
+    # If createdAt is null/missing, use current time
+    if not created_at:
+        created_at = datetime.now().isoformat()
+
+    params = [
+        customer_data["id"],  # Use full Shopify GID
+        customer_data.get("email"),
+        customer_data.get("firstName"),
+        customer_data.get("lastName"),
+        customer_data.get("phone"),
+        customer_data.get("acceptsMarketing", False),
+        customer_data.get("acceptsMarketingUpdatedAt"),
+        customer_data.get("marketingOptInLevel"),
+        customer_data.get("numberOfOrders", 0),
+        customer_data.get("state"),
+        float(total_spent.get("amount", 0)) if total_spent.get("amount") else 0,
+        total_spent.get("currencyCode"),
+        customer_data.get("averageOrderValue"),
+        json.dumps(customer_data.get("tags", [])),
+        customer_data.get("note"),
+        customer_data.get("verifiedEmail", False),
+        customer_data.get("multipassIdentifier"),
+        customer_data.get("taxExempt", False),
+        json.dumps(customer_data.get("taxExemptions", [])),
+        customer_data.get("legacyResourceId"),
+        created_at,
+        updated_at,
+        datetime.now(),
+    ]
+
     execute_insert(query, params)
 
 
 def upsert_product(product_data: Dict[str, Any]):
     """Insert or update product data"""
-    
+    if not product_data or not product_data.get("id"):
+        raise ValueError("Product data must contain valid 'id' field")
+
     query = """
     INSERT INTO products (
-        id, title, handle, description, description_html, product_type, vendor,
-        tags, status, total_inventory, online_store_url, seo_title, seo_description,
-        options, variants, images, metafields, collections, shopify_created_at,
-        shopify_updated_at, published_at
+        id, title, handle, description, "descriptionHtml", "productType", vendor,
+        tags, status, "totalInventory", "onlineStoreUrl", "templateSuffix",
+        "giftCardTemplateSuffix", "tracksQuantity", "onlineStorePreviewUrl", 
+        "requiresSellingPlan", "isGiftCard", "legacyResourceId", "shopifyCreatedAt",
+        "shopifyUpdatedAt", "publishedAt", "createdAt", "updatedAt", "syncedAt"
     ) VALUES (
-        %(id)s, %(title)s, %(handle)s, %(description)s, %(description_html)s, %(product_type)s, %(vendor)s,
-        %(tags)s, %(status)s, %(total_inventory)s, %(online_store_url)s, %(seo_title)s, %(seo_description)s,
-        %(options)s, %(variants)s, %(images)s, %(metafields)s, %(collections)s, %(shopify_created_at)s,
-        %(shopify_updated_at)s, %(published_at)s
+        %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s,
+        %s, %s, %s, %s,
+        %s, %s, %s, %s, %s
     )
     ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
         handle = EXCLUDED.handle,
         description = EXCLUDED.description,
-        description_html = EXCLUDED.description_html,
-        product_type = EXCLUDED.product_type,
+        "descriptionHtml" = EXCLUDED."descriptionHtml",
+        "productType" = EXCLUDED."productType",
         vendor = EXCLUDED.vendor,
         tags = EXCLUDED.tags,
         status = EXCLUDED.status,
-        total_inventory = EXCLUDED.total_inventory,
-        online_store_url = EXCLUDED.online_store_url,
-        seo_title = EXCLUDED.seo_title,
-        seo_description = EXCLUDED.seo_description,
-        options = EXCLUDED.options,
-        variants = EXCLUDED.variants,
-        images = EXCLUDED.images,
-        metafields = EXCLUDED.metafields,
-        collections = EXCLUDED.collections,
-        shopify_updated_at = EXCLUDED.shopify_updated_at,
-        published_at = EXCLUDED.published_at,
-        last_sync_at = CURRENT_TIMESTAMP
+        "totalInventory" = EXCLUDED."totalInventory",
+        "onlineStoreUrl" = EXCLUDED."onlineStoreUrl",
+        "templateSuffix" = EXCLUDED."templateSuffix",
+        "giftCardTemplateSuffix" = EXCLUDED."giftCardTemplateSuffix",
+        "tracksQuantity" = EXCLUDED."tracksQuantity",
+        "onlineStorePreviewUrl" = EXCLUDED."onlineStorePreviewUrl",
+        "requiresSellingPlan" = EXCLUDED."requiresSellingPlan",
+        "isGiftCard" = EXCLUDED."isGiftCard",
+        "legacyResourceId" = EXCLUDED."legacyResourceId",
+        "shopifyUpdatedAt" = EXCLUDED."shopifyUpdatedAt",
+        "publishedAt" = EXCLUDED."publishedAt",
+        "updatedAt" = EXCLUDED."updatedAt",
+        "syncedAt" = CURRENT_TIMESTAMP
     """
-    
-    # Process product data
-    seo = product_data.get('seo', {})
-    
-    params = {
-        'id': int(product_data['id'].split('/')[-1]),
-        'title': product_data.get('title'),
-        'handle': product_data.get('handle'),
-        'description': product_data.get('description'),
-        'description_html': product_data.get('descriptionHtml'),
-        'product_type': product_data.get('productType'),
-        'vendor': product_data.get('vendor'),
-        'tags': product_data.get('tags', []),
-        'status': product_data.get('status'),
-        'total_inventory': product_data.get('totalInventory'),
-        'online_store_url': product_data.get('onlineStoreUrl'),
-        'seo_title': seo.get('title'),
-        'seo_description': seo.get('description'),
-        'options': json.dumps(product_data.get('options', [])),
-        'variants': json.dumps(product_data.get('variants', {})),
-        'images': json.dumps(product_data.get('images', {})),
-        'metafields': json.dumps(product_data.get('metafields', {})),
-        'collections': json.dumps(product_data.get('collections', {})),
-        'shopify_created_at': product_data.get('createdAt'),
-        'shopify_updated_at': product_data.get('updatedAt'),
-        'published_at': product_data.get('publishedAt')
-    }
-    
+
+    # Handle required NOT NULL fields with defaults
+    title = product_data.get("title") or "Untitled Product"
+    handle = product_data.get("handle") or f"product-{product_data['id']}"
+    created_at = product_data.get("createdAt")
+    updated_at = product_data.get("updatedAt")
+
+    # If updatedAt is null/missing, use createdAt as fallback, or current time as last resort
+    if not updated_at:
+        updated_at = created_at if created_at else datetime.now().isoformat()
+
+    # If createdAt is null/missing, use current time
+    if not created_at:
+        created_at = datetime.now().isoformat()
+
+    params = [
+        product_data["id"],  # Use full Shopify GID
+        title,
+        handle,
+        product_data.get("description"),
+        product_data.get("descriptionHtml"),
+        product_data.get("productType"),
+        product_data.get("vendor"),
+        json.dumps(product_data.get("tags", [])),
+        product_data.get("status", "ACTIVE"),
+        product_data.get("totalInventory"),
+        product_data.get("onlineStoreUrl"),
+        product_data.get("templateSuffix"),
+        product_data.get("giftCardTemplateSuffix"),
+        product_data.get("tracksQuantity", False),
+        product_data.get("onlineStorePreviewUrl"),
+        product_data.get("requiresSellingPlan", False),
+        product_data.get("isGiftCard", False),
+        product_data.get("legacyResourceId"),
+        created_at,
+        updated_at,
+        product_data.get("publishedAt"),
+        datetime.now(),
+        datetime.now(),
+        datetime.now(),
+    ]
+
     execute_insert(query, params)
 
 
 def upsert_order(order_data: Dict[str, Any]):
     """Insert or update order data"""
-    
+    if not order_data or not order_data.get("id"):
+        raise ValueError("Order data must contain valid 'id' field")
+
     query = """
     INSERT INTO orders (
-        id, name, email, customer_id, total_price_amount, total_price_currency,
-        subtotal_price_amount, subtotal_price_currency, total_tax_amount, total_tax_currency,
-        total_shipping_amount, total_shipping_currency, financial_status, fulfillment_status,
-        cancelled, cancel_reason, tags, note, line_items, shipping_address, billing_address,
-        customer_journey, shopify_created_at, shopify_updated_at, processed_at, closed_at,
-        cancelled_at
+        id, "customerId", "orderNumber", name, email, phone, "financialStatus", 
+        "fulfillmentStatus", currency, "totalPrice", "subtotalPrice", "totalDiscounts",
+        "totalLineItemsPrice", "totalTax", "totalShippingPrice", "totalWeight",
+        "taxesIncluded", confirmed, cancelled, "cancelledAt", "cancelReason",
+        "closedAt", test, "browserIp", "landingSite", "orderStatusUrl",
+        "referringSite", "sourceIdentifier", "sourceName", "sourceUrl", tags,
+        note, "noteAttributes", "processedAt", "legacyResourceId", 
+        "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %(id)s, %(name)s, %(email)s, %(customer_id)s, %(total_price_amount)s, %(total_price_currency)s,
-        %(subtotal_price_amount)s, %(subtotal_price_currency)s, %(total_tax_amount)s, %(total_tax_currency)s,
-        %(total_shipping_amount)s, %(total_shipping_currency)s, %(financial_status)s, %(fulfillment_status)s,
-        %(cancelled)s, %(cancel_reason)s, %(tags)s, %(note)s, %(line_items)s, %(shipping_address)s, %(billing_address)s,
-        %(customer_journey)s, %(shopify_created_at)s, %(shopify_updated_at)s, %(processed_at)s, %(closed_at)s,
-        %(cancelled_at)s
+        %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s, %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s, %s,
+        %s, %s, %s
     )
     ON CONFLICT (id) DO UPDATE SET
+        "customerId" = EXCLUDED."customerId",
+        "orderNumber" = EXCLUDED."orderNumber",
         name = EXCLUDED.name,
         email = EXCLUDED.email,
-        customer_id = EXCLUDED.customer_id,
-        total_price_amount = EXCLUDED.total_price_amount,
-        total_price_currency = EXCLUDED.total_price_currency,
-        subtotal_price_amount = EXCLUDED.subtotal_price_amount,
-        subtotal_price_currency = EXCLUDED.subtotal_price_currency,
-        total_tax_amount = EXCLUDED.total_tax_amount,
-        total_tax_currency = EXCLUDED.total_tax_currency,
-        total_shipping_amount = EXCLUDED.total_shipping_amount,
-        total_shipping_currency = EXCLUDED.total_shipping_currency,
-        financial_status = EXCLUDED.financial_status,
-        fulfillment_status = EXCLUDED.fulfillment_status,
+        phone = EXCLUDED.phone,
+        "financialStatus" = EXCLUDED."financialStatus",
+        "fulfillmentStatus" = EXCLUDED."fulfillmentStatus",
+        currency = EXCLUDED.currency,
+        "totalPrice" = EXCLUDED."totalPrice",
+        "subtotalPrice" = EXCLUDED."subtotalPrice",
+        "totalDiscounts" = EXCLUDED."totalDiscounts",
+        "totalLineItemsPrice" = EXCLUDED."totalLineItemsPrice",
+        "totalTax" = EXCLUDED."totalTax",
+        "totalShippingPrice" = EXCLUDED."totalShippingPrice",
+        "totalWeight" = EXCLUDED."totalWeight",
+        "taxesIncluded" = EXCLUDED."taxesIncluded",
+        confirmed = EXCLUDED.confirmed,
         cancelled = EXCLUDED.cancelled,
-        cancel_reason = EXCLUDED.cancel_reason,
+        "cancelledAt" = EXCLUDED."cancelledAt",
+        "cancelReason" = EXCLUDED."cancelReason",
+        "closedAt" = EXCLUDED."closedAt",
+        test = EXCLUDED.test,
+        "browserIp" = EXCLUDED."browserIp",
+        "landingSite" = EXCLUDED."landingSite",
+        "orderStatusUrl" = EXCLUDED."orderStatusUrl",
+        "referringSite" = EXCLUDED."referringSite",
+        "sourceIdentifier" = EXCLUDED."sourceIdentifier",
+        "sourceName" = EXCLUDED."sourceName",
+        "sourceUrl" = EXCLUDED."sourceUrl",
         tags = EXCLUDED.tags,
         note = EXCLUDED.note,
-        line_items = EXCLUDED.line_items,
-        shipping_address = EXCLUDED.shipping_address,
-        billing_address = EXCLUDED.billing_address,
-        customer_journey = EXCLUDED.customer_journey,
-        shopify_updated_at = EXCLUDED.shopify_updated_at,
-        processed_at = EXCLUDED.processed_at,
-        closed_at = EXCLUDED.closed_at,
-        cancelled_at = EXCLUDED.cancelled_at,
-        last_sync_at = CURRENT_TIMESTAMP
+        "noteAttributes" = EXCLUDED."noteAttributes",
+        "processedAt" = EXCLUDED."processedAt",
+        "legacyResourceId" = EXCLUDED."legacyResourceId",
+        "shopifyUpdatedAt" = EXCLUDED."shopifyUpdatedAt",
+        "syncedAt" = CURRENT_TIMESTAMP
     """
-    
+
     # Process order data
-    total_price = order_data.get('totalPriceSet', {}).get('shopMoney', {})
-    subtotal_price = order_data.get('subtotalPriceSet', {}).get('shopMoney', {})
-    total_tax = order_data.get('totalTaxSet', {}).get('shopMoney', {})
-    total_shipping = order_data.get('totalShippingPriceSet', {}).get('shopMoney', {})
-    
-    params = {
-        'id': int(order_data['id'].split('/')[-1]),
-        'name': order_data.get('name'),
-        'email': order_data.get('email'),
-        'customer_id': int(order_data.get('customer', {}).get('id', '0').split('/')[-1]) if order_data.get('customer') else None,
-        'total_price_amount': float(total_price.get('amount', 0)),
-        'total_price_currency': total_price.get('currencyCode'),
-        'subtotal_price_amount': float(subtotal_price.get('amount', 0)),
-        'subtotal_price_currency': subtotal_price.get('currencyCode'),
-        'total_tax_amount': float(total_tax.get('amount', 0)),
-        'total_tax_currency': total_tax.get('currencyCode'),
-        'total_shipping_amount': float(total_shipping.get('amount', 0)),
-        'total_shipping_currency': total_shipping.get('currencyCode'),
-        'financial_status': order_data.get('financialStatus'),
-        'fulfillment_status': order_data.get('fulfillmentStatus'),
-        'cancelled': order_data.get('cancelled', False),
-        'cancel_reason': order_data.get('cancelReason'),
-        'tags': order_data.get('tags', []),
-        'note': order_data.get('note'),
-        'line_items': json.dumps(order_data.get('lineItems', {})),
-        'shipping_address': json.dumps(order_data.get('shippingAddress', {})),
-        'billing_address': json.dumps(order_data.get('billingAddress', {})),
-        'customer_journey': json.dumps(order_data.get('customerJourney', {})),
-        'shopify_created_at': order_data.get('createdAt'),
-        'shopify_updated_at': order_data.get('updatedAt'),
-        'processed_at': order_data.get('processedAt'),
-        'closed_at': order_data.get('closedAt'),
-        'cancelled_at': order_data.get('cancelledAt')
-    }
-    
+    total_price = order_data.get("totalPriceSet", {}).get("shopMoney", {})
+    subtotal_price = order_data.get("subtotalPriceSet", {}).get("shopMoney", {})
+    total_tax = order_data.get("totalTaxSet", {}).get("shopMoney", {})
+    total_shipping = order_data.get("totalShippingPriceSet", {}).get("shopMoney", {})
+    total_discounts = order_data.get("totalDiscountsSet", {}).get("shopMoney", {})
+    total_line_items = order_data.get("totalLineItemsPriceSet", {}).get("shopMoney", {})
+
+    # Handle required NOT NULL fields with defaults
+    created_at = order_data.get("createdAt")
+    updated_at = order_data.get("updatedAt")
+
+    # If updatedAt is null/missing, use createdAt as fallback, or current time as last resort
+    if not updated_at:
+        updated_at = created_at if created_at else datetime.now().isoformat()
+
+    # If createdAt is null/missing, use current time
+    if not created_at:
+        created_at = datetime.now().isoformat()
+
+    params = [
+        order_data["id"],  # Use full Shopify GID
+        order_data.get("customer", {}).get("id") if order_data.get("customer") else None,
+        order_data.get("orderNumber"),
+        order_data.get("name"),
+        order_data.get("email"),
+        order_data.get("phone"),
+        order_data.get("financialStatus"),
+        order_data.get("fulfillmentStatus"),
+        order_data.get("currencyCode"),
+        float(total_price.get("amount", 0)),
+        float(subtotal_price.get("amount", 0)),
+        float(total_discounts.get("amount", 0)),
+        float(total_line_items.get("amount", 0)),
+        float(total_tax.get("amount", 0)),
+        float(total_shipping.get("amount", 0)),
+        order_data.get("totalWeight"),
+        order_data.get("taxesIncluded", False),
+        order_data.get("confirmed", True),
+        order_data.get("cancelled", False),
+        order_data.get("cancelledAt"),
+        order_data.get("cancelReason"),
+        order_data.get("closedAt"),
+        order_data.get("test", False),
+        order_data.get("browserIp"),
+        order_data.get("landingSite"),
+        order_data.get("orderStatusUrl"),
+        order_data.get("referringSite"),
+        order_data.get("sourceIdentifier"),
+        order_data.get("sourceName"),
+        order_data.get("sourceUrl"),
+        json.dumps(order_data.get("tags", [])),
+        order_data.get("note"),
+        json.dumps(order_data.get("noteAttributes", [])),
+        order_data.get("processedAt"),
+        order_data.get("legacyResourceId"),
+        created_at,
+        updated_at,
+        datetime.now(),
+    ]
+
     execute_insert(query, params)
 
 
 def upsert_product_variant(variant_data: Dict[str, Any]):
     """Insert or update product variant data"""
-    
+    if not variant_data or not variant_data.get("id"):
+        raise ValueError("Variant data must contain valid 'id' field")
+
     query = """
     INSERT INTO product_variants (
-        id, product_id, title, sku, barcode, price, compare_at_price,
-        available_for_sale, inventory_quantity, weight, weight_unit,
-        inventory_policy, created_at, updated_at, selected_options,
-        metafields, shopify_created_at, shopify_updated_at
+        id, "productId", title, price, "compareAtPrice", sku, barcode, grams,
+        weight, "weightUnit", "inventoryQuantity", "inventoryManagement", 
+        "inventoryPolicy", "fulfillmentService", "requiresShipping", taxable,
+        "taxCode", position, option1, option2, option3, "imageId",
+        "availableForSale", "displayName", "legacyResourceId", 
+        "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %(id)s, %(product_id)s, %(title)s, %(sku)s, %(barcode)s, %(price)s, %(compare_at_price)s,
-        %(available_for_sale)s, %(inventory_quantity)s, %(weight)s, %(weight_unit)s,
-        %(inventory_policy)s, %(created_at)s, %(updated_at)s, %(selected_options)s,
-        %(metafields)s, %(shopify_created_at)s, %(shopify_updated_at)s
+        %s, %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s,
+        %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s,
+        %s, %s, %s,
+        %s, %s, %s
     )
     ON CONFLICT (id) DO UPDATE SET
+        "productId" = EXCLUDED."productId",
         title = EXCLUDED.title,
+        price = EXCLUDED.price,
+        "compareAtPrice" = EXCLUDED."compareAtPrice",
         sku = EXCLUDED.sku,
         barcode = EXCLUDED.barcode,
-        price = EXCLUDED.price,
-        compare_at_price = EXCLUDED.compare_at_price,
-        available_for_sale = EXCLUDED.available_for_sale,
-        inventory_quantity = EXCLUDED.inventory_quantity,
+        grams = EXCLUDED.grams,
         weight = EXCLUDED.weight,
-        weight_unit = EXCLUDED.weight_unit,
-        inventory_policy = EXCLUDED.inventory_policy,
-        updated_at = EXCLUDED.updated_at,
-        selected_options = EXCLUDED.selected_options,
-        metafields = EXCLUDED.metafields,
-        shopify_updated_at = EXCLUDED.shopify_updated_at,
-        last_sync_at = CURRENT_TIMESTAMP
+        "weightUnit" = EXCLUDED."weightUnit",
+        "inventoryQuantity" = EXCLUDED."inventoryQuantity",
+        "inventoryManagement" = EXCLUDED."inventoryManagement",
+        "inventoryPolicy" = EXCLUDED."inventoryPolicy",
+        "fulfillmentService" = EXCLUDED."fulfillmentService",
+        "requiresShipping" = EXCLUDED."requiresShipping",
+        taxable = EXCLUDED.taxable,
+        "taxCode" = EXCLUDED."taxCode",
+        position = EXCLUDED.position,
+        option1 = EXCLUDED.option1,
+        option2 = EXCLUDED.option2,
+        option3 = EXCLUDED.option3,
+        "imageId" = EXCLUDED."imageId",
+        "availableForSale" = EXCLUDED."availableForSale",
+        "displayName" = EXCLUDED."displayName",
+        "legacyResourceId" = EXCLUDED."legacyResourceId",
+        "shopifyUpdatedAt" = EXCLUDED."shopifyUpdatedAt",
+        "syncedAt" = CURRENT_TIMESTAMP
     """
-    
-    params = {
-        'id': int(variant_data['id'].split('/')[-1]),
-        'product_id': variant_data.get('product_id'),
-        'title': variant_data.get('title'),
-        'sku': variant_data.get('sku'),
-        'barcode': variant_data.get('barcode'),
-        'price': float(variant_data.get('price', 0)),
-        'compare_at_price': float(variant_data.get('compareAtPrice', 0)) if variant_data.get('compareAtPrice') else None,
-        'available_for_sale': variant_data.get('availableForSale', False),
-        'inventory_quantity': variant_data.get('inventoryQuantity', 0),
-        'weight': float(variant_data.get('weight', 0)) if variant_data.get('weight') else None,
-        'weight_unit': variant_data.get('weightUnit'),
-        'inventory_policy': variant_data.get('inventoryPolicy'),
-        'created_at': datetime.now(),
-        'updated_at': datetime.now(),
-        'selected_options': json.dumps(variant_data.get('selectedOptions', [])),
-        'metafields': json.dumps(variant_data.get('metafields', {})),
-        'shopify_created_at': variant_data.get('createdAt'),
-        'shopify_updated_at': variant_data.get('updatedAt')
-    }
-    
+
+    # Process variant data safely
+    def safe_get_amount(data, default=0):
+        """Safely extract amount from price data"""
+        if isinstance(data, dict):
+            amount = data.get("amount")
+            if amount is not None:
+                try:
+                    return float(amount)
+                except (ValueError, TypeError):
+                    return default
+        elif isinstance(data, (int, float, str)):
+            try:
+                return float(data)
+            except (ValueError, TypeError):
+                return default
+        return default
+
+    def safe_get_weight_value(weight_data):
+        """Safely extract weight value"""
+        if isinstance(weight_data, dict):
+            return weight_data.get("value")
+        return weight_data
+
+    def safe_get_weight_unit(weight_data):
+        """Safely extract weight unit"""
+        if isinstance(weight_data, dict):
+            return weight_data.get("unit")
+        return None
+
+    def safe_get_option_value(options, index):
+        """Safely extract option value at index"""
+        if isinstance(options, list) and len(options) > index:
+            option = options[index]
+            if isinstance(option, dict):
+                return option.get("value")
+            return option
+        return None
+
+    price_data = variant_data.get("price", {})
+    compare_at_price_data = variant_data.get("compareAtPrice", {})
+    weight_data = variant_data.get("weight", {})
+    selected_options = variant_data.get("selectedOptions", [])
+    image_data = variant_data.get("image", {})
+
+    params = [
+        variant_data["id"],  # Use full Shopify GID
+        variant_data.get("product_id")
+        or (variant_data.get("product", {}).get("id") if isinstance(variant_data.get("product"), dict) else None),
+        variant_data.get("title"),
+        safe_get_amount(price_data),
+        safe_get_amount(compare_at_price_data, None),
+        variant_data.get("sku"),
+        variant_data.get("barcode"),
+        safe_get_weight_value(weight_data),
+        safe_get_weight_value(weight_data),  # grams field maps to same weight value
+        safe_get_weight_unit(weight_data),
+        variant_data.get("inventoryQuantity"),
+        variant_data.get("inventoryManagement"),
+        variant_data.get("inventoryPolicy"),
+        variant_data.get("fulfillmentService"),
+        variant_data.get("requiresShipping", True),
+        variant_data.get("taxable", True),
+        variant_data.get("taxCode"),
+        variant_data.get("position"),
+        safe_get_option_value(selected_options, 0),
+        safe_get_option_value(selected_options, 1),
+        safe_get_option_value(selected_options, 2),
+        image_data.get("id") if isinstance(image_data, dict) else None,
+        variant_data.get("availableForSale", True),
+        variant_data.get("displayName"),
+        variant_data.get("legacyResourceId"),
+        variant_data.get("createdAt"),
+        variant_data.get("updatedAt"),
+        datetime.now(),
+    ]
+
     execute_insert(query, params)
 
 
 def upsert_product_image(image_data: Dict[str, Any]):
     """Insert or update product image data"""
-    
+    if not image_data or not image_data.get("id"):
+        raise ValueError("Image data must contain valid 'id' field")
+
     query = """
     INSERT INTO product_images (
-        id, product_id, url, alt_text, width, height, created_at, updated_at
+        id, "productId", src, "altText", width, height, position,
+        "legacyResourceId", "shopifyCreatedAt", "shopifyUpdatedAt", "syncedAt"
     ) VALUES (
-        %(id)s, %(product_id)s, %(url)s, %(alt_text)s, %(width)s, %(height)s, %(created_at)s, %(updated_at)s
+        %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s
     )
     ON CONFLICT (id) DO UPDATE SET
-        url = EXCLUDED.url,
-        alt_text = EXCLUDED.alt_text,
+        "productId" = EXCLUDED."productId",
+        src = EXCLUDED.src,
+        "altText" = EXCLUDED."altText",
         width = EXCLUDED.width,
         height = EXCLUDED.height,
-        updated_at = EXCLUDED.updated_at,
-        last_sync_at = CURRENT_TIMESTAMP
+        position = EXCLUDED.position,
+        "legacyResourceId" = EXCLUDED."legacyResourceId",
+        "shopifyUpdatedAt" = EXCLUDED."shopifyUpdatedAt",
+        "syncedAt" = CURRENT_TIMESTAMP
     """
-    
-    params = {
-        'id': int(image_data['id'].split('/')[-1]),
-        'product_id': image_data.get('product_id'),
-        'url': image_data.get('url'),
-        'alt_text': image_data.get('altText'),
-        'width': image_data.get('width'),
-        'height': image_data.get('height'),
-        'created_at': datetime.now(),
-        'updated_at': datetime.now()
-    }
-    
+
+    params = [
+        image_data["id"],  # Use full Shopify GID
+        image_data.get("product_id")
+        or (image_data.get("product", {}).get("id") if isinstance(image_data.get("product"), dict) else None),
+        image_data.get("src") or image_data.get("url"),
+        image_data.get("altText"),
+        image_data.get("width"),
+        image_data.get("height"),
+        image_data.get("position"),
+        image_data.get("legacyResourceId"),
+        image_data.get("createdAt"),
+        image_data.get("updatedAt"),
+        datetime.now(),
+    ]
+
     execute_insert(query, params)
