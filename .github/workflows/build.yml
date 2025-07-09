@@ -121,14 +121,11 @@ jobs:
           # Find all valid application directories (those with Dockerfiles)
           VALID_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/applications\///" | sort)
           
-          # Find all valid utility directories (those with Dockerfiles)
-          VALID_UTILITIES=$(find utilities -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/utilities\///" | sort)
+          # Find all valid utility directories (those with Dockerfiles in tools/)
+          VALID_UTILITIES=$(find tools -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/tools\///" | sort)
           
-          # Find all valid release-tooling directories (those with Dockerfiles)
-          VALID_RELEASE_TOOLS=$(find release-tooling -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/release-tooling\///" | sort)
-          
-          # Combine applications, utilities, and release-tooling
-          ALL_BUILDABLE=$(echo -e "$VALID_APPS\n$VALID_UTILITIES\n$VALID_RELEASE_TOOLS" | sed '/^$/d')
+          # Combine applications and utilities
+          ALL_BUILDABLE=$(echo -e "$VALID_APPS\n$VALID_UTILITIES" | sed '/^$/d')
           
           echo "valid_apps=$(echo "$ALL_BUILDABLE" | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> $GITHUB_OUTPUT
 
@@ -149,8 +146,8 @@ jobs:
             # Find which valid items have changes
             CHANGED_ITEMS=""
             for item in $VALID_ITEMS; do
-              # Check if item is in applications/, utilities/, or tools/deployment/
-              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/" || echo "$CHANGED_FILES" | grep -q "^tools/deployment/$item/"; then
+              # Check if item is in applications/ or tools/
+              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^tools/$item/"; then
                 CHANGED_ITEMS="$CHANGED_ITEMS$item"$'\n'
               fi
             done
