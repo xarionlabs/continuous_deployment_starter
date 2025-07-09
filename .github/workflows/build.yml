@@ -172,10 +172,21 @@ jobs:
             echo "::notice::No applications or utilities to build"
           fi
           
-          [ "${{ needs.skip-check.outputs.force_build }}" = "true" ] && echo "::notice::Force build enabled"
-          [ "${{ needs.skip-check.outputs.skip }}" = "true" ] && echo "::notice::Build skipped"
-          [ "${{ needs.skip-check.outputs.release_only }}" = "true" ] && echo "::notice::Release-only mode"
-          [ -n "${{ needs.skip-check.outputs.deploy_services }}" ] && echo "::notice::Deploy services: ${{ needs.skip-check.outputs.deploy_services }}"
+          if [ "${{ needs.skip-check.outputs.force_build }}" = "true" ]; then
+            echo "::notice::Force build enabled"
+          fi
+          
+          if [ "${{ needs.skip-check.outputs.skip }}" = "true" ]; then
+            echo "::notice::Build skipped"
+          fi
+          
+          if [ "${{ needs.skip-check.outputs.release_only }}" = "true" ]; then
+            echo "::notice::Release-only mode"
+          fi
+          
+          if [ -n "${{ needs.skip-check.outputs.deploy_services }}" ]; then
+            echo "::notice::Deploy services: ${{ needs.skip-check.outputs.deploy_services }}"
+          fi
 
   build-application:
     needs: [skip-check, define-tag, find-changed-applications]
