@@ -19,6 +19,8 @@ from pxy6.utils.database import (
     upsert_order,
     upsert_product_variant,
     upsert_product_image,
+    upsert_sync_log,
+    upsert_sync_state,
 )
 
 logger = structlog.get_logger(__name__)
@@ -246,17 +248,48 @@ def shopify_sync_dag():
 
     @task
     def generate_sync_summary(customer_result: dict, order_result: dict, product_result: dict) -> dict:
-        """Generate summary of sync operation"""
-        summary = {
-            "sync_timestamp": datetime.now().isoformat(),
-            "customers_synced": customer_result.get("customers_synced", 0),
-            "orders_synced": order_result.get("orders_synced", 0),
-            "products_synced": product_result.get("products_synced", 0),
-            "status": "completed",
-        }
+        """Generate summary of sync operation and update sync tracking tables"""
+        try:
+            summary = {
+                "sync_timestamp": datetime.now().isoformat(),
+                "customers_synced": customer_result.get("customers_synced", 0),
+                "orders_synced": order_result.get("orders_synced", 0),
+                "products_synced": product_result.get("products_synced", 0),
+                "status": "completed",
+            }
 
-        logger.info(f"Sync summary: {summary}")
-        return summary
+            # Record sync states for each entity type
+            sync_time = datetime.now()
+            
+            # Update sync states
+            upsert_sync_state("customers", sync_time)
+            upsert_sync_state("orders", sync_time)
+            upsert_sync_state("products", sync_time)
+            
+            # Record overall sync log
+            total_records = summary["customers_synced"] + summary["orders_synced"] + summary["products_synced"]
+            upsert_sync_log(
+                entity_type="all",
+                operation="full_sync",
+                status="completed",
+                records_processed=total_records,
+                records_created=total_records,  # Assuming upserts create new records
+                records_updated=0
+            )
+
+            logger.info(f"Sync summary: {summary}")
+            return summary
+            
+        except Exception as e:
+            logger.error(f"Failed to generate sync summary: {str(e)}")
+            # Record failed sync log
+            upsert_sync_log(
+                entity_type="all",
+                operation="full_sync",
+                status="failed",
+                error_message=str(e)
+            )
+            raise AirflowException(f"Failed to generate sync summary: {str(e)}")
 
     # Define task dependencies
     customers = sync_customers()

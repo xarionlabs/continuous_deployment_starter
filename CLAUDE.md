@@ -91,9 +91,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `./validate_dags.sh` - Comprehensive DAG validation (Docker-based)
 - `./quick_test.sh` - Quick validation for development
 - `pytest tests/` - Run DAG tests (with mocked dependencies)
+- `docker build -t airflow-dags-test . && docker run --rm --entrypoint="" airflow-dags-test pytest tests/ -v` - Run all tests in Docker container
+- `docker run --rm --entrypoint="" airflow-dags-test pytest tests/test_shopify_hook.py -v` - Run ShopifyHook throttling tests
 - `python -c "from dags.shopify_data_pipeline import dag"` - Validate main DAG import
 - `docker exec airflow_dags-airflow-standalone-1 airflow dags list-import-errors` - Check DAG import errors in running Airflow container
 - Note: Contains Shopify data integration DAGs that sync product, customer, and order data to PostgreSQL
+- **Testing**: Use `--entrypoint=""` with Docker to bypass container's default entrypoint and run pytest directly
 
 #### Release Tool (Python CLI)
 - `cd tools/deployment/deployment-manager` - Navigate to release tool directory

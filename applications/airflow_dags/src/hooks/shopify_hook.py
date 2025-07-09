@@ -7,6 +7,7 @@ in Airflow DAGs, with built-in connection management, rate limiting, and error h
 
 import time
 import json
+import random
 from typing import Dict, Any, Optional, List, Union
 from datetime import datetime, timedelta
 
@@ -50,6 +51,9 @@ class ShopifyHook(BaseHook):
         enable_metrics: bool = True,
         enable_caching: bool = False,
         cache_ttl: int = 300,  # 5 minutes
+        throttle_retry_attempts: int = 5,
+        throttle_backoff_factor: float = 2.0,
+        max_throttle_wait: int = 60,
         **kwargs,
     ):
         """
@@ -63,6 +67,9 @@ class ShopifyHook(BaseHook):
             timeout: Request timeout in seconds
             max_retries: Maximum number of retries for failed requests
             rate_limit_calls_per_second: Rate limit for API calls
+            throttle_retry_attempts: Number of retries for throttled requests (429 errors)
+            throttle_backoff_factor: Exponential backoff factor for throttle retries
+            max_throttle_wait: Maximum wait time for throttle retries (seconds)
         """
         super().__init__(**kwargs)
         self.shopify_conn_id = shopify_conn_id
@@ -73,6 +80,9 @@ class ShopifyHook(BaseHook):
         self.enable_metrics = enable_metrics
         self.enable_caching = enable_caching
         self.cache_ttl = cache_ttl
+        self.throttle_retry_attempts = throttle_retry_attempts
+        self.throttle_backoff_factor = throttle_backoff_factor
+        self.max_throttle_wait = max_throttle_wait
 
         # Initialize connection properties
         self._shop_name: Optional[str] = shop_domain
@@ -90,6 +100,8 @@ class ShopifyHook(BaseHook):
             "failed_requests": 0,
             "avg_response_time": 0.0,
             "rate_limit_hits": 0,
+            "throttle_retries": 0,
+            "throttle_retry_successes": 0,
             "cache_hits": 0,
             "cache_misses": 0,
         }
@@ -100,7 +112,8 @@ class ShopifyHook(BaseHook):
         logger.info(
             f"Initialized ShopifyHook with connection: {shopify_conn_id}, "
             f"shop_domain: {shop_domain}, API version: {api_version}, "
-            f"metrics: {enable_metrics}, caching: {enable_caching}"
+            f"metrics: {enable_metrics}, caching: {enable_caching}, "
+            f"throttle_retries: {throttle_retry_attempts}, max_throttle_wait: {max_throttle_wait}s"
         )
 
     def get_connection(self, conn_id: str) -> Connection:
@@ -206,6 +219,33 @@ class ShopifyHook(BaseHook):
 
         self._last_call_time = time.time()
 
+    def _calculate_throttle_backoff(self, attempt: int, retry_after: Optional[int] = None) -> float:
+        """
+        Calculate backoff time for throttle retries with exponential backoff and jitter
+        
+        Args:
+            attempt: Current retry attempt (1-based)
+            retry_after: Retry-After header value from response (seconds)
+            
+        Returns:
+            Backoff time in seconds
+        """
+        if retry_after:
+            # Use Shopify's suggested retry time if provided, add small jitter
+            jitter = random.uniform(0.1, 0.5)
+            return min(retry_after + jitter, self.max_throttle_wait)
+        
+        # Exponential backoff: base_delay * (backoff_factor ^ (attempt - 1))
+        base_delay = 1.0  # Start with 1 second as recommended by Shopify
+        backoff_time = base_delay * (self.throttle_backoff_factor ** (attempt - 1))
+        
+        # Add jitter to prevent thundering herd
+        jitter = random.uniform(0.1, 0.3) * backoff_time
+        total_wait = backoff_time + jitter
+        
+        # Cap at max_throttle_wait
+        return min(total_wait, self.max_throttle_wait)
+
     def test_connection(self) -> bool:
         """
         Test connection to Shopify API
@@ -296,62 +336,107 @@ class ShopifyHook(BaseHook):
         if operation_name:
             payload["operationName"] = operation_name
 
-        try:
-            logger.debug(f"Executing GraphQL query: {query[:100]}...")
+        # Retry loop for throttling resilience
+        for throttle_attempt in range(self.throttle_retry_attempts + 1):
+            try:
+                logger.debug(f"Executing GraphQL query (attempt {throttle_attempt + 1}): {query[:100]}...")
 
-            start_time = time.time()
-            response = session.post(self._graphql_endpoint, json=payload, timeout=self.timeout)
-            execution_time = time.time() - start_time
+                start_time = time.time()
+                response = session.post(self._graphql_endpoint, json=payload, timeout=self.timeout)
+                execution_time = time.time() - start_time
 
-            response.raise_for_status()
+                # Handle rate limiting (429) with retries
+                if response.status_code == 429:
+                    if throttle_attempt < self.throttle_retry_attempts:
+                        if self.enable_metrics:
+                            self._metrics["rate_limit_hits"] += 1
+                            self._metrics["throttle_retries"] += 1
+                        
+                        retry_after = response.headers.get("Retry-After")
+                        retry_after_int = int(retry_after) if retry_after else None
+                        
+                        backoff_time = self._calculate_throttle_backoff(throttle_attempt + 1, retry_after_int)
+                        
+                        logger.warning(
+                            f"Rate limited (429) on attempt {throttle_attempt + 1}/{self.throttle_retry_attempts + 1}, "
+                            f"waiting {backoff_time:.2f} seconds before retry"
+                        )
+                        time.sleep(backoff_time)
+                        continue
+                    else:
+                        # Exceeded retry attempts
+                        if self.enable_metrics:
+                            self._metrics["rate_limit_hits"] += 1
+                        logger.error(f"Rate limited after {self.throttle_retry_attempts} retry attempts, giving up")
+                        raise AirflowException(
+                            f"Rate limited (429) - exceeded {self.throttle_retry_attempts} retry attempts"
+                        )
 
-            result = response.json()
+                # Raise for other HTTP errors (4xx, 5xx)
+                response.raise_for_status()
 
-            # Check for GraphQL errors
-            if "errors" in result:
-                error_messages = [error.get("message", "Unknown error") for error in result["errors"]]
-                raise AirflowException(f"GraphQL errors: {', '.join(error_messages)}")
+                result = response.json()
 
-            # Check for rate limiting
-            if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 10))
-                logger.warning(f"Rate limited, waiting {retry_after} seconds")
-                time.sleep(retry_after)
-                return self.execute_graphql(query, variables, operation_name)
+                # Check for GraphQL errors
+                if "errors" in result:
+                    error_messages = [error.get("message", "Unknown error") for error in result["errors"]]
+                    raise AirflowException(f"GraphQL errors: {', '.join(error_messages)}")
 
-            logger.debug(f"GraphQL query executed successfully")
+                # Success - track metrics if this was a retry
+                if throttle_attempt > 0 and self.enable_metrics:
+                    self._metrics["throttle_retry_successes"] += 1
+                    logger.info(f"Successfully recovered from throttling after {throttle_attempt} retries")
 
-            # Cache the result if caching is enabled
-            if cache_key and self.enable_caching:
-                self._store_in_cache(cache_key, result)
+                logger.debug(f"GraphQL query executed successfully")
 
-            # Update metrics
-            if self.enable_metrics:
-                self._metrics["successful_requests"] += 1
-                self._update_avg_response_time(execution_time)
+                # Cache the result if caching is enabled
+                if cache_key and self.enable_caching:
+                    self._store_in_cache(cache_key, result)
 
-            return result
+                # Update metrics
+                if self.enable_metrics:
+                    self._metrics["successful_requests"] += 1
+                    self._update_avg_response_time(execution_time)
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"HTTP request failed: {str(e)}")
-            logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
-            logger.error(f"Variables: {variables}")
-            raise AirflowException(f"HTTP request failed: {str(e)}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON response: {str(e)}")
-            logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
-            logger.error(f"Variables: {variables}")
-            raise AirflowException(f"Failed to parse JSON response: {str(e)}")
-        except Exception as e:
-            logger.error(f"Unexpected error during GraphQL execution: {str(e)}")
-            logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
-            logger.error(f"Variables: {variables}")
+                return result
 
-            # Update metrics
-            if self.enable_metrics:
-                self._metrics["failed_requests"] += 1
+            except requests.exceptions.HTTPError as e:
+                # Only retry on 429, re-raise other HTTP errors immediately
+                if hasattr(e.response, 'status_code') and e.response.status_code == 429:
+                    # This should have been handled above, but just in case
+                    continue
+                else:
+                    # Non-429 HTTP errors should not be retried
+                    logger.error(f"HTTP error {e.response.status_code if hasattr(e.response, 'status_code') else 'unknown'}: {str(e)}")
+                    logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
+                    logger.error(f"Variables: {variables}")
+                    if self.enable_metrics:
+                        self._metrics["failed_requests"] += 1
+                    raise AirflowException(f"HTTP error: {str(e)}")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"HTTP request failed: {str(e)}")
+                logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
+                logger.error(f"Variables: {variables}")
+                if self.enable_metrics:
+                    self._metrics["failed_requests"] += 1
+                raise AirflowException(f"HTTP request failed: {str(e)}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {str(e)}")
+                logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
+                logger.error(f"Variables: {variables}")
+                if self.enable_metrics:
+                    self._metrics["failed_requests"] += 1
+                raise AirflowException(f"Failed to parse JSON response: {str(e)}")
+            except Exception as e:
+                logger.error(f"Unexpected error during GraphQL execution: {str(e)}")
+                logger.error(f"Failed query: {query[:500]}{'...' if len(query) > 500 else ''}")
+                logger.error(f"Variables: {variables}")
+                if self.enable_metrics:
+                    self._metrics["failed_requests"] += 1
+                raise AirflowException(f"Unexpected error during GraphQL execution: {str(e)}")
 
-            raise AirflowException(f"Unexpected error during GraphQL execution: {str(e)}")
+        # If we exit the retry loop without returning, we've exhausted all attempts
+        raise AirflowException("Unexpected: exhausted retry attempts without proper error handling")
 
     def get_paginated_data(
         self,
@@ -715,6 +800,8 @@ class ShopifyHook(BaseHook):
                 "failed_requests": 0,
                 "avg_response_time": 0.0,
                 "rate_limit_hits": 0,
+                "throttle_retries": 0,
+                "throttle_retry_successes": 0,
                 "cache_hits": 0,
                 "cache_misses": 0,
             }

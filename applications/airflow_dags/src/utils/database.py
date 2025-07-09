@@ -14,6 +14,10 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Reduce PostgresHook logging verbosity
+postgres_logger = logging.getLogger('airflow.providers.postgres.hooks.postgres')
+postgres_logger.setLevel(logging.WARNING)
+
 
 # Database connection utilities
 def get_postgres_hook() -> PostgresHook:
@@ -525,4 +529,65 @@ def upsert_product_image(image_data: Dict[str, Any]):
         datetime.now(),
     ]
 
+    execute_insert(query, params)
+
+
+def upsert_sync_log(entity_type: str, operation: str, status: str, 
+                   records_processed: int = 0, records_created: int = 0, 
+                   records_updated: int = 0, error_message: str = None):
+    """Insert a sync log entry"""
+    query = """
+    INSERT INTO sync_logs (
+        id, "entityType", operation, status, "startedAt", "completedAt", 
+        "recordsProcessed", "recordsCreated", "recordsUpdated", "errorMessage"
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
+    
+    now = datetime.now()
+    completed_at = now if status in ['completed', 'failed'] else None
+    
+    # Generate a unique ID based on entity type, operation, and timestamp
+    log_id = f"sync_log_{entity_type}_{operation}_{int(now.timestamp())}"
+    
+    params = [
+        log_id,
+        entity_type,
+        operation,
+        status,
+        now,
+        completed_at,
+        records_processed,
+        records_created,
+        records_updated,
+        error_message
+    ]
+    
+    execute_insert(query, params)
+
+
+def upsert_sync_state(entity_type: str, last_sync_at: datetime = None):
+    """Insert or update sync state for an entity type"""
+    query = """
+    INSERT INTO sync_states (
+        id, "entityType", "lastSyncAt", "isActive", "updatedAt"
+    ) VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT ("entityType") DO UPDATE SET
+        "lastSyncAt" = EXCLUDED."lastSyncAt",
+        "isActive" = EXCLUDED."isActive",
+        "updatedAt" = EXCLUDED."updatedAt"
+    """
+    
+    sync_time = last_sync_at or datetime.now()
+    
+    # Generate a unique ID based on entity type and timestamp
+    sync_id = f"sync_state_{entity_type}_{int(sync_time.timestamp())}"
+    
+    params = [
+        sync_id,
+        entity_type,
+        sync_time,
+        True,
+        datetime.now()
+    ]
+    
     execute_insert(query, params)
