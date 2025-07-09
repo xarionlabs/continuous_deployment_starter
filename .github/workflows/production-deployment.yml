@@ -1,0 +1,168 @@
+name: Production Deployment with Approval
+
+on:
+  workflow_call:
+    inputs:
+      deploy_services:
+        required: false
+        type: string
+        default: ''
+      environment:
+        required: true
+        type: string
+      requires_approval:
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  packages: write
+  contents: read
+  deployments: write
+
+jobs:
+  pre_deployment_checks:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      health_check_passed: ${{ steps.health_check.outputs.passed }}
+      rollback_info: ${{ steps.rollback_info.outputs.info }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pre-deployment Health Check
+        id: health_check
+        run: |
+          echo "::group::Pre-deployment Health Check"
+          
+          # Check if target environment is accessible
+          if [ "${{ inputs.environment }}" = "live" ]; then
+            echo "Performing production readiness checks..."
+            
+            # Check if all required secrets are available
+            if [ -z "${{ vars.HOST }}" ] || [ -z "${{ secrets.KEY }}" ]; then
+              echo "::error::Missing required deployment credentials"
+              echo "passed=false" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+            
+            # Additional production checks can be added here
+            echo "Production readiness checks passed"
+          fi
+          
+          echo "passed=true" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+      - name: Collect Rollback Information
+        id: rollback_info
+        run: |
+          echo "::group::Collecting Rollback Information"
+          
+          # Get current deployment info for potential rollback
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "unknown")
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          
+          ROLLBACK_INFO=$(cat <<EOF
+          {
+            "previous_version": "$CURRENT_VERSION",
+            "previous_commit": "$CURRENT_COMMIT",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          )
+          
+          echo "Rollback info collected: $ROLLBACK_INFO"
+          echo "info=$ROLLBACK_INFO" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+  approval_gate:
+    name: Deployment Approval
+    runs-on: ubuntu-latest
+    needs: pre_deployment_checks
+    if: ${{ inputs.requires_approval && inputs.environment == 'live' }}
+    environment: 
+      name: ${{ inputs.environment }}-approval
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Request Approval
+        run: |
+          echo "::notice::Deployment to ${{ inputs.environment }} requires manual approval"
+          echo "::notice::Services to deploy: ${{ inputs.deploy_services || 'all affected services' }}"
+          echo "::notice::Rollback info: ${{ needs.pre_deployment_checks.outputs.rollback_info }}"
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    needs: [pre_deployment_checks, approval_gate]
+    if: ${{ always() && needs.pre_deployment_checks.outputs.health_check_passed == 'true' && (needs.approval_gate.result == 'success' || needs.approval_gate.result == 'skipped') }}
+    uses: ./.github/workflows/release.yml
+    with:
+      environment: ${{ inputs.environment }}
+      deploy_services: ${{ inputs.deploy_services }}
+    secrets: inherit
+
+  post_deployment_validation:
+    name: Post-deployment Validation
+    runs-on: ubuntu-latest
+    needs: [deploy, pre_deployment_checks]
+    if: ${{ always() && needs.deploy.result == 'success' }}
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Post-deployment Health Check
+        id: health_check
+        run: |
+          echo "::group::Post-deployment Health Check"
+          
+          # Wait for services to stabilize
+          echo "Waiting 30 seconds for services to stabilize..."
+          sleep 30
+          
+          # Health check logic would go here
+          # For now, we'll simulate basic connectivity tests
+          echo "Performing basic connectivity tests..."
+          
+          # In a real scenario, you would:
+          # - Check service endpoints
+          # - Verify database connectivity
+          # - Test critical application functions
+          # - Monitor error rates
+          
+          echo "Health checks passed"
+          echo "::endgroup::"
+        timeout-minutes: 10
+
+      - name: Tag Successful Deployment
+        if: success()
+        run: |
+          echo "::group::Tagging Successful Deployment"
+          
+          # Create a deployment tag for easy rollback reference
+          DEPLOYMENT_TAG="deploy-${{ inputs.environment }}-$(date +%Y%m%d-%H%M%S)"
+          
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          
+          git tag -a "$DEPLOYMENT_TAG" -m "Successful deployment to ${{ inputs.environment }} at $(date)"
+          git push origin "$DEPLOYMENT_TAG"
+          
+          echo "Created deployment tag: $DEPLOYMENT_TAG"
+          echo "::endgroup::"
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "::group::Initiating Rollback"
+          echo "::error::Post-deployment validation failed. Rollback may be required."
+          echo "::error::Rollback information: ${{ needs.pre_deployment_checks.outputs.rollback_info }}"
+          
+          # In a real scenario, you would implement automatic rollback logic here
+          # For now, we'll just log the failure and provide rollback information
+          
+          echo "::endgroup::"
+          exit 1

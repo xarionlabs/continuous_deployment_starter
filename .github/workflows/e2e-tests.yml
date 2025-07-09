@@ -7,6 +7,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
@@ -61,35 +65,64 @@ jobs:
           TAG: ${{ steps.load_version.outputs.version }}
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
+          set -e
+          
+          # Function for structured logging
+          log_with_timestamp() {
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+          }
+          
+          log_with_timestamp "Starting E2E tests for $ENVIRONMENT environment"
+          
           # Create a temporary .env file with all environment variables
           echo "APP_ENV=$ENVIRONMENT" > .env
           echo "APP_VERSION=$TAG" >> .env
           python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)[1:-1]}') for k, v in data.items()]" >> .env
           
-          echo "Environment variables loaded into .env file"
-          cat .env
+          log_with_timestamp "Environment variables loaded into .env file"
+          # Don't log the actual .env contents for security
+          echo "Environment file created with $(wc -l < .env) variables"
           
-          for app in $(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'); do
-            echo "Running e2e tests for $app in $ENVIRONMENT environment..."
+          # Get applications array
+          APPS=$(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]')
+          
+          if [ -z "$APPS" ]; then
+            log_with_timestamp "No applications found with e2e tests"
+            exit 0
+          fi
+          
+          # Run tests for each application
+          failed_apps=()
+          for app in $APPS; do
+            echo "::group::Running e2e tests for $app"
+            log_with_timestamp "Running e2e tests for $app in $ENVIRONMENT environment"
             
-            # Debug information
-            echo "Debug - Image reference components:"
-            echo "REGISTRY: $REGISTRY"
-            echo "GITHUB_REPOSITORY: ${{ github.repository }}"
-            echo "APP: $app"
-            echo "TAG: $TAG"
-            echo "Full image reference: $REGISTRY/${{ github.repository }}/$app:$TAG"
+            # Debug information (without sensitive data)
+            log_with_timestamp "Image: $REGISTRY/${{ github.repository }}/$app:$TAG"
             
-            # Run the e2e tests using the application's own entrypoint
-            docker run --rm \
+            # Run the e2e tests using the application's own entrypoint with timeout
+            if timeout 600 docker run --rm \
               --network host \
               --env-file .env \
               --entrypoint /app/entrypoints/entrypoint_e2e.sh \
-              "$REGISTRY/${{ github.repository }}/$app:$TAG" 
-            
-            # Exit if tests fail
-            if [ $? -ne 0 ]; then
-              echo "E2E tests failed for $app in $ENVIRONMENT environment"
-              exit 1
+              "$REGISTRY/${{ github.repository }}/$app:$TAG"; then
+              log_with_timestamp "E2E tests passed for $app"
+            else
+              log_with_timestamp "E2E tests failed for $app in $ENVIRONMENT environment"
+              failed_apps+=("$app")
             fi
-          done 
+            
+            echo "::endgroup::"
+          done
+          
+          # Clean up environment file
+          rm -f .env
+          
+          # Report results
+          if [ ${#failed_apps[@]} -gt 0 ]; then
+            log_with_timestamp "E2E tests failed for the following applications: ${failed_apps[*]}"
+            exit 1
+          else
+            log_with_timestamp "All E2E tests passed successfully"
+          fi
+        timeout-minutes: 20 
