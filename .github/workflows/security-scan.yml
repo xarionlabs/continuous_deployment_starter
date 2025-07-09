@@ -61,7 +61,7 @@ jobs:
               IMAGES=($(find utilities -name "Dockerfile" -type f | xargs dirname | sed 's|utilities/||' | sort -u))
               ;;
             release-tooling)
-              IMAGES=($(find release-tooling -name "Dockerfile" -type f | xargs dirname | sed 's|tools/deployment/||' | sort -u))
+              IMAGES=($(find tools -path "*/testing/*" -prune -o -name "Dockerfile" -type f -print | xargs dirname | sed 's|tools/||' | sort -u))
               ;;
           esac
           
@@ -86,6 +86,9 @@ jobs:
             elif [ -d "tools/deployment/$image" ]; then
               CONTEXT="tools/deployment/$image"
               IMAGE_NAME="$REGISTRY/${{ github.repository }}/deployment-manager"
+            elif [ -d "tools/$image" ]; then
+              CONTEXT="tools/$image"
+              IMAGE_NAME="$REGISTRY/${{ github.repository }}/tools-$image"
             else
               echo "::warning::Cannot find context for $image"
               continue

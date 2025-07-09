@@ -121,8 +121,8 @@ jobs:
           # Find all valid application directories (those with Dockerfiles)
           VALID_APPS=$(find applications -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/applications\///" | sort)
           
-          # Find all valid utility directories (those with Dockerfiles in tools/)
-          VALID_UTILITIES=$(find tools -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/tools\///" | sort)
+          # Find all valid utility directories (those with Dockerfiles in tools/, excluding testing)
+          VALID_UTILITIES=$(find tools -type d -path "*/testing/*" -prune -o -type d -exec test -e '{}'/Dockerfile \; -print 2>/dev/null | sed "s/tools\///" | sort)
           
           # Combine applications and utilities
           ALL_BUILDABLE=$(echo -e "$VALID_APPS\n$VALID_UTILITIES" | sed '/^$/d')
@@ -223,8 +223,10 @@ jobs:
             echo "path=utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "tools/deployment/${{ matrix.ITEM }}" ]; then
             echo "path=tools/deployment/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          elif [ -d "tools/${{ matrix.ITEM }}" ]; then
+            echo "path=tools/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           else
-            echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, or release-tooling"
+            echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, tools, or tools/deployment"
             exit 1
           fi
 
@@ -235,6 +237,8 @@ jobs:
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "tools/deployment/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/deployment-manager" >> $GITHUB_OUTPUT
+          elif [ -d "tools/${{ matrix.ITEM }}" ]; then
+            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/tools-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           else
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           fi
