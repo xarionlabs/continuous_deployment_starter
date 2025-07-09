@@ -5,7 +5,7 @@
 -P ubuntu-latest=catthehacker/ubuntu:act-22.04
 
 # Set default working directory
---workdir /tmp/act
+# --workdir /tmp/act
 
 # Enable verbose output for debugging
 --verbose
@@ -47,22 +47,22 @@
 --reuse
 
 # Set default secrets file location
---secret-file test-local/secrets.env
+--secret-file tools/testing/test-local/secrets.env
 
 # Set default variables file location
---var-file test-local/variables.env
+--var-file tools/testing/test-local/variables.env
 
 # Bind mount local Docker socket for Docker-in-Docker operations
---bind /var/run/docker.sock:/var/run/docker.sock
+# --bind /var/run/docker.sock:/var/run/docker.sock
 
 # Set platform for consistency
 --platform linux/amd64
 
 # Use JSON log format for better parsing
---log-format json
+# --log-format json
 
 # Set job timeout (30 minutes)
---job-timeout 30m
+# --job-timeout 30m
 
 # Container options for better resource management
 --container-options "--memory=4g --cpus=2"
@@ -71,4 +71,4 @@
 --artifact-server-path /tmp/artifacts
 
 # Default event payloads directory
---eventpath test-local/events
+--eventpath tools/testing/events/push.json
