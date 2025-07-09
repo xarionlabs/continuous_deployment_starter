@@ -16,18 +16,18 @@ from pydantic_settings import BaseSettings
 
 class AirflowConfig(BaseSettings):
     """Configuration class for Airflow DAGs."""
-    
+
     # Shopify Configuration
     shopify_shop_name: str = Field(..., env='SHOPIFY_SHOP_NAME')
     shopify_access_token: str = Field(..., env='SHOPIFY_ACCESS_TOKEN')
-    
+
     # Database Configuration
     postgres_user: str = Field('postgres', env='POSTGRES_USER')
     postgres_password: str = Field(..., env='POSTGRES_PASSWORD')
     postgres_db: str = Field('airflow_db', env='POSTGRES_DB')
     postgres_host: str = Field('localhost', env='POSTGRES_HOST')
     postgres_port: int = Field(5432, env='POSTGRES_PORT')
-    
+
     # PXY6 Application Database Configuration
     pxy6_postgres_user: str = Field('postgres', env='PXY6_POSTGRES_USER')
     pxy6_postgres_password: str = Field(..., env='PXY6_POSTGRES_PASSWORD')
@@ -66,18 +66,6 @@ def get_shopify_config() -> Dict[str, str]:
     return {
         'shop_name': config.shopify_shop_name,
         'access_token': config.shopify_access_token,
-    }
-
-
-def get_database_config() -> Dict[str, Any]:
-    """Get database configuration for Airflow metadata."""
-    config = get_config()
-    return {
-        'user': config.postgres_user,
-        'password': config.postgres_password,
-        'host': config.postgres_host,
-        'port': config.postgres_port,
-        'database': config.postgres_db,
     }
 
 

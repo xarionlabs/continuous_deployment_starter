@@ -6,9 +6,16 @@ This module contains tests for the utility functions used by the DAGs.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from pxy6.utils.config import get_config, get_shopify_config, get_database_config
+from pxy6.utils.config import get_config, get_shopify_config
 from pxy6.utils.shopify_client import ShopifyGraphQLClient
-from pxy6.utils.database import DatabaseManager, DatabaseConfig, get_pxy6_database_connection
+from pxy6.utils.database import (
+    get_postgres_hook, 
+    execute_query, 
+    execute_insert,
+    upsert_customer,
+    upsert_product,
+    upsert_order
+)
 
 
 class TestConfig:
@@ -40,23 +47,6 @@ class TestConfig:
         
         assert config['shop_name'] == 'test-shop'
         assert config['access_token'] == 'test-token'
-    
-    @patch.dict('os.environ', {
-        'POSTGRES_USER': 'test-user',
-        'POSTGRES_PASSWORD': 'test-password',
-        'POSTGRES_HOST': 'test-host',
-        'POSTGRES_PORT': '5432',
-        'POSTGRES_DB': 'test-db',
-    })
-    def test_get_database_config(self):
-        """Test database configuration."""
-        config = get_database_config()
-        
-        assert config['user'] == 'test-user'
-        assert config['password'] == 'test-password'
-        assert config['host'] == 'test-host'
-        assert config['port'] == 5432
-        assert config['database'] == 'test-db'
 
 
 class TestShopifyClient:
@@ -156,78 +146,192 @@ class TestShopifyClient:
 class TestDatabase:
     """Test database utilities."""
     
-    def test_database_manager_initialization(self):
-        """Test DatabaseManager initialization."""
-        config = DatabaseConfig(
-            host='test-host',
-            port=5432,
-            database='test-db',
-            user='test-user',
-            password='test-password'
-        )
+    @patch('pxy6.utils.database.PostgresHook')
+    def test_get_postgres_hook(self, mock_postgres_hook):
+        """Test PostgresHook creation."""
+        hook = get_postgres_hook()
         
-        db_manager = DatabaseManager(config)
-        assert db_manager.config.host == 'test-host'
-        assert db_manager.config.database == 'test-db'
+        mock_postgres_hook.assert_called_once_with(postgres_conn_id='pxy6_postgres')
     
-    @patch('src.utils.database.text')
-    @patch('src.utils.database.create_engine')
-    def test_database_connection_success(self, mock_create_engine, mock_text):
-        """Test successful database connection."""
-        mock_engine = Mock()
-        mock_connection = Mock()
-        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.connect.return_value.__exit__ = Mock()
-        mock_create_engine.return_value = mock_engine
-        mock_text.return_value = "SELECT 1"
+    @patch('pxy6.utils.database.get_postgres_hook')
+    def test_execute_query(self, mock_get_hook):
+        """Test query execution."""
+        mock_hook = Mock()
+        mock_hook.get_records.return_value = [{'id': 1, 'name': 'test'}]
+        mock_get_hook.return_value = mock_hook
         
-        config = DatabaseConfig(
-            host='test-host',
-            database='test-db',
-            user='test-user',
-            password='test-password'
-        )
-        db_manager = DatabaseManager(config)
-        # Don't actually call connect(), just verify the mock setup
-        db_manager.engine = mock_engine
-        db_manager.SessionLocal = Mock()
+        result = execute_query("SELECT * FROM customers", {'param': 'value'})
         
-        assert db_manager.engine == mock_engine
+        assert result == [{'id': 1, 'name': 'test'}]
+        mock_hook.get_records.assert_called_once_with("SELECT * FROM customers", {'param': 'value'})
     
-    def test_database_test_connection_success(self):
-        """Test successful database connection test."""
-        from src.utils.database import DatabaseConfig
-        config = DatabaseConfig(
-            host='test-host',
-            database='test-db',
-            user='test-user',
-            password='test-password'
-        )
-        db_manager = DatabaseManager(config)
+    @patch('pxy6.utils.database.get_postgres_hook')
+    def test_execute_insert(self, mock_get_hook):
+        """Test insert execution."""
+        mock_hook = Mock()
+        mock_get_hook.return_value = mock_hook
         
-        with patch.object(db_manager, 'execute_query') as mock_execute:
-            mock_execute.return_value = [{'test': 1}]
-            
-            # Test basic functionality instead of non-existent test_connection method
-            result = db_manager.execute_query("SELECT 1", fetch=True)
-            assert result == [{'test': 1}]
+        execute_insert("INSERT INTO customers VALUES (%s, %s)", {'id': 1, 'name': 'test'})
+        
+        mock_hook.run.assert_called_once_with("INSERT INTO customers VALUES (%s, %s)", {'id': 1, 'name': 'test'})
     
-    def test_database_test_connection_failure(self):
-        """Test failed database connection test."""
-        from src.utils.database import DatabaseConfig
-        config = DatabaseConfig(
-            host='test-host',
-            database='test-db',
-            user='test-user',
-            password='test-password'
-        )
-        db_manager = DatabaseManager(config)
+    @patch('pxy6.utils.database.execute_insert')
+    def test_upsert_customer(self, mock_execute_insert):
+        """Test customer upsert."""
+        customer_data = {
+            'id': 'gid://shopify/Customer/123',
+            'email': 'test@example.com',
+            'firstName': 'John',
+            'lastName': 'Doe',
+            'phone': '+1234567890',
+            'acceptsMarketing': True,
+            'state': 'enabled',
+            'tags': ['vip', 'premium'],
+            'totalSpentV2': {
+                'amount': '150.00',
+                'currencyCode': 'USD'
+            },
+            'numberOfOrders': 5,
+            'verifiedEmail': True,
+            'taxExempt': False,
+            'addresses': [{'address1': '123 Main St'}],
+            'metafields': {'key': 'value'},
+            'createdAt': '2023-01-01T00:00:00Z',
+            'updatedAt': '2023-01-02T00:00:00Z'
+        }
         
-        with patch.object(db_manager, 'execute_query') as mock_execute:
-            mock_execute.side_effect = Exception('Connection failed')
-            
-            with pytest.raises(Exception):
-                db_manager.execute_query("SELECT 1", fetch=True)
+        upsert_customer(customer_data)
+        
+        # Verify execute_insert was called with correct parameters
+        mock_execute_insert.assert_called_once()
+        args, kwargs = mock_execute_insert.call_args
+        
+        # Check the query contains the expected structure
+        assert 'INSERT INTO customers' in args[0]
+        assert 'ON CONFLICT (id) DO UPDATE SET' in args[0]
+        
+        # Check some key parameters
+        params = args[1]
+        assert params['id'] == 123
+        assert params['email'] == 'test@example.com'
+        assert params['first_name'] == 'John'
+        assert params['last_name'] == 'Doe'
+        assert params['total_spent_amount'] == 150.0
+        assert params['total_spent_currency'] == 'USD'
+    
+    @patch('pxy6.utils.database.execute_insert')
+    def test_upsert_product(self, mock_execute_insert):
+        """Test product upsert."""
+        product_data = {
+            'id': 'gid://shopify/Product/456',
+            'title': 'Test Product',
+            'handle': 'test-product',
+            'description': 'A test product',
+            'descriptionHtml': '<p>A test product</p>',
+            'productType': 'Widget',
+            'vendor': 'Test Vendor',
+            'tags': ['new', 'featured'],
+            'status': 'ACTIVE',
+            'totalInventory': 10,
+            'onlineStoreUrl': 'https://shop.com/products/test',
+            'seo': {
+                'title': 'SEO Title',
+                'description': 'SEO Description'
+            },
+            'options': [{'name': 'Size', 'values': ['S', 'M', 'L']}],
+            'variants': {'edges': []},
+            'images': {'edges': []},
+            'metafields': {'key': 'value'},
+            'collections': {'edges': []},
+            'createdAt': '2023-01-01T00:00:00Z',
+            'updatedAt': '2023-01-02T00:00:00Z',
+            'publishedAt': '2023-01-01T00:00:00Z'
+        }
+        
+        upsert_product(product_data)
+        
+        # Verify execute_insert was called
+        mock_execute_insert.assert_called_once()
+        args, kwargs = mock_execute_insert.call_args
+        
+        # Check the query contains the expected structure
+        assert 'INSERT INTO products' in args[0]
+        assert 'ON CONFLICT (id) DO UPDATE SET' in args[0]
+        
+        # Check some key parameters
+        params = args[1]
+        assert params['id'] == 456
+        assert params['title'] == 'Test Product'
+        assert params['handle'] == 'test-product'
+        assert params['status'] == 'ACTIVE'
+    
+    @patch('pxy6.utils.database.execute_insert')
+    def test_upsert_order(self, mock_execute_insert):
+        """Test order upsert."""
+        order_data = {
+            'id': 'gid://shopify/Order/789',
+            'name': '#1001',
+            'email': 'customer@example.com',
+            'customer': {'id': 'gid://shopify/Customer/123'},
+            'totalPriceSet': {
+                'shopMoney': {
+                    'amount': '100.00',
+                    'currencyCode': 'USD'
+                }
+            },
+            'subtotalPriceSet': {
+                'shopMoney': {
+                    'amount': '90.00',
+                    'currencyCode': 'USD'
+                }
+            },
+            'totalTaxSet': {
+                'shopMoney': {
+                    'amount': '10.00',
+                    'currencyCode': 'USD'
+                }
+            },
+            'totalShippingPriceSet': {
+                'shopMoney': {
+                    'amount': '0.00',
+                    'currencyCode': 'USD'
+                }
+            },
+            'financialStatus': 'paid',
+            'fulfillmentStatus': 'fulfilled',
+            'cancelled': False,
+            'cancelReason': None,
+            'tags': [],
+            'note': 'Test order',
+            'lineItems': {'edges': []},
+            'shippingAddress': {'address1': '123 Main St'},
+            'billingAddress': {'address1': '123 Main St'},
+            'customerJourney': {'firstVisit': '2023-01-01'},
+            'createdAt': '2023-01-01T00:00:00Z',
+            'updatedAt': '2023-01-02T00:00:00Z',
+            'processedAt': '2023-01-01T00:00:00Z',
+            'closedAt': None,
+            'cancelledAt': None
+        }
+        
+        upsert_order(order_data)
+        
+        # Verify execute_insert was called
+        mock_execute_insert.assert_called_once()
+        args, kwargs = mock_execute_insert.call_args
+        
+        # Check the query contains the expected structure
+        assert 'INSERT INTO orders' in args[0]
+        assert 'ON CONFLICT (id) DO UPDATE SET' in args[0]
+        
+        # Check some key parameters
+        params = args[1]
+        assert params['id'] == 789
+        assert params['name'] == '#1001'
+        assert params['email'] == 'customer@example.com'
+        assert params['customer_id'] == 123
+        assert params['total_price_amount'] == 100.0
+        assert params['financial_status'] == 'paid'
 
 
 if __name__ == '__main__':

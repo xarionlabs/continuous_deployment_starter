@@ -28,7 +28,7 @@ import json
 
 # Import the modules we're testing
 from pxy6.utils.shopify_graphql import ShopifyGraphQLClient, ShopifyRateLimit, GraphQLError
-from pxy6.utils.database import DatabaseManager, get_pxy6_database_manager, get_pxy6_database_connection
+from pxy6.utils.database import get_postgres_hook, execute_query, execute_insert, upsert_customer, upsert_product
 from pxy6.utils.config import get_shopify_config
 
 
@@ -520,139 +520,38 @@ class TestShopifyGraphQLClient:
 class TestDatabaseIntegration:
     """Test suite for database integration functionality."""
     
-    def setup_method(self):
-        """Setup test environment."""
-        self.mock_config = {
-            "host": "test-db",
-            "port": 5432,
-            "database": "test_pxy6",
-            "user": "test_pxy6_airflow",
-            "password": "test_password"
-        }
+    @patch('pxy6.utils.database.PostgresHook')
+    def test_postgres_hook_creation(self, mock_postgres_hook):
+        """Test PostgresHook creation."""
+        hook = get_postgres_hook()
+        
+        mock_postgres_hook.assert_called_once_with(postgres_conn_id='pxy6_postgres')
     
-    @patch.dict(os.environ, {
-        'SHOPIFY_SHOP_NAME': 'test-shop',
-        'SHOPIFY_ACCESS_TOKEN': 'test-token',
-        'POSTGRES_PASSWORD': 'test-postgres-password',
-        'PXY6_POSTGRES_HOST': 'test-db',
-        'PXY6_POSTGRES_PORT': '5432',
-        'PXY6_POSTGRES_DB': 'test_pxy6',
-        'PXY6_POSTGRES_USER': 'test_pxy6_airflow',
-        'PXY6_POSTGRES_PASSWORD': 'test_password'
-    })
-    def test_database_config_from_environment(self):
-        """Test database configuration from environment variables."""
-        from utils.database import get_pxy6_database_config
-        
-        config = get_pxy6_database_config()
-        
-        assert config.host == "test-db"
-        assert config.port == 5432
-        assert config.database == "test_pxy6"
-        assert config.user == "test_pxy6_airflow"
-        assert config.password == "test_password"
-    
-    @patch('pxy6.utils.database.create_engine')
-    def test_database_manager_connection(self, mock_create_engine):
-        """Test database manager connection establishment."""
-        mock_engine = Mock()
-        mock_connection = Mock()
-        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.connect.return_value.__exit__ = Mock()
-        mock_create_engine.return_value = mock_engine
-        
-        from pxy6.utils.database import DatabaseManager, DatabaseConfig
-        
-        config = DatabaseConfig(
-            host="test-db",
-            port=5432,
-            database="test_pxy6",
-            user="test_pxy6_airflow",
-            password="test_password"
-        )
-        
-        manager = DatabaseManager(config)
-        
-        # Test connection
-        manager.connect()
-        
-        # Verify engine was created
-        mock_create_engine.assert_called_once()
-        assert manager.engine == mock_engine
-    
-    @patch('pxy6.utils.database.DatabaseManager.get_session')
-    def test_database_manager_query_execution(self, mock_get_session):
+    @patch('pxy6.utils.database.get_postgres_hook')
+    def test_execute_query(self, mock_get_hook):
         """Test database query execution."""
-        # Mock the session
-        mock_session = Mock()
-        mock_result = Mock()
-        mock_result.fetchall.return_value = [{"test": 1}]
-        mock_session.execute.return_value = mock_result
+        mock_hook = Mock()
+        mock_hook.get_records.return_value = [{"count": 5}]
+        mock_get_hook.return_value = mock_hook
         
-        mock_get_session.return_value.__enter__ = Mock(return_value=mock_session)
-        mock_get_session.return_value.__exit__ = Mock()
+        result = execute_query("SELECT COUNT(*) as count FROM customers")
         
-        from pxy6.utils.database import DatabaseManager, DatabaseConfig
-        
-        config = DatabaseConfig(
-            host="test-db",
-            database="test_pxy6",
-            user="test_pxy6_airflow",
-            password="test_password"
-        )
-        
-        manager = DatabaseManager(config)
-        
-        # Test query execution
-        result = manager.execute_query("SELECT 1 as test", fetch=True)
-        
-        assert result == [{"test": 1}]
-        mock_session.execute.assert_called_once()
+        assert result == [{"count": 5}]
+        mock_hook.get_records.assert_called_once_with("SELECT COUNT(*) as count FROM customers", None)
     
-    @patch('pxy6.utils.database.DatabaseManager.get_session')
-    def test_database_manager_table_creation(self, mock_get_session):
-        """Test Shopify table creation."""
-        # Mock the session
-        mock_session = Mock()
-        mock_get_session.return_value.__enter__ = Mock(return_value=mock_session)
-        mock_get_session.return_value.__exit__ = Mock()
+    @patch('pxy6.utils.database.get_postgres_hook')
+    def test_execute_insert(self, mock_get_hook):
+        """Test database insert execution."""
+        mock_hook = Mock()
+        mock_get_hook.return_value = mock_hook
         
-        from pxy6.utils.database import DatabaseManager, DatabaseConfig
+        execute_insert("INSERT INTO customers VALUES (%(id)s, %(name)s)", {"id": 1, "name": "test"})
         
-        config = DatabaseConfig(
-            host="test-db",
-            database="test_pxy6",
-            user="test_pxy6_airflow",
-            password="test_password"
-        )
-        
-        manager = DatabaseManager(config)
-        
-        # Test table creation
-        manager.create_tables()
-        
-        # Verify that table creation queries were executed
-        assert mock_session.execute.call_count >= 3  # At least 3 CREATE TABLE + indexes
+        mock_hook.run.assert_called_once_with("INSERT INTO customers VALUES (%(id)s, %(name)s)", {"id": 1, "name": "test"})
     
-    @patch('pxy6.utils.database.DatabaseManager.get_session')
-    def test_database_manager_upsert_product(self, mock_get_session):
+    @patch('pxy6.utils.database.execute_insert')
+    def test_upsert_product_integration(self, mock_execute_insert):
         """Test product upsert functionality."""
-        # Mock the session
-        mock_session = Mock()
-        mock_get_session.return_value.__enter__ = Mock(return_value=mock_session)
-        mock_get_session.return_value.__exit__ = Mock()
-        
-        from pxy6.utils.database import DatabaseManager, DatabaseConfig
-        
-        config = DatabaseConfig(
-            host="test-db",
-            database="test_pxy6",
-            user="test_pxy6_airflow",
-            password="test_password"
-        )
-        
-        manager = DatabaseManager(config)
-        
         # Mock product data
         product_data = {
             "id": "gid://shopify/Product/12345",
@@ -696,33 +595,23 @@ class TestDatabaseIntegration:
         }
         
         # Test upsert
-        manager.upsert_product(product_data)
+        upsert_product(product_data)
         
         # Verify that upsert query was executed
-        mock_session.execute.assert_called_once()
-        call_args = mock_session.execute.call_args[0]
-        assert "INSERT INTO products" in str(call_args[0])
-        assert "ON CONFLICT (id) DO UPDATE" in str(call_args[0])
+        mock_execute_insert.assert_called_once()
+        args, kwargs = mock_execute_insert.call_args
+        assert "INSERT INTO products" in args[0]
+        assert "ON CONFLICT (id) DO UPDATE" in args[0]
+        
+        # Check parameters
+        params = args[1]
+        assert params['id'] == 12345
+        assert params['title'] == "Test Product"
+        assert params['handle'] == "test-product"
     
-    @patch('pxy6.utils.database.DatabaseManager.get_session')
-    def test_database_manager_upsert_customer(self, mock_get_session):
+    @patch('pxy6.utils.database.execute_insert')
+    def test_upsert_customer_integration(self, mock_execute_insert):
         """Test customer upsert functionality."""
-        # Mock the session
-        mock_session = Mock()
-        mock_get_session.return_value.__enter__ = Mock(return_value=mock_session)
-        mock_get_session.return_value.__exit__ = Mock()
-        
-        from pxy6.utils.database import DatabaseManager, DatabaseConfig
-        
-        config = DatabaseConfig(
-            host="test-db",
-            database="test_pxy6",
-            user="test_pxy6_airflow",
-            password="test_password"
-        )
-        
-        manager = DatabaseManager(config)
-        
         # Mock customer data
         customer_data = {
             "id": "gid://shopify/Customer/54321",
@@ -733,10 +622,8 @@ class TestDatabaseIntegration:
             "createdAt": "2023-01-01T00:00:00Z",
             "updatedAt": "2023-12-01T00:00:00Z",
             "acceptsMarketing": True,
-            "acceptsMarketingUpdatedAt": "2023-06-01T00:00:00Z",
             "state": "ENABLED",
             "tags": ["vip", "customer"],
-            "note": "VIP customer",
             "verifiedEmail": True,
             "taxExempt": False,
             "totalSpentV2": {
@@ -772,13 +659,20 @@ class TestDatabaseIntegration:
         }
         
         # Test upsert
-        manager.upsert_customer(customer_data)
+        upsert_customer(customer_data)
         
         # Verify that upsert query was executed
-        mock_session.execute.assert_called_once()
-        call_args = mock_session.execute.call_args[0]
-        assert "INSERT INTO customers" in str(call_args[0])
-        assert "ON CONFLICT (id) DO UPDATE" in str(call_args[0])
+        mock_execute_insert.assert_called_once()
+        args, kwargs = mock_execute_insert.call_args
+        assert "INSERT INTO customers" in args[0]
+        assert "ON CONFLICT (id) DO UPDATE" in args[0]
+        
+        # Check parameters
+        params = args[1]
+        assert params['id'] == 54321
+        assert params['email'] == "customer@example.com"
+        assert params['first_name'] == "John"
+        assert params['last_name'] == "Doe"
 
 
 class TestShopifyIntegration:
@@ -1021,38 +915,6 @@ class TestShopifyIntegration:
             
             print(f"Request {i+1}: {rate_limit['remaining_calls']}/{rate_limit['max_calls']} calls remaining")
     
-    @patch('pxy6.utils.database.get_pxy6_database_manager')
-    def test_real_database_connection(self, mock_get_manager):
-        """Test connection to mocked pxy6 database."""
-        mock_manager = Mock()
-        mock_manager.connect.return_value = None
-        mock_manager.execute_query.return_value = [{"count": 100}]
-        mock_manager.create_tables.return_value = None
-        mock_manager.close.return_value = None
-        mock_get_manager.return_value = mock_manager
-        
-        from pxy6.utils.database import get_pxy6_database_manager
-        
-        manager = get_pxy6_database_manager()
-        
-        # Test connection
-        manager.connect()
-        
-        # Test basic query
-        result = manager.execute_query("SELECT 1", fetch=True)
-        assert result == [{"count": 100}]
-        
-        # Test table creation
-        manager.create_tables()
-        
-        # Test query execution
-        products_count = manager.execute_query("SELECT COUNT(*) FROM products", fetch=True)
-        customers_count = manager.execute_query("SELECT COUNT(*) FROM customers", fetch=True)
-        orders_count = manager.execute_query("SELECT COUNT(*) FROM orders", fetch=True)
-        
-        print(f"Database stats - Products: {len(products_count)}, Customers: {len(customers_count)}, Orders: {len(orders_count)}")
-        
-        manager.close()
     
     def test_curl_pattern_reference(self):
         """Test that demonstrates the curl pattern for reference."""

@@ -87,6 +87,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd applications/airflow_dags` - Navigate to DAGs directory
 - `docker build -t airflow-dags .` - Build DAG container
 - `docker run --rm airflow-dags` - Validate DAG imports and syntax
+- `docker build . -t=airflow-dags && docker run --entrypoint="" airflow-dags pytest` - Run tests in Docker container
 - `./validate_dags.sh` - Comprehensive DAG validation (Docker-based)
 - `./quick_test.sh` - Quick validation for development
 - `pytest tests/` - Run DAG tests (with mocked dependencies)

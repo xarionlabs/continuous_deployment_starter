@@ -293,11 +293,13 @@ class ShopifyHook(BaseHook):
         try:
             logger.debug(f"Executing GraphQL query: {query[:100]}...")
             
+            start_time = time.time()
             response = session.post(
                 self._graphql_endpoint,
                 json=payload,
                 timeout=self.timeout
             )
+            execution_time = time.time() - start_time
             
             response.raise_for_status()
             

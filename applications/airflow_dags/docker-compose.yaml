@@ -11,6 +11,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - airflow_network
+    ports:
+      - "5433:5432"  # Expose on different port to avoid conflicts
     restart: unless-stopped
 
   airflow-standalone:
