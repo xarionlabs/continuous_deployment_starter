@@ -56,6 +56,9 @@ COPY entrypoints/ ./entrypoints/
 COPY tests/ ./tests/
 COPY *.sh ./
 COPY pytest.ini ./
+COPY requirements.txt ./
+COPY setup.py ./
+COPY pyproject.toml ./
 
 # Set correct ownership and permissions
 RUN chown -R airflow:airflow /app /opt/venv && \
