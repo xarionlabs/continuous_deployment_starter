@@ -58,29 +58,7 @@ services:
 
   airflow-scheduler:
     image: docker.io/apache/airflow:3.0.2
-    entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
-    command: >
-      sh -c "
-        echo 'Installing pxy6 package before starting scheduler...'
-        
-        # Wait for DAGs to be deployed
-        while [ ! -f /opt/airflow/dags/shopify_data_pipeline.py ]; do
-          echo 'Waiting for DAGs to be deployed...'
-          sleep 5
-        done
-        
-        # Install pxy6 package and dependencies from the shared package files
-        cd /opt/airflow
-        pip install --no-cache-dir -r requirements.txt
-        pip install --no-cache-dir -e .
-        
-        echo 'pxy6 package installed successfully'
-        echo 'Verifying installation:'
-        python -c 'from pxy6.utils.database import DatabaseManager; print(\"✓ pxy6 package working\")'
-        
-        echo 'Starting Airflow scheduler...'
-        exec airflow scheduler
-      "
+    entrypoint: ["/opt/airflow/scheduler-entrypoint.sh"]
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
@@ -96,7 +74,7 @@ services:
       - airflow_logs:/opt/airflow/logs
       - airflow_plugins:/opt/airflow/plugins
       - airflow_packages:/opt/airflow
-      - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
+      - ./scheduler-entrypoint.sh:/opt/airflow/scheduler-entrypoint.sh:ro
       - ./webserver_config.py:/opt/airflow/webserver_config.py:ro
     secrets:
       - PSQL_AIRFLOW_PASSWORD
