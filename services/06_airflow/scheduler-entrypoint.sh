@@ -64,7 +64,7 @@ pip install --no-cache-dir -e .
 
 echo 'pxy6 package installed successfully'
 echo 'Verifying installation:'
-python -c 'from pxy6.utils.database import DatabaseManager; print("✓ pxy6 package working")'
+python -c 'from pxy6.utils import get_postgres_hook; print("✓ pxy6 package working")'
 
 echo 'Starting Airflow scheduler...'
 exec /entrypoint airflow scheduler
