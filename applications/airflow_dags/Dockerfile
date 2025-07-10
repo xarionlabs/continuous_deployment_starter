@@ -1,73 +1,30 @@
-# Multi-stage Dockerfile for Airflow DAGs package
-# Stage 1: Build environment
-FROM python:3.9-slim as builder
+# Dockerfile for testing and packaging Airflow DAGs
+# This image is used for CI/CD testing of DAGs, not for running Airflow itself
+# The actual Airflow service is in services/06_airflow/
+# Updated with proper entrypoint copying - testing hook
 
-# Install system dependencies for building Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.9-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements file first for better caching
-COPY requirements.txt .
-
-# Create virtual environment and install dependencies
-RUN python -m venv /opt/venv && \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
-
-# Copy package files and install the pxy6 package
-COPY setup.py pyproject.toml ./
-COPY src/ ./src/
-
-# Install the pxy6 package in development mode
-RUN /opt/venv/bin/pip install --no-cache-dir -e .
-
-# Stage 2: Runtime environment
-FROM python:3.9-slim as runtime
-
-# Environment variables for runtime
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app/src
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Install runtime system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+# Install system dependencies needed for some Python packages
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN groupadd -r airflow && useradd -r -g airflow airflow
+# Copy requirements and install dependencies
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
 
-# Set working directory
-WORKDIR /app
-
-# Copy virtual environment from builder stage
-COPY --from=builder /opt/venv /opt/venv
-
-# Copy application code and DAGs
-COPY src/ ./src/
+# Copy DAGs and tests
 COPY dags/ ./dags/
-COPY entrypoints/ ./entrypoints/
 COPY tests/ ./tests/
-COPY *.sh ./
-COPY pytest.ini ./
+COPY plugins/ ./plugins/
 
-# Set correct ownership and permissions
-RUN chown -R airflow:airflow /app /opt/venv && \
-    chmod +x /app/entrypoints/*.sh
+# Copy entrypoints (they should already be executable)
+COPY entrypoints/ ./entrypoints/
 
-# Switch to non-root user
-USER airflow
-
-# Verify virtual environment is working
-RUN python -c "import sys; print('Python executable:', sys.executable)" && \
-    python -c "import site; print('Site packages:', site.getsitepackages())" && \
-    pip list --format=freeze | head -5
-
-# Default entrypoint
-ENTRYPOINT ["./entrypoints/entrypoint.sh"]
+# Default working directory for tests
+WORKDIR /app

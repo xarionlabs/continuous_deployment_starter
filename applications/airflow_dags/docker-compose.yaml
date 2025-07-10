@@ -1,175 +1,158 @@
+# Local Development Docker Compose for Airflow Shopify DAGs
+# Uses LocalExecutor and a dedicated Postgres for Airflow metadata.
 version: '3.8'
 
+x-airflow-common: &airflow-common
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.2-python3.9} # Option 1: Use official image directly if no custom deps in Dockerfile
+  image: ${AIRFLOW_IMAGE_NAME:-airflow-shopify-dags-dev:latest} # Option 2: Build custom image via Dockerfile
+  build: # Build context for custom image (includes requirements.txt installation)
+    context: .
+    dockerfile: Dockerfile
+  user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}" # Run as host user, GID 0 for root group compatibility
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB_AIRFLOW}
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW_UID: '${AIRFLOW_UID:-50000}' # For consistency if any script inside container uses it
+
+    # Airflow Metadata DB connection details (for the 'postgres_airflow_meta' service below)
+    POSTGRES_USER: ${POSTGRES_USER:-airflow_user}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow_pass}
+    POSTGRES_HOST: ${POSTGRES_HOST:-postgres_airflow_meta} # Service name of Airflow's Postgres
+    POSTGRES_PORT: ${POSTGRES_PORT:-5432} # Internal port for Airflow's Postgres
+    POSTGRES_DB_AIRFLOW: ${POSTGRES_DB_AIRFLOW:-airflow_metadata}
+
+    # For Shopify connections (passed to DAGs, read by shopify_common.py)
+    # These can be set in .env file, or overridden by Airflow Connections/Variables in UI
+    SHOPIFY_API_KEY: ${SHOPIFY_API_KEY}
+    SHOPIFY_API_PASSWORD: ${SHOPIFY_API_PASSWORD}
+    SHOPIFY_STORE_DOMAIN: ${SHOPIFY_STORE_DOMAIN}
+
+    # App DB Connection (passed to DAGs, read by shopify_common.py for Airflow Connection setup)
+    # These are used by entrypoint_dev.sh to create an Airflow connection specified by AIRFLOW_CONN_APP_DB_CONN_ID
+    # The DAGs will use this connection ID to interact with the main application database.
+    APP_DB_HOST: ${APP_DB_HOST} # e.g., host.docker.internal or main app's postgres service name
+    APP_DB_PORT: ${APP_DB_PORT:-5432}
+    APP_DB_NAME: ${APP_DB_NAME}
+    APP_DB_USER: ${APP_DB_USER}
+    APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    AIRFLOW_CONN_APP_DB_CONN_ID: ${AIRFLOW_CONN_APP_DB_CONN_ID:-app_db_main_application} # DAGs will use this connection ID
+
+    # Airflow admin user (for airflow-init)
+    AIRFLOW_ADMIN_USER: ${AIRFLOW_ADMIN_USER:-admin}
+    AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+    # Generate a Fernet key if not provided in .env
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null || head /dev/urandom | uuencode -m - | sed -n 2p | cut -c1-44)}
+
+
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./plugins:/opt/airflow/plugins
+    - ./logs:/opt/airflow/logs
+    # For the entrypoint script that sets up app_db connection
+    - ./entrypoint_dev.sh:/opt/airflow/entrypoint_dev.sh:ro
+  entrypoint: /opt/airflow/entrypoint_dev.sh
+  depends_on: &airflow-common-depends-on
+    postgres_airflow_meta:
+      condition: service_healthy
+
 services:
-  db:
-    image: docker.io/postgres:16.6
+  postgres_airflow_meta: # Dedicated Postgres for Airflow metadata in local dev
+    image: postgres:13
+    container_name: shopify_airflow_postgres_metadata_db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: localpassword
-      POSTGRES_DB: airflow_test
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - airflow_network
+      POSTGRES_USER: ${POSTGRES_USER:-airflow_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow_pass}
+      POSTGRES_DB: ${POSTGRES_DB_AIRFLOW:-airflow_metadata}
     ports:
-      - "5433:5432"  # Expose on different port to avoid conflicts
-    restart: unless-stopped
+      # Expose Airflow's metadata DB on a different host port to avoid conflict with main app's DB
+      - "${AIRFLOW_METADATA_DB_HOST_PORT:-5434}:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-airflow_user}", "-d", "${POSTGRES_DB_AIRFLOW:-airflow_metadata}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - airflow_shopify_dev_pg_data:/var/lib/postgresql/data
+    networks:
+      - airflow_shopify_dev_network
 
-  airflow-standalone:
-    user: airflow
-    image: apache/airflow:3.0.2
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - airflow_plugins:/opt/airflow/plugins
-      - airflow_logs:/opt/airflow/logs
-      - ./src:/opt/airflow/src
-      - ./setup.py:/opt/airflow/setup.py
-      - ./pyproject.toml:/opt/airflow/pyproject.toml
-      - ./requirements.txt:/opt/airflow/requirements.txt
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:localpassword@db:5432/airflow_test
-      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-      AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__WEBSERVER__SECRET_KEY: 'a25c62d375079c43344b91f38ad6fce29d2a9a31456e15e5c5d8ec4f'
-      PYTHONPATH: /opt/airflow/dags
-      SHOPIFY_SHOP_NAME: ${SHOPIFY_SHOP_NAME:-test-shop}
-      SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ACCESS_TOKEN:-test-token}
-      DEVELOPMENT: "true"
-      # Ensure DAG dependencies are available
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PIP_NO_CACHE_DIR: "1"
-    depends_on:
-      - db
-    networks:
-      - airflow_network
-    ports:
-      - "8080:8080"
-    command: |
+  airflow-init:
+    <<: *airflow-common
+    container_name: shopify_airflow_init
+    command: >
       bash -c "
-        
-        echo 'Installing DAG dependencies...'
-        if [ -f /opt/airflow/requirements.txt ]; then
-          pip install --no-cache-dir -r /opt/airflow/requirements.txt
-        else
-          echo 'Requirements file not found, skipping dependency installation'
-        fi
-        
-        echo 'Installing pxy6 package...'
-        if [ -f /opt/airflow/setup.py ]; then
-          cd /opt/airflow && pip install --no-cache-dir -e .
-          echo 'pxy6 package installed successfully'
-        else
-          echo 'No setup.py found, skipping pxy6 package installation'
-        fi
-        
-        echo 'Verifying pxy6 installation...'
-        python -c 'import pxy6; print(\"pxy6 package imported successfully\")'
-        
-        echo 'Starting Airflow standalone...'
-        airflow standalone &
-        AIRFLOW_PID=$$!
-        
-        # Wait for Airflow to fully start
-        echo 'Waiting for Airflow to start...'
-        for i in {1..60}; do
-          if curl -f http://localhost:8080/api/v2/monitor/health >/dev/null 2>&1; then
-            echo 'Airflow is ready!'
-            break
-          fi
-          sleep 2
-        done
-        
-        # Update admin password
-        echo 'Setting admin password to admin...'
-        echo '{\"admin\": \"admin\"}' > /opt/airflow/simple_auth_manager_passwords.json.generated
-        
-        echo '===================='
-        echo 'Airflow is ready!'
-        echo 'URL: http://localhost:8080'
-        echo 'Username: admin'
-        echo 'Password: admin'
-        echo '===================='
-        
-        # Keep the process running
-        wait $$AIRFLOW_PID
+        echo 'Attempting to initialize database...';
+        airflow db init;
+        echo 'DB init complete (or already initialized).';
+        echo 'Attempting to create admin user...';
+        airflow users create \
+          --username \"${AIRFLOW_ADMIN_USER:-admin}\" \
+          --password \"${AIRFLOW_ADMIN_PASSWORD:-admin}\" \
+          --firstname Admin --lastname User --role Admin \
+          --email admin@example.com --unhashed || echo 'Admin user creation failed or user already exists.';
+        echo 'Airflow init process finished.'
       "
-
-  airflow-dags:
-    build: .
-    working_dir: /app
-    volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./entrypoints:/app/entrypoints
-    environment:
-      PYTHONPATH: /app/src
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: localpassword
-      POSTGRES_DB: airflow_test
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      SHOPIFY_SHOP_NAME: ${SHOPIFY_SHOP_NAME:-test-shop}
-      SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ACCESS_TOKEN:-test-token}
-      DEVELOPMENT: "true"
-    depends_on:
-      - db
     networks:
-      - airflow_network
-    entrypoint: ["./entrypoints/entrypoint.sh", "--interactive"]
-
-  airflow-dags-test:
-    build: .
-    working_dir: /app
-    volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./entrypoints:/app/entrypoints
-    environment:
-      PYTHONPATH: /app/src
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: localpassword
-      POSTGRES_DB: airflow_test
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      SHOPIFY_SHOP_NAME: ${SHOPIFY_SHOP_NAME:-test-shop}
-      SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ACCESS_TOKEN:-test-token}
-      DEVELOPMENT: "true"
+      - airflow_shopify_dev_network
     depends_on:
-      - db
-    networks:
-      - airflow_network
-    entrypoint: ["./entrypoints/entrypoint_test.sh"]
+      postgres_airflow_meta:
+        condition: service_healthy
 
-  airflow-dags-e2e:
-    build: .
-    working_dir: /app
-    volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./entrypoints:/app/entrypoints
-    environment:
-      PYTHONPATH: /app/src
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: localpassword
-      POSTGRES_DB: airflow_test
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      SHOPIFY_SHOP_NAME: ${SHOPIFY_SHOP_NAME:-test-shop}
-      SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ACCESS_TOKEN:-test-token}
-      DEVELOPMENT: "true"
-    depends_on:
-      - db
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: shopify_airflow_webserver
+    command: webserver
+    ports:
+      - "${AIRFLOW_WEBSERVER_HOST_PORT:-8081}:8080" # Expose Airflow UI on host port (e.g., 8081)
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
-      - airflow_network
-    entrypoint: ["./entrypoints/entrypoint_e2e.sh"]
+      - airflow_shopify_dev_network
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: shopify_airflow_scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --local"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - airflow_shopify_dev_network
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
 
 volumes:
-  postgres_data:
-  airflow_plugins:
-  airflow_logs:
+  airflow_shopify_dev_pg_data: # Named volume for Airflow metadata DB persistence
 
 networks:
-  airflow_network:
+  airflow_shopify_dev_network:
     driver: bridge
+
+# Notes for local development:
+# 1. Create a .env file from .env.example and fill in the values.
+#    Especially SHOPIFY_* credentials and APP_DB_* connection details for your main application DB.
+# 2. The APP_DB_HOST should be resolvable from within the Airflow containers.
+#    - If your main app DB is running on your host machine (outside Docker):
+#      - On Docker Desktop (Mac/Windows): use 'host.docker.internal' for APP_DB_HOST.
+#      - On Docker (Linux): use your host's IP on the docker0 bridge (e.g., 172.17.0.1) or add Airflow containers to 'host' network (less ideal).
+#    - If your main app DB is another Docker container: ensure they are on a shared Docker network and use its service name for APP_DB_HOST.
+# 3. After `docker-compose up -d --build`, Airflow UI will be at http://localhost:<AIRFLOW_WEBSERVER_HOST_PORT>.
+# 4. The entrypoint_dev.sh script will attempt to create an Airflow Connection named as per AIRFLOW_CONN_APP_DB_CONN_ID (default 'app_db_main_application')
+#    using the APP_DB_* environment variables. Your DAGs use this connection ID.
+# 5. A Fernet key is auto-generated if not provided via AIRFLOW__CORE__FERNET_KEY in the .env file.
+#    For stable encryption keys across restarts (e.g. for encrypted connection details), generate one manually
+#    (python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") and set it in your .env file.
