@@ -36,7 +36,7 @@ Description=Service to manage all $type services
 PartOf=all-containers.service
 EOF
 
-    echo "Requires=${services_list[*]}" >> "$meta_service"
+    echo "Wants=${services_list[*]}" >> "$meta_service"
     echo "After=${services_list[*]}" >> "$meta_service"
 
     cat >> "$meta_service" <<EOF
@@ -73,25 +73,25 @@ cat > "$CONTAINERS_SERVICE" <<EOF
 Description=Service to manage all container services
 EOF
 
-REQUIRES_LIST=()
+WANTS_LIST=()
 AFTER_LIST=()
 
 if [ -e "$NETWORKS_SERVICE" ]; then
-    REQUIRES_LIST+=("all-networks.service")
+    WANTS_LIST+=("all-networks.service")
     AFTER_LIST+=("all-networks.service")
 fi
 
 if [ -e "$VOLUMES_SERVICE" ]; then
-    REQUIRES_LIST+=("all-volumes.service")
+    WANTS_LIST+=("all-volumes.service")
     AFTER_LIST+=("all-volumes.service")
 fi
 
 if [ ${#CONTAINER_SERVICES[@]} -gt 0 ]; then
-    REQUIRES_LIST+=("${CONTAINER_SERVICES[@]}")
+    WANTS_LIST+=("${CONTAINER_SERVICES[@]}")
 fi
 
-if [ ${#REQUIRES_LIST[@]} -gt 0 ]; then
-    echo "Requires=${REQUIRES_LIST[*]}" >> "$CONTAINERS_SERVICE"
+if [ ${#WANTS_LIST[@]} -gt 0 ]; then
+    echo "Wants=${WANTS_LIST[*]}" >> "$CONTAINERS_SERVICE"
 fi
 
 if [ ${#AFTER_LIST[@]} -gt 0 ]; then
