@@ -1,7 +1,34 @@
 #!/bin/bash
 set -e
 
-echo "Validating Airflow DAGs can be imported..."
+# Check if this is a deployment operation
+if [ "$1" = "deploy" ]; then
+    echo 'Deploying DAGs and package files to Airflow...'
+    
+    # Clear existing DAGs to prevent stale files
+    rm -rf /opt/airflow/dags/*
+    rm -rf /opt/airflow/plugins/*
+    
+    # Copy DAGs and package files needed for installation
+    cp -r /app/dags/* /opt/airflow/dags/
+    cp -r /app/src /opt/airflow/
+    cp /app/requirements.txt /opt/airflow/
+    cp /app/setup.py /opt/airflow/
+    
+    # Set proper permissions
+    chown -R 50000:0 /opt/airflow/dags
+    chown -R 50000:0 /opt/airflow/plugins
+    chown -R 50000:0 /opt/airflow/src
+    chmod -R 755 /opt/airflow/dags
+    chmod -R 755 /opt/airflow/plugins
+    chmod -R 755 /opt/airflow/src
+    
+    echo 'DAGs and package files deployment completed successfully'
+    ls -la /opt/airflow/dags/
+    exit 0
+fi
+
+echo "Starting Airflow DAGs package..."
 
 # Set PYTHONPATH to include dags directory
 export PYTHONPATH="/app/dags:$PYTHONPATH"

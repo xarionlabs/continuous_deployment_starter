@@ -6,31 +6,7 @@ services:
   airflow-dags-deploy:
     image: ghcr.io/xarionlabs/continuous_deployment_starter/airflow_dags:${APP_VERSION:-latest}
     restart: "no"
-    command: >
-      sh -c "
-        echo 'Deploying DAGs and package files to Airflow...'
-        
-        # Clear existing DAGs to prevent stale files
-        rm -rf /opt/airflow/dags/*
-        rm -rf /opt/airflow/plugins/*
-        
-        # Copy DAGs and package files needed for installation
-        cp -r /app/dags/* /opt/airflow/dags/
-        cp -r /app/src /opt/airflow/
-        cp /app/requirements.txt /opt/airflow/
-        cp /app/setup.py /opt/airflow/
-        
-        # Set proper permissions
-        chown -R 50000:0 /opt/airflow/dags
-        chown -R 50000:0 /opt/airflow/plugins
-        chown -R 50000:0 /opt/airflow/src
-        chmod -R 755 /opt/airflow/dags
-        chmod -R 755 /opt/airflow/plugins
-        chmod -R 755 /opt/airflow/src
-        
-        echo 'DAGs and package files deployment completed successfully'
-        ls -la /opt/airflow/dags/
-      "
+    command: deploy
     volumes:
       - airflow_dags:/opt/airflow/dags
       - airflow_plugins:/opt/airflow/plugins
