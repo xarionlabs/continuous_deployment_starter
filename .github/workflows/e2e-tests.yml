@@ -60,11 +60,15 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           # Create a temporary .env file with all environment variables
+          # Define logging function
+          log_with_timestamp() {
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+          }
+          
           echo "APP_ENV=$ENVIRONMENT" > .env
           echo "APP_VERSION=$TAG" >> .env
           python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)[1:-1]}') for k, v in data.items()]" >> .env 2>/dev/null || true
           
-<<<<<<< HEAD
           log_with_timestamp "Environment variables loaded into .env file"
           
           # Get applications array
@@ -80,13 +84,6 @@ jobs:
           for app in $APPS; do
             echo "::group::Running e2e tests for $app"
             log_with_timestamp "Running e2e tests for $app in $ENVIRONMENT environment"
-=======
-          echo "Environment variables loaded into .env file"
-          cat .env
-          
-          for app in $(echo '${{ steps.find_applications.outputs.applications }}' | jq -r '.[]'); do
-            echo "Running e2e tests for $app in $ENVIRONMENT environment..."
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
             
             # Debug information
             echo "Debug - Image reference components:"
@@ -97,11 +94,10 @@ jobs:
             echo "Full image reference: $REGISTRY/${{ github.repository }}/$app:$TAG"
             
             # Run the e2e tests using the application's own entrypoint
-            docker run --rm \
+            if timeout 300 docker run --rm \
               --network host \
               --env-file .env \
               --entrypoint /app/entrypoints/entrypoint_e2e.sh \
-<<<<<<< HEAD
               "$REGISTRY/${{ github.repository }}/$app:$TAG" 2>/dev/null; then
               log_with_timestamp "E2E tests passed for $app"
             else
@@ -130,14 +126,4 @@ jobs:
           else
             log_with_timestamp "All E2E tests passed successfully"
           fi
-        timeout-minutes: 20 
-=======
-              "$REGISTRY/${{ github.repository }}/$app:$TAG" 
-            
-            # Exit if tests fail
-            if [ $? -ne 0 ]; then
-              echo "E2E tests failed for $app in $ENVIRONMENT environment"
-              exit 1
-            fi
-          done 
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
+        timeout-minutes: 20

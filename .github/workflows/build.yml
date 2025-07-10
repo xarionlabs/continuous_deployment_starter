@@ -24,12 +24,9 @@ permissions:
   contents: write
   attestations: write
   id-token: write
-<<<<<<< HEAD
   actions: read
   security-events: write
   deployments: write
-=======
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
 
 env:
   REGISTRY: ghcr.io
@@ -149,13 +146,8 @@ jobs:
             # Find which valid items have changes
             CHANGED_ITEMS=""
             for item in $VALID_ITEMS; do
-<<<<<<< HEAD
-              # Check if item is in applications/ or tools/
-              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^tools/$item/"; then
-=======
-              # Check if item is in applications/, utilities/, or release-tooling/
-              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/" || echo "$CHANGED_FILES" | grep -q "^release-tooling/$item/"; then
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
+              # Check if item is in applications/, utilities/, or tools/
+              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/" || echo "$CHANGED_FILES" | grep -q "^tools/$item/"; then
                 CHANGED_ITEMS="$CHANGED_ITEMS$item"$'\n'
               fi
             done
@@ -227,17 +219,10 @@ jobs:
             echo "path=applications/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "path=utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
-<<<<<<< HEAD
-          elif [ -d "tools/deployment/${{ matrix.ITEM }}" ]; then
-            echo "path=tools/deployment/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "tools/${{ matrix.ITEM }}" ]; then
             echo "path=tools/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
-=======
-          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
-            echo "path=release-tooling/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
           else
-            echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, tools, or tools/deployment"
+            echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, or tools"
             exit 1
           fi
 
@@ -246,8 +231,6 @@ jobs:
         run: |
           if [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
-          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
-            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/deployment-manager" >> $GITHUB_OUTPUT
           elif [ -d "tools/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/tools-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           else
@@ -278,7 +261,6 @@ jobs:
 
       - name: Run tests on the Docker image
         id: test-images
-<<<<<<< HEAD
         run: |
           echo "::group::Running tests for ${{ matrix.ITEM }}"
           
@@ -296,9 +278,6 @@ jobs:
           
           echo "::endgroup::"
         timeout-minutes: 15
-=======
-        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }}
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
