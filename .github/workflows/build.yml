@@ -24,9 +24,12 @@ permissions:
   contents: write
   attestations: write
   id-token: write
+<<<<<<< HEAD
   actions: read
   security-events: write
   deployments: write
+=======
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
 
 env:
   REGISTRY: ghcr.io
@@ -146,8 +149,13 @@ jobs:
             # Find which valid items have changes
             CHANGED_ITEMS=""
             for item in $VALID_ITEMS; do
+<<<<<<< HEAD
               # Check if item is in applications/ or tools/
               if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^tools/$item/"; then
+=======
+              # Check if item is in applications/, utilities/, or release-tooling/
+              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/" || echo "$CHANGED_FILES" | grep -q "^release-tooling/$item/"; then
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
                 CHANGED_ITEMS="$CHANGED_ITEMS$item"$'\n'
               fi
             done
@@ -192,7 +200,6 @@ jobs:
     needs: [skip-check, define-tag, find-changed-applications]
     if: ${{ needs.skip-check.outputs.skip != 'true' && needs.skip-check.outputs.release_only != 'true' && needs.find-changed-applications.outputs.has_changes == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     strategy:
       matrix:
         ITEM: ${{ fromJSON(needs.find-changed-applications.outputs.applications) }}
@@ -202,7 +209,6 @@ jobs:
       packages: write
       attestations: write
       id-token: write
-      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -221,10 +227,15 @@ jobs:
             echo "path=applications/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "path=utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+<<<<<<< HEAD
           elif [ -d "tools/deployment/${{ matrix.ITEM }}" ]; then
             echo "path=tools/deployment/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "tools/${{ matrix.ITEM }}" ]; then
             echo "path=tools/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+=======
+          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
+            echo "path=release-tooling/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
           else
             echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, tools, or tools/deployment"
             exit 1
@@ -235,7 +246,7 @@ jobs:
         run: |
           if [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
-          elif [ -d "tools/deployment/${{ matrix.ITEM }}" ]; then
+          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/deployment-manager" >> $GITHUB_OUTPUT
           elif [ -d "tools/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/tools-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
@@ -264,11 +275,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-to: type=gha,mode=max
           cache-from: type=gha
-          platforms: linux/amd64
-        timeout-minutes: 45
 
       - name: Run tests on the Docker image
         id: test-images
+<<<<<<< HEAD
         run: |
           echo "::group::Running tests for ${{ matrix.ITEM }}"
           
@@ -286,6 +296,9 @@ jobs:
           
           echo "::endgroup::"
         timeout-minutes: 15
+=======
+        run: docker run --entrypoint=/app/entrypoints/entrypoint_test.sh ${{ steps.image_name.outputs.name }}:${{ needs.define-tag.outputs.tag }}
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
@@ -368,11 +381,10 @@ jobs:
   trigger-live-release:
     needs: [skip-check, trigger-staging-e2e]
     if: ${{ needs.skip-check.outputs.skip != 'true' && needs.trigger-staging-e2e.result == 'success' }}
-    uses: ./.github/workflows/production-deployment.yml
+    uses: ./.github/workflows/release.yml
     with:
       environment: live
       deploy_services: ${{ needs.skip-check.outputs.deploy_services }}
-      requires_approval: true
     secrets: inherit
 
   trigger-live-e2e:

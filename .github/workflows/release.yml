@@ -29,6 +29,7 @@ jobs:
       - name: Determine Changed Files and Affected Services
         id: determine_changes
         run: |
+<<<<<<< HEAD
           set -e
           echo "::group::Determining Changes"
           
@@ -46,6 +47,33 @@ jobs:
           else
             CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only --root HEAD 2>/dev/null || echo "")
           fi
+=======
+          # Ensure we are on the releases branch or the correct base for diffing
+          # This assumes the workflow is triggered on the 'releases' branch or a branch that merges into it.
+          # If triggered on a different event/branch, this logic might need adjustment.
+          git checkout releases
+          git pull origin releases # Ensure local 'releases' is up-to-date with remote for diffing against previous state
+
+          # Get the previous commit on the releases branch.
+          # If this is the very first commit, git diff HEAD^ will fail.
+          # A more robust way would be to diff against a specific tag of the last successful release.
+          # For now, we use HEAD^, which works if there's at least one prior commit.
+          PREVIOUS_COMMIT=$(git rev-parse HEAD^) # TODO: Handle case where HEAD^ doesn't exist (e.g. first commit on branch)
+          echo "Previous commit (for diff): $PREVIOUS_COMMIT"
+
+          # If PREVIOUS_COMMIT is empty (e.g. first commit in repo/branch), diff against an empty tree.
+          # This will list all files as changed.
+          if [ -z "$PREVIOUS_COMMIT" ]; then
+            echo "No previous commit found (likely first commit on branch), diffing against empty tree (4b825dc642cb6eb9a060e54bf8d69288fbee4904)."
+            # 4b825dc642cb6eb9a060e54bf8d69288fbee4904 is the magic number for an empty tree in Git
+            CHANGED_FILES=$(git diff --name-only 4b825dc642cb6eb9a060e54bf8d69288fbee4904 HEAD)
+          else
+            CHANGED_FILES=$(git diff --name-only $PREVIOUS_COMMIT HEAD)
+          fi
+
+          echo "Changed files since $PREVIOUS_COMMIT:"
+          echo "$CHANGED_FILES"
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
 
           ASSUME_VALUE_CHANGES="false"
           # Heuristic: if the trigger was a schedule or workflow_dispatch (manual), and no files changed, assume value changes.
@@ -62,8 +90,6 @@ jobs:
 
           AFFECTED_SERVICES=$(.github/workflows/scripts/determine_affected_services.sh "$CHANGED_FILES" "$ASSUME_VALUE_CHANGES" 2>/dev/null || echo "")
           echo "affected_services_list=$AFFECTED_SERVICES" >> $GITHUB_OUTPUT
-          
-          echo "::endgroup::"
         shell: bash
 
       - name: Notify User of Affected Services
@@ -77,8 +103,6 @@ jobs:
 
       - name: executing remote ssh commands using ssh key
         uses: appleboy/ssh-action@v1.2.0
-        timeout-minutes: 30
-        continue-on-error: false
         env:
           VARS_JSON: ${{ toJson(vars) }}
           SECRETS_JSON: ${{ toJson(secrets) }}
@@ -94,6 +118,7 @@ jobs:
           envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES, DEPLOY_SERVICES, GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY, RELEASE_TOOL_IMAGE_URL_FROM_BUILD
           script: |
             set -e
+<<<<<<< HEAD
             set -u
             set -o pipefail
             
@@ -133,6 +158,9 @@ jobs:
             }
             
             log_with_timestamp "Starting Remote Orchestration"
+=======
+            echo "--- Starting Remote Orchestration ---"
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
 
             REMOTE_USER_HOME=$(eval echo ~$USER)
             # Infer repository name from GITHUB_REPOSITORY, e.g., "owner/repo-name" -> "repo-name"
@@ -148,8 +176,8 @@ jobs:
                 exit 1
             fi
             cd "$PROJECT_DIR_ON_HOST"
-            retry_command "git pull origin \$(git rev-parse --abbrev-ref HEAD)"
-            DEPLOY_SCRIPT_PATH="tools/deployment/scripts/deploy_on_host.sh"
+            git pull
+            DEPLOY_SCRIPT_PATH="release-tooling/scripts/deploy_on_host.sh"
 
             if [ ! -f "$DEPLOY_SCRIPT_PATH" ]; then
                 echo "ERROR: Deploy script $DEPLOY_SCRIPT_PATH not found in $PROJECT_DIR_ON_HOST."
@@ -158,10 +186,18 @@ jobs:
 
             chmod +x "$DEPLOY_SCRIPT_PATH" >/dev/null 2>&1
 
+<<<<<<< HEAD
             log_with_timestamp "Executing deployment script..."
+=======
+            echo "Executing $DEPLOY_SCRIPT_PATH..."
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
             # Pass RELEASE_TOOL_IMAGE_URL_FROM_BUILD to deploy_on_host.sh
+            # The deploy_on_host.sh script will need to be updated to accept this as an argument
+            # or read it from an environment variable like PYTHON_RELEASE_TOOL_IMAGE.
+            # For now, let's pass it as an environment variable for deploy_on_host.sh to consume.
             export PYTHON_RELEASE_TOOL_IMAGE="$RELEASE_TOOL_IMAGE_URL_FROM_BUILD"
 
+<<<<<<< HEAD
             # Execute deployment with timeout and error handling
             if timeout 1800 "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON" "$DEPLOY_SERVICES" >/dev/null 2>&1; then
               log_with_timestamp "Deployment completed successfully"
@@ -177,5 +213,8 @@ jobs:
               fi
               exit $EXIT_CODE
             fi
+=======
+            "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON" "$DEPLOY_SERVICES"
+>>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
 
-            log_with_timestamp "Remote Orchestration Finished Successfully"
+            echo "--- Remote Orchestration Finished ---"
