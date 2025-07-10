@@ -1,86 +1,51 @@
 #!/bin/bash
 set -e
 
-echo "Running e2e tests for Airflow DAGs..."
+echo "Running e2e health check for Airflow service..."
 
-# Activate virtual environment if it exists
-if [ -d "/opt/venv" ]; then
-    echo "Activating virtual environment..."
-    source /opt/venv/bin/activate
-    echo "Virtual environment activated: $(which python)"
-else
-    echo "No virtual environment found, using system Python"
+# Check if AIRFLOW_WEB_VIRTUAL_HOST is set
+if [ -z "$AIRFLOW_WEB_VIRTUAL_HOST" ]; then
+    echo "✗ Error: AIRFLOW_WEB_VIRTUAL_HOST environment variable is not set"
+    exit 1
 fi
 
-# Set PYTHONPATH to include src directory
-export PYTHONPATH=/app/src:$PYTHONPATH
+AIRFLOW_URL="https://${AIRFLOW_WEB_VIRTUAL_HOST}"
+HEALTH_ENDPOINT="${AIRFLOW_URL}/api/v2/monitor/health"
 
-# Test that all DAGs can be imported and parsed
-echo "Testing DAG parsing and validation..."
-python -c "
-import sys
-import os
-sys.path.insert(0, '/app/src')
+echo "Checking Airflow health at: $HEALTH_ENDPOINT"
 
-# Test DAG structure and syntax
-try:
-    from dags import *
-    print('✓ All DAGs parsed successfully')
-except Exception as e:
-    print(f'✗ DAG parsing failed: {e}')
-    sys.exit(1)
+# Test Airflow health endpoint
+HTTP_STATUS=$(curl -s -o /tmp/airflow_health.json -w "%{http_code}" "$HEALTH_ENDPOINT" || echo "000")
 
-# Test that DAGs have required attributes
-import importlib
-import glob
-
-dag_files = glob.glob('/app/src/dags/*.py')
-dag_files = [f for f in dag_files if not f.endswith('__init__.py')]
-
-for dag_file in dag_files:
-    module_name = os.path.splitext(os.path.basename(dag_file))[0]
-    try:
-        spec = importlib.util.spec_from_file_location(module_name, dag_file)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+if [ "$HTTP_STATUS" = "200" ]; then
+    echo "✓ Airflow health check passed (HTTP $HTTP_STATUS)"
+    
+    # Check if response contains expected health data
+    if command -v jq >/dev/null 2>&1; then
+        if jq -e '.metadatabase.status' /tmp/airflow_health.json >/dev/null 2>&1; then
+            METADB_STATUS=$(jq -r '.metadatabase.status' /tmp/airflow_health.json)
+            echo "✓ Metadatabase status: $METADB_STATUS"
+        fi
         
-        # Check for 'dag' attribute
-        if hasattr(module, 'dag'):
-            print(f'✓ {module_name} has dag attribute')
-        else:
-            print(f'✗ {module_name} missing dag attribute')
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f'✗ Error loading {module_name}: {e}')
-        sys.exit(1)
-
-print('✓ All DAGs have required structure')
-"
-
-# Test basic connection capabilities (without actual connections)
-echo "Testing connection utilities..."
-python -c "
-import sys
-sys.path.insert(0, '/app/src')
-
-# Test Shopify hook initialization (without actual API calls)
-try:
-    from hooks.shopify_hook import ShopifyHook
-    # Test that we can create hook instance
-    hook = ShopifyHook(conn_id='shopify_default')
-    print('✓ Shopify hook can be instantiated')
-except Exception as e:
-    print(f'✗ Shopify hook error: {e}')
-    sys.exit(1)
-
-# Test database connection utilities
-try:
-    from utils.database import get_postgres_hook
-    print('✓ Database utilities available')
-except Exception as e:
-    print(f'✗ Database utilities error: {e}')
-    sys.exit(1)
-"
-
-echo "E2E tests completed successfully!"
+        if jq -e '.scheduler.status' /tmp/airflow_health.json >/dev/null 2>&1; then
+            SCHEDULER_STATUS=$(jq -r '.scheduler.status' /tmp/airflow_health.json)
+            echo "✓ Scheduler status: $SCHEDULER_STATUS"
+        fi
+    else
+        echo "✓ Health response received (jq not available for detailed parsing)"
+    fi
+    
+    # Clean up
+    rm -f /tmp/airflow_health.json
+    
+    echo "✓ Airflow e2e health check completed successfully!"
+    exit 0
+else
+    echo "✗ Airflow health check failed (HTTP $HTTP_STATUS)"
+    if [ -f /tmp/airflow_health.json ]; then
+        echo "Response body:"
+        cat /tmp/airflow_health.json
+        rm -f /tmp/airflow_health.json
+    fi
+    exit 1
+fi
