@@ -21,7 +21,11 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
 # Copy DAGs and tests
 COPY dags/ ./dags/
 COPY tests/ ./tests/
-COPY plugins/ ./plugins/
+COPY *.sh ./
+COPY pytest.ini ./
+COPY requirements.txt ./
+COPY setup.py ./
+COPY pyproject.toml ./
 
 # Copy entrypoints (they should already be executable)
 COPY entrypoints/ ./entrypoints/
