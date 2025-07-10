@@ -6,215 +6,47 @@ on:
       environment:
         required: true
         type: string
-      deploy_services:
-        required: false
-        type: string
-        default: ''
-
-permissions:
-  packages: write
-  contents: read
 
 jobs:
-  deploy_services:
-    name: Deploy Services to ${{ inputs.environment }}
+  release:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch all history to enable accurate diff
-
-      - name: Determine Changed Files and Affected Services
-        id: determine_changes
-        run: |
-<<<<<<< HEAD
-          set -e
-          echo "::group::Determining Changes"
-          
-          # Simplified and more robust git operations
-          # Use git merge-base to find the common ancestor instead of complex branch switching
-          if git show-ref --verify --quiet refs/remotes/origin/releases; then
-            # Find the merge base between current commit and releases branch
-            BASE_COMMIT=$(git merge-base HEAD origin/releases 2>/dev/null || echo "")
-            
-            if [ -n "$BASE_COMMIT" ]; then
-              CHANGED_FILES=$(git diff --name-only "$BASE_COMMIT" HEAD 2>/dev/null || echo "")
-            else
-              CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only --root HEAD 2>/dev/null || echo "")
-            fi
-          else
-            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only --root HEAD 2>/dev/null || echo "")
-          fi
-=======
-          # Ensure we are on the releases branch or the correct base for diffing
-          # This assumes the workflow is triggered on the 'releases' branch or a branch that merges into it.
-          # If triggered on a different event/branch, this logic might need adjustment.
-          git checkout releases
-          git pull origin releases # Ensure local 'releases' is up-to-date with remote for diffing against previous state
-
-          # Get the previous commit on the releases branch.
-          # If this is the very first commit, git diff HEAD^ will fail.
-          # A more robust way would be to diff against a specific tag of the last successful release.
-          # For now, we use HEAD^, which works if there's at least one prior commit.
-          PREVIOUS_COMMIT=$(git rev-parse HEAD^) # TODO: Handle case where HEAD^ doesn't exist (e.g. first commit on branch)
-          echo "Previous commit (for diff): $PREVIOUS_COMMIT"
-
-          # If PREVIOUS_COMMIT is empty (e.g. first commit in repo/branch), diff against an empty tree.
-          # This will list all files as changed.
-          if [ -z "$PREVIOUS_COMMIT" ]; then
-            echo "No previous commit found (likely first commit on branch), diffing against empty tree (4b825dc642cb6eb9a060e54bf8d69288fbee4904)."
-            # 4b825dc642cb6eb9a060e54bf8d69288fbee4904 is the magic number for an empty tree in Git
-            CHANGED_FILES=$(git diff --name-only 4b825dc642cb6eb9a060e54bf8d69288fbee4904 HEAD)
-          else
-            CHANGED_FILES=$(git diff --name-only $PREVIOUS_COMMIT HEAD)
-          fi
-
-          echo "Changed files since $PREVIOUS_COMMIT:"
-          echo "$CHANGED_FILES"
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
-
-          ASSUME_VALUE_CHANGES="false"
-          # Heuristic: if the trigger was a schedule or workflow_dispatch (manual), and no files changed, assume value changes.
-          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # Check if CHANGED_FILES is empty or only whitespace
-            if [[ -z "${CHANGED_FILES// }" ]]; then
-              echo "::notice::Workflow triggered by schedule or dispatch with no detected file changes. Assuming potential value changes for environment or secrets."
-              ASSUME_VALUE_CHANGES="true"
-            fi
-          fi
-
-          # Ensure the script is executable
-          chmod +x .github/workflows/scripts/determine_affected_services.sh
-
-          AFFECTED_SERVICES=$(.github/workflows/scripts/determine_affected_services.sh "$CHANGED_FILES" "$ASSUME_VALUE_CHANGES" 2>/dev/null || echo "")
-          echo "affected_services_list=$AFFECTED_SERVICES" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Notify User of Affected Services
-        run: |
-          if [ -z "${{ steps.determine_changes.outputs.affected_services_list }}" ]; then
-            echo "::notice::No specific services were directly affected by code changes. The release might proceed due to other reasons (e.g., manual trigger, environment changes not tracked by git diff)."
-          else
-            echo "::notice::Services to be updated: ${{ steps.determine_changes.outputs.affected_services_list }}"
-          fi
-        shell: bash
-
       - name: executing remote ssh commands using ssh key
         uses: appleboy/ssh-action@v1.2.0
         env:
           VARS_JSON: ${{ toJson(vars) }}
           SECRETS_JSON: ${{ toJson(secrets) }}
-          AFFECTED_SERVICES: ${{ steps.determine_changes.outputs.affected_services_list }}
-          DEPLOY_SERVICES: ${{ inputs.deploy_services }}
-          # GITHUB_REPOSITORY_OWNER is available by default in actions
-          # RELEASE_TOOL_IMAGE_URL will use latest tag from ghcr.io
-          RELEASE_TOOL_IMAGE_URL_FROM_BUILD: ghcr.io/${{ github.repository }}/deployment-manager:latest
         with:
           host: ${{ vars.HOST }}
           username: ${{ vars.USERNAME }}
           key: ${{ secrets.KEY }}
-          envs: VARS_JSON, SECRETS_JSON, AFFECTED_SERVICES, DEPLOY_SERVICES, GITHUB_REPOSITORY_OWNER, GITHUB_REPOSITORY, RELEASE_TOOL_IMAGE_URL_FROM_BUILD
+          envs: VARS_JSON, SECRETS_JSON
           script: |
             set -e
-<<<<<<< HEAD
-            set -u
-            set -o pipefail
+            echo "Debug: Checking directories..."
+            ls -la ~/runtime || echo "Runtime directory missing"
+            ls -la ~/runtime/continuous_deployment_starter || echo "Project directory missing"
+            echo "Debug: Checking repository state..."
+            ls -la ~/runtime/continuous_deployment_starter/.git || echo "No git repository found"
+            cd ~/runtime/continuous_deployment_starter
+            git status || echo "Git status failed"
             
-            # Function for structured logging
-            log_with_timestamp() {
-              echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-            }
-            
-            # Function for retry logic
-            retry_command() {
-              local max_attempts=3
-              local delay=5
-              local command="$1"
-              local attempt=1
-              
-              while [ $attempt -le $max_attempts ]; do
-                if eval "$command" >/dev/null 2>&1; then
-                  log_with_timestamp "Command succeeded on attempt $attempt"
-                  return 0
-                else
-                  if [ $attempt -lt $max_attempts ]; then
-                    log_with_timestamp "Command failed on attempt $attempt, retrying in $delay seconds..."
-                    sleep $delay
-                    delay=$((delay * 2))  # Exponential backoff
-                  else
-                    log_with_timestamp "Command failed on attempt $attempt"
-                    # Show error output only on final failure
-                    echo "Error details:"
-                    eval "$command"
-                  fi
-                fi
-                attempt=$((attempt + 1))
-              done
-              
-              log_with_timestamp "Command failed after $max_attempts attempts"
-              return 1
-            }
-            
-            log_with_timestamp "Starting Remote Orchestration"
-=======
-            echo "--- Starting Remote Orchestration ---"
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
-
-            REMOTE_USER_HOME=$(eval echo ~$USER)
-            # Infer repository name from GITHUB_REPOSITORY, e.g., "owner/repo-name" -> "repo-name"
-            # GITHUB_REPOSITORY is passed via `envs` so it's available.
-            REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
-            PROJECT_DIR_ON_HOST="$REMOTE_USER_HOME/runtime/${REPO_NAME:-continuous_deployment_starter}"
-
-            log_with_timestamp "Project Directory: $PROJECT_DIR_ON_HOST"
-            log_with_timestamp "Release Tool Image: $RELEASE_TOOL_IMAGE_URL_FROM_BUILD"
-
-            if [ ! -d "$PROJECT_DIR_ON_HOST" ]; then
-                echo "ERROR: Project directory $PROJECT_DIR_ON_HOST does not exist on remote host."
-                exit 1
-            fi
-            cd "$PROJECT_DIR_ON_HOST"
-            git pull
-            DEPLOY_SCRIPT_PATH="release-tooling/scripts/deploy_on_host.sh"
-
-            if [ ! -f "$DEPLOY_SCRIPT_PATH" ]; then
-                echo "ERROR: Deploy script $DEPLOY_SCRIPT_PATH not found in $PROJECT_DIR_ON_HOST."
-                exit 1
-            fi
-
-            chmod +x "$DEPLOY_SCRIPT_PATH" >/dev/null 2>&1
-
-<<<<<<< HEAD
-            log_with_timestamp "Executing deployment script..."
-=======
-            echo "Executing $DEPLOY_SCRIPT_PATH..."
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
-            # Pass RELEASE_TOOL_IMAGE_URL_FROM_BUILD to deploy_on_host.sh
-            # The deploy_on_host.sh script will need to be updated to accept this as an argument
-            # or read it from an environment variable like PYTHON_RELEASE_TOOL_IMAGE.
-            # For now, let's pass it as an environment variable for deploy_on_host.sh to consume.
-            export PYTHON_RELEASE_TOOL_IMAGE="$RELEASE_TOOL_IMAGE_URL_FROM_BUILD"
-
-<<<<<<< HEAD
-            # Execute deployment with timeout and error handling
-            if timeout 1800 "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON" "$DEPLOY_SERVICES" >/dev/null 2>&1; then
-              log_with_timestamp "Deployment completed successfully"
-            else
-              EXIT_CODE=$?
-              if [ $EXIT_CODE -eq 124 ]; then
-                log_with_timestamp "ERROR: Deployment timed out after 30 minutes"
-              else
-                log_with_timestamp "ERROR: Deployment failed with exit code $EXIT_CODE"
-                # Show deployment output only on failure
-                echo "Deployment error details:"
-                "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON" "$DEPLOY_SERVICES" || true
-              fi
-              exit $EXIT_CODE
-            fi
-=======
-            "$DEPLOY_SCRIPT_PATH" "$AFFECTED_SERVICES" "$VARS_JSON" "$SECRETS_JSON" "$DEPLOY_SERVICES"
->>>>>>> parent of 27b1065 (Merge pull request #6 from xarionlabs/feature/releases)
-
-            echo "--- Remote Orchestration Finished ---"
+            export PATH=$PATH:$(pwd)/.github/workflows/scripts/
+            git checkout releases
+            git pull origin releases
+            refresh_podman_secrets.sh "$SECRETS_JSON"
+            create_env_variables.sh
+            set -o allexport
+            source .env
+            source services/version.env
+            set +o allexport
+            check-service-envs.sh
+            generate_quadlets.sh
+            echo "Running quadlet dry-run to validate configurations..."
+            /usr/libexec/podman/quadlet --dryrun --user $XDG_CONFIG_HOME/containers/systemd/
+            generate_meta_services.sh
+            pull_latest_images.sh
+            start_all_services.sh
+            echo "Triggering container auto-update..."
+            podman auto-update || echo "Auto-update command failed, continuing..." 
