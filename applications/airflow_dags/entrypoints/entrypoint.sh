@@ -16,9 +16,9 @@ if [ "$1" = "deploy" ]; then
     cp /app/setup.py /opt/airflow/
     
     # Set proper permissions
-    chown -R 50000:0 /opt/airflow/dags
-    chown -R 50000:0 /opt/airflow/plugins
-    chown -R 50000:0 /opt/airflow/src
+    chown -R airflow:root /opt/airflow/dags
+    chown -R airflow:root /opt/airflow/plugins
+    chown -R airflow:root /opt/airflow/src
     chmod -R 755 /opt/airflow/dags
     chmod -R 755 /opt/airflow/plugins
     chmod -R 755 /opt/airflow/src
