@@ -1,24 +1,14 @@
-# Core runtime dependencies for Airflow DAGs
-apache-airflow==3.0.2
-apache-airflow-providers-postgres==6.2.0
+# Since we're using python:3.9-slim instead of apache/airflow image,
+# we need to install Airflow and its dependencies for DAG testing
 
-# Shopify GraphQL API client
-gql[all]==3.5.0
-requests==2.32.4
-aiohttp==3.10.11
+# Core Airflow with extras for PostgreSQL, Celery, and Redis
+apache-airflow[postgres,celery,redis]==3.0.2
 
-# Database connectivity
-sqlalchemy==1.4.54
-psycopg2-binary==2.9.9
+# Standard operators provider
+apache-airflow-providers-standard
 
-# Configuration and validation
-pydantic==2.11.7
-
-
-# Utilities
-backoff==2.2.1
-structlog==25.4.0
-python-dateutil==2.9.0.post0
-
-# Testing
-pytest==8.4.1
+# Additional packages needed by DAGs:
+psycopg2-binary # For PostgreSQL connection to the APP DB
+ShopifyAPI>=11.0.0 # Official Shopify Python library
+pandas # For data handling and date parsing assistance in DAGs
+requests # General HTTP requests, if needed by DAGs directly

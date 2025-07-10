@@ -1,75 +1,27 @@
 #!/bin/bash
 set -e
 
-echo "Starting Airflow DAGs package..."
+echo "Validating Airflow DAGs can be imported..."
 
-# Activate virtual environment if it exists
-if [ -d "/opt/venv" ]; then
-    echo "Activating virtual environment..."
-    source /opt/venv/bin/activate
-    echo "Virtual environment activated: $(which python)"
-    echo "Python version: $(python --version)"
-    echo "Pip version: $(pip --version)"
-else
-    echo "No virtual environment found, using system Python"
-fi
+# Set PYTHONPATH to include dags directory
+export PYTHONPATH="/app/dags:$PYTHONPATH"
 
-# Set PYTHONPATH to include src directory
-export PYTHONPATH=/app/src:$PYTHONPATH
-
-# Validate environment
-echo "Validating environment..."
+# Basic DAG validation - check if they can be imported
 python -c "
 import sys
 import os
-print(f'Python executable: {sys.executable}')
-print(f'Python version: {sys.version}')
-print(f'Python path: {sys.path[:3]}...')
-
-# Test key dependencies
-try:
-    import gql
-    print('✓ GQL (GraphQL client) available')
-except ImportError:
-    print('✗ GQL not available')
+sys.path.insert(0, '/app/dags')
 
 try:
-    import asyncpg
-    print('✓ AsyncPG (PostgreSQL driver) available')
-except ImportError:
-    print('✗ AsyncPG not available')
-
-try:
-    import airflow
-    print(f'✓ Airflow available: {airflow.__version__}')
-except ImportError:
-    print('✗ Airflow not available')
-"
-
-# Validate DAGs by importing them
-echo "Validating DAGs..."
-python -c "
-import sys
-import os
-sys.path.insert(0, '/app/src')
-
-# Try to import all DAGs to validate syntax
-try:
-    from dags import *
-    print('✓ All DAGs imported successfully')
+    # Import each DAG file to check for syntax errors
+    from shopify_get_past_purchases_dag import dag as dag1
+    from shopify_get_store_metadata_dag import dag as dag2
+    print('✅ All DAGs imported successfully')
+    print(f'  - {dag1.dag_id}')
+    print(f'  - {dag2.dag_id}')
 except Exception as e:
-    print(f'✗ Error importing DAGs: {e}')
+    print(f'❌ Error importing DAGs: {e}')
     sys.exit(1)
 "
 
-echo "DAGs validation completed successfully"
-echo "This package contains DAGs and utilities for Airflow deployment"
-echo "Use this container to package and deploy DAGs to Airflow service"
-
-# Keep container running in interactive mode
-if [ "$1" = "--interactive" ]; then
-    echo "Starting in interactive mode..."
-    exec /bin/bash
-fi
-
-echo "Airflow DAGs package ready"
+echo "DAG validation completed successfully!"
