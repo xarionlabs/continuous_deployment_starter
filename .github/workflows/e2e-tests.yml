@@ -62,6 +62,11 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           # Create a temporary .env file with all environment variables
+          # Define logging function
+          log_with_timestamp() {
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+          }
+          
           echo "APP_ENV=$ENVIRONMENT" > .env
           echo "APP_VERSION=$TAG" >> .env
           python3 -c "import os, json; data = json.loads(os.environ['VARS_JSON']); [print(f'{k}={json.dumps(v)[1:-1]}') for k, v in data.items()]" >> .env
@@ -81,15 +86,23 @@ jobs:
             echo "Full image reference: $REGISTRY/${{ github.repository }}/$app:$TAG"
             
             # Run the e2e tests using the application's own entrypoint
-            docker run --rm \
+            if timeout 300 docker run --rm \
               --network host \
               --env-file .env \
               --entrypoint /app/entrypoints/entrypoint_e2e.sh \
               "$REGISTRY/${{ github.repository }}/$app:$TAG" 
             
-            # Exit if tests fail
-            if [ $? -ne 0 ]; then
-              echo "E2E tests failed for $app in $ENVIRONMENT environment"
-              exit 1
-            fi
-          done 
+            echo "::endgroup::"
+          done
+          
+          # Clean up environment file
+          rm -f .env 2>/dev/null || true
+          
+          # Report results
+          if [ ${#failed_apps[@]} -gt 0 ]; then
+            log_with_timestamp "E2E tests failed for the following applications: ${failed_apps[*]}"
+            exit 1
+          else
+            log_with_timestamp "All E2E tests passed successfully"
+          fi
+        timeout-minutes: 20

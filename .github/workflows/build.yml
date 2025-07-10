@@ -35,7 +35,6 @@ jobs:
       skip: ${{steps.skip-workflow.outputs.skip}}
       force_build: ${{steps.force-build-check.outputs.force}}
       release_only: ${{steps.release-only-check.outputs.release_only}}
-      deploy_services: ${{steps.deploy-services-check.outputs.deploy_services}}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,18 +72,6 @@ jobs:
             echo "release_only=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: check-deploy-services
-        id: deploy-services-check
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          if echo "$COMMIT_MSG" | grep -i "\[deploy-services:" >/dev/null 2>&1; then
-            # Extract service names from [deploy-services: service1,service2,service3]
-            SERVICES=$(echo "$COMMIT_MSG" | grep -oiE '\[deploy-services:\s*[^\]]+\]' | sed -E 's/\[deploy-services:\s*([^\]]+)\]/\1/' | tr -d ' ')
-            echo "deploy_services=$SERVICES" >> $GITHUB_OUTPUT
-            echo "::notice::Deploy-services mode detected - will deploy only specified services: $SERVICES"
-          else
-            echo "deploy_services=" >> $GITHUB_OUTPUT
-          fi
 
   define-tag:
     runs-on: ubuntu-latest
@@ -143,8 +130,8 @@ jobs:
             # Find which valid items have changes
             CHANGED_ITEMS=""
             for item in $VALID_ITEMS; do
-              # Check if item is in applications/, utilities/, or release-tooling/
-              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/" || echo "$CHANGED_FILES" | grep -q "^release-tooling/$item/"; then
+              # Check if item is in applications/, utilities/, or tools/
+              if echo "$CHANGED_FILES" | grep -q "^applications/$item/" || echo "$CHANGED_FILES" | grep -q "^utilities/$item/" || echo "$CHANGED_FILES" | grep -q "^tools/$item/"; then
                 CHANGED_ITEMS="$CHANGED_ITEMS$item"$'\n'
               fi
             done
@@ -181,9 +168,6 @@ jobs:
             echo "::notice::Release-only mode"
           fi
           
-          if [ -n "${{ needs.skip-check.outputs.deploy_services }}" ]; then
-            echo "::notice::Deploy services: ${{ needs.skip-check.outputs.deploy_services }}"
-          fi
 
   build-application:
     needs: [skip-check, define-tag, find-changed-applications]
@@ -216,10 +200,10 @@ jobs:
             echo "path=applications/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           elif [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "path=utilities/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
-          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
-            echo "path=release-tooling/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
+          elif [ -d "tools/${{ matrix.ITEM }}" ]; then
+            echo "path=tools/${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           else
-            echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, tools, or tools/deployment"
+            echo "Error: Could not find ${{ matrix.ITEM }} in applications, utilities, or tools"
             exit 1
           fi
 
@@ -228,8 +212,6 @@ jobs:
         run: |
           if [ -d "utilities/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/utilities-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
-          elif [ -d "release-tooling/${{ matrix.ITEM }}" ]; then
-            echo "name=${{ env.REGISTRY }}/${{ github.repository }}/deployment-manager" >> $GITHUB_OUTPUT
           elif [ -d "tools/${{ matrix.ITEM }}" ]; then
             echo "name=${{ env.REGISTRY }}/${{ github.repository }}/tools-${{ matrix.ITEM }}" >> $GITHUB_OUTPUT
           else
@@ -310,15 +292,50 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           
+          # Configure git to handle merge conflicts automatically
+          git config merge.ours.driver true
+          git config merge.tool vimdiff
+          
           if [ "${{ needs.find-changed-applications.outputs.has_changes }}" = "true" ]; then
             # If we have application changes, merge the tag and update version.env
-            git merge -X theirs ${{ needs.define-tag.outputs.tag }}
+            echo "Merging tag ${{ needs.define-tag.outputs.tag }} into releases branch"
+            
+            # Try merge with automatic conflict resolution
+            if ! git merge -X theirs ${{ needs.define-tag.outputs.tag }} --no-edit; then
+              echo "Merge conflicts detected, resolving automatically..."
+              
+              # Check if there are any merge conflicts
+              if git status --porcelain | grep -q "^UU\|^AA\|^DD"; then
+                echo "Resolving merge conflicts by taking 'theirs' version"
+                git status --porcelain | grep "^UU\|^AA\|^DD" | cut -c4- | while read file; do
+                  git checkout --theirs "$file"
+                  git add "$file"
+                done
+                git commit --no-edit -m "Resolve merge conflicts automatically"
+              fi
+            fi
+            
             echo APP_VERSION=${{ needs.define-tag.outputs.tag }} >> services/version.env
             git add --force services/version.env
             git commit -m "Bumping the APP_VERSION to ${{ needs.define-tag.outputs.tag }}"
           else
             # If we have no application changes, just merge the current commit
-            git merge -X theirs ${{ github.sha }}
+            echo "Merging current commit ${{ github.sha }} into releases branch"
+            
+            # Try merge with automatic conflict resolution
+            if ! git merge -X theirs ${{ github.sha }} --no-edit; then
+              echo "Merge conflicts detected, resolving automatically..."
+              
+              # Check if there are any merge conflicts
+              if git status --porcelain | grep -q "^UU\|^AA\|^DD"; then
+                echo "Resolving merge conflicts by taking 'theirs' version"
+                git status --porcelain | grep "^UU\|^AA\|^DD" | cut -c4- | while read file; do
+                  git checkout --theirs "$file"
+                  git add "$file"
+                done
+                git commit --no-edit -m "Resolve merge conflicts automatically"
+              fi
+            fi
           fi
           
           git push origin releases
@@ -329,7 +346,6 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       environment: staging
-      deploy_services: ${{ needs.skip-check.outputs.deploy_services }}
     secrets: inherit
 
   trigger-staging-e2e:
@@ -346,7 +362,6 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       environment: live
-      deploy_services: ${{ needs.skip-check.outputs.deploy_services }}
     secrets: inherit
 
   trigger-live-e2e:
