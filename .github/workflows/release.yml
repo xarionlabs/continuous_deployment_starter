@@ -34,7 +34,27 @@ jobs:
             
             export PATH=$PATH:$(pwd)/.github/workflows/scripts/
             git checkout releases
-            git pull origin releases
+            
+            # Configure git to handle merge conflicts automatically
+            git config merge.ours.driver true
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            
+            # Pull with automatic conflict resolution
+            echo "Pulling latest changes from releases branch..."
+            if ! git pull origin releases --no-edit; then
+              echo "Pull conflicts detected, resolving automatically..."
+              
+              # Check if there are any merge conflicts
+              if git status --porcelain | grep -q "^UU\|^AA\|^DD"; then
+                echo "Resolving pull conflicts by taking remote version"
+                git status --porcelain | grep "^UU\|^AA\|^DD" | cut -c4- | while read file; do
+                  git checkout --theirs "$file"
+                  git add "$file"
+                done
+                git commit --no-edit -m "Resolve pull conflicts automatically"
+              fi
+            fi
             refresh_podman_secrets.sh "$SECRETS_JSON"
             create_env_variables.sh
             set -o allexport
