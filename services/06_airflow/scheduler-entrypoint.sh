@@ -37,9 +37,24 @@ fi
 echo 'Installing pxy6 package before starting scheduler...'
 
 # Wait for DAGs to be deployed
-while [ ! -f /opt/airflow/dags/shopify_data_pipeline.py ]; do
-  echo 'Waiting for DAGs to be deployed...'
+echo 'Waiting for DAGs to be deployed...'
+max_wait=60  # Maximum wait time in seconds
+waited=0
+while true; do
+  # Check if any Python files exist in the dags directory
+  if find /opt/airflow/dags -name "*.py" -type f | grep -q .; then
+    echo 'DAGs found in /opt/airflow/dags/'
+    break
+  fi
+  
+  if [ $waited -ge $max_wait ]; then
+    echo "Warning: No DAGs found after ${max_wait} seconds, proceeding anyway..."
+    break
+  fi
+  
+  echo "No DAGs found yet, waiting... (${waited}s elapsed)"
   sleep 5
+  waited=$((waited + 5))
 done
 
 # Install pxy6 package and dependencies from the shared package files
