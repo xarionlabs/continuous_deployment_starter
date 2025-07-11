@@ -5,13 +5,10 @@ set -e
 if [ "$1" = "deploy" ]; then
     echo 'Deploying DAGs and package files to Airflow...'
     
-    # Clear existing DAGs to prevent stale files
-    export GLOBIGNORE="dags:plugins"
-    rm -rf /opt/airflow/*
-    unset GLOBIGNORE
+    # Clear to prevent stale files
+    find . -mindepth 1 -type d \( -name "dags" -o -name "plugins" \) -prune -o  -print | xargs rm -rf
     rm -rf /opt/airflow/dags/*
     rm -rf /opt/airflow/plugins/*
-
 
     # Copy DAGs and package files needed for installation
     cp -r /app/dags/* /opt/airflow/dags/
