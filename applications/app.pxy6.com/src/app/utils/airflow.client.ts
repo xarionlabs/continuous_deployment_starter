@@ -7,8 +7,8 @@
 
 interface AirflowConfig {
   baseUrl: string;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
   timeout?: number;
 }
 
@@ -103,13 +103,16 @@ export class AirflowClient {
       ...config,
     };
     
-    // Create basic auth header
-    const credentials = btoa(`${config.username}:${config.password}`);
+    // Create headers - only add Authorization if credentials are provided
     this.baseHeaders = {
-      'Authorization': `Basic ${credentials}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+    
+    if (config.username && config.password) {
+      const credentials = btoa(`${config.username}:${config.password}`);
+      this.baseHeaders['Authorization'] = `Basic ${credentials}`;
+    }
   }
 
   /**
@@ -318,10 +321,17 @@ export class AirflowClient {
 export function createAirflowClient(): AirflowClient {
   const config: AirflowConfig = {
     baseUrl: process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2',
-    username: process.env.AIRFLOW_USERNAME || 'admin',
-    password: process.env.AIRFLOW_PASSWORD || 'admin',
     timeout: 30000,
   };
+  
+  // Only add credentials if they are provided in environment
+  if (process.env.AIRFLOW_USERNAME) {
+    config.username = process.env.AIRFLOW_USERNAME;
+  }
+  
+  if (process.env.AIRFLOW_PASSWORD) {
+    config.password = process.env.AIRFLOW_PASSWORD;
+  }
 
   return new AirflowClient(config);
 }

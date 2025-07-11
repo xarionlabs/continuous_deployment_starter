@@ -61,13 +61,8 @@ describe('API Data Sync Routes', () => {
     });
 
     it('should trigger data sync with shop data', async () => {
-      // Mock successful JWT token request
+      // Mock successful Airflow connection test (using AirflowClient)
       (fetch as jest.Mock)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ access_token: 'test-jwt-token' }),
-        })
-        // Mock successful Airflow connection test
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ status: 'healthy' }),
@@ -77,13 +72,23 @@ describe('API Data Sync Routes', () => {
           ok: true,
           json: () => Promise.resolve({
             dag_run_id: 'test-run-123',
+            dag_id: 'shopify_sync',
+            run_id: 'test-run-123',
             state: 'queued',
             execution_date: '2024-01-01T00:00:00Z',
+            start_date: '2024-01-01T00:00:00Z',
+            end_date: null,
+            external_trigger: true,
+            run_type: 'manual',
             conf: {
               shop_domain: 'test-shop',
               access_token: 'shpat_test123',
               sync_mode: 'incremental',
             },
+            data_interval_start: '2024-01-01T00:00:00Z',
+            data_interval_end: '2024-01-01T00:00:00Z',
+            last_scheduling_decision: null,
+            note: 'Triggered from app.pxy6.com data dashboard',
           }),
         });
 
@@ -107,8 +112,8 @@ describe('API Data Sync Routes', () => {
       expect(result.data.runId).toBe('test-run-123');
       expect(response.status).toBe(200);
 
-      // Verify shop data was passed to Airflow (DAG trigger is the 3rd call after JWT token and health check)
-      const dagTriggerCall = (fetch as jest.Mock).mock.calls[2];
+      // Verify shop data was passed to Airflow (DAG trigger is the 2nd call after health check)
+      const dagTriggerCall = (fetch as jest.Mock).mock.calls[1];
       const requestBody = JSON.parse(dagTriggerCall[1].body);
       expect(requestBody.conf.shop_domain).toBe('test-shop');
       expect(requestBody.conf.access_token).toBe('shpat_test123');

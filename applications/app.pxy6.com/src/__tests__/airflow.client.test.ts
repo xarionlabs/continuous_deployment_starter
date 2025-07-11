@@ -36,6 +36,13 @@ describe('AirflowClient', () => {
       });
       expect(defaultClient).toBeInstanceOf(AirflowClient);
     });
+
+    it('should work without authentication credentials', () => {
+      const noAuthClient = new AirflowClient({
+        baseUrl: 'http://localhost:8080/api/v2',
+      });
+      expect(noAuthClient).toBeInstanceOf(AirflowClient);
+    });
   });
 
   describe('testConnection', () => {
@@ -497,6 +504,15 @@ describe('AirflowClient', () => {
     });
 
     it('should create client with default values', () => {
+      const client = createAirflowClient();
+
+      expect(client).toBeInstanceOf(AirflowClient);
+    });
+
+    it('should create client without credentials when not provided', () => {
+      process.env.AIRFLOW_API_URL = 'http://test:8080/api/v2';
+      // No username/password set
+
       const client = createAirflowClient();
 
       expect(client).toBeInstanceOf(AirflowClient);
