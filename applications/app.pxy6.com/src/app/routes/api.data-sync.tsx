@@ -3,7 +3,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { withCors } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { getAirflowClient } from "../utils/airflow.client";
+import { getAirflowClient } from "../utils/airflow.server";
 
 /**
  * API Routes for Shopify Data Sync

@@ -1,4 +1,4 @@
-import { AirflowClient, createAirflowClient, getAirflowClient } from '../app/utils/airflow.client';
+import { AirflowClient, createAirflowClient, getAirflowClient } from '../app/utils/airflow.server';
 import 'whatwg-fetch';
 
 // Mock fetch globally
@@ -6,12 +6,30 @@ global.fetch = jest.fn();
 
 describe('AirflowClient', () => {
   let client: AirflowClient;
+  let noAuthClient: AirflowClient;
+
+  // Helper function to mock successful JWT authentication
+  const mockJwtAuth = () => {
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        access_token: 'test-token',
+        token_type: 'bearer',
+        expires_in: 3600,
+      }),
+    });
+  };
 
   beforeEach(() => {
     client = new AirflowClient({
       baseUrl: 'http://localhost:8080/api/v2',
       username: 'test',
       password: 'test',
+      timeout: 10000,
+    });
+
+    noAuthClient = new AirflowClient({
+      baseUrl: 'http://localhost:8080/api/v2',
       timeout: 10000,
     });
 
@@ -47,10 +65,21 @@ describe('AirflowClient', () => {
 
   describe('testConnection', () => {
     it('should return true for successful connection', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ status: 'healthy' }),
-      });
+      // Mock JWT login request
+      (fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            access_token: 'test-token',
+            token_type: 'bearer',
+            expires_in: 3600,
+          }),
+        })
+        // Mock health check request
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ status: 'healthy' }),
+        });
 
       const result = await client.testConnection();
 
@@ -59,7 +88,7 @@ describe('AirflowClient', () => {
         'http://localhost:8080/api/v2/monitor/health',
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: 'Basic dGVzdDp0ZXN0',
+            Authorization: 'Bearer test-token',
             'Content-Type': 'application/json',
             Accept: 'application/json',
           }),
@@ -546,6 +575,213 @@ describe('AirflowClient', () => {
       });
 
       await expect(client.testConnection()).resolves.toBe(false);
+    });
+  });
+
+  describe('JWT Authentication', () => {
+    let jwtClient: AirflowClient;
+
+    beforeEach(() => {
+      jwtClient = new AirflowClient({
+        baseUrl: 'http://localhost:8080/api/v2',
+        username: 'testuser',
+        password: 'testpass',
+        timeout: 10000,
+      });
+
+      // Reset fetch mock
+      (fetch as jest.Mock).mockClear();
+    });
+
+    it('should authenticate with JWT and use bearer token', async () => {
+      const mockJwtResponse = {
+        access_token: 'jwt-token-123',
+        token_type: 'bearer',
+        expires_in: 3600,
+      };
+
+      const mockHealthResponse = {
+        status: 'healthy',
+      };
+
+      // Mock JWT login request
+      (fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockJwtResponse),
+        })
+        // Mock health check request with bearer token
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockHealthResponse),
+        });
+
+      const result = await jwtClient.testConnection();
+
+      expect(result).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(2);
+
+      // Check JWT login request
+      expect(fetch).toHaveBeenNthCalledWith(1,
+        'http://localhost:8080/auth/token',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          }),
+          body: JSON.stringify({
+            username: 'testuser',
+            password: 'testpass',
+          }),
+        })
+      );
+
+      // Check health check request with bearer token
+      expect(fetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:8080/api/v2/monitor/health',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer jwt-token-123',
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('should reuse valid JWT token for subsequent requests', async () => {
+      const mockJwtResponse = {
+        access_token: 'jwt-token-123',
+        token_type: 'bearer',
+        expires_in: 3600,
+      };
+
+      const mockHealthResponse = {
+        status: 'healthy',
+      };
+
+      // Mock JWT login request (should only be called once)
+      (fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockJwtResponse),
+        })
+        // Mock first health check
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockHealthResponse),
+        })
+        // Mock second health check (should reuse token)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockHealthResponse),
+        });
+
+      // First request should authenticate
+      await jwtClient.testConnection();
+      
+      // Second request should reuse token
+      await jwtClient.testConnection();
+
+      expect(fetch).toHaveBeenCalledTimes(3);
+      // Only one JWT login request
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8080/auth/token',
+        expect.any(Object)
+      );
+    });
+
+    it('should fall back to Basic auth if JWT authentication fails', async () => {
+      const mockHealthResponse = {
+        status: 'healthy',
+      };
+
+      // Mock failed JWT login request
+      (fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          text: () => Promise.resolve('Invalid credentials'),
+        })
+        // Mock successful health check with Basic auth
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockHealthResponse),
+        });
+
+      const result = await jwtClient.testConnection();
+
+      expect(result).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(2);
+
+      // Check fallback to Basic auth
+      expect(fetch).toHaveBeenNthCalledWith(2,
+        'http://localhost:8080/api/v2/monitor/health',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Basic dGVzdHVzZXI6dGVzdHBhc3M=', // base64 of testuser:testpass
+          }),
+        })
+      );
+    });
+
+    it('should refresh expired JWT token', async () => {
+      const mockJwtResponse1 = {
+        access_token: 'jwt-token-123',
+        token_type: 'bearer',
+        expires_in: 1, // Short expiry for testing
+      };
+
+      const mockJwtResponse2 = {
+        access_token: 'jwt-token-456',
+        token_type: 'bearer',
+        expires_in: 3600,
+      };
+
+      const mockHealthResponse = {
+        status: 'healthy',
+      };
+
+      // Mock first JWT login
+      (fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockJwtResponse1),
+        })
+        // Mock first health check
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockHealthResponse),
+        })
+        // Mock second JWT login (token refresh)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockJwtResponse2),
+        })
+        // Mock second health check with new token
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockHealthResponse),
+        });
+
+      // First request
+      await jwtClient.testConnection();
+
+      // Wait for token to expire
+      await new Promise(resolve => setTimeout(resolve, 1100));
+
+      // Second request should refresh token
+      await jwtClient.testConnection();
+
+      expect(fetch).toHaveBeenCalledTimes(4);
+      
+      // Should have two JWT login requests
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8080/auth/token',
+        expect.any(Object)
+      );
     });
   });
 });

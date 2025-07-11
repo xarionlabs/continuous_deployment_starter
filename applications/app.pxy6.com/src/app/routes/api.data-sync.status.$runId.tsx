@@ -2,7 +2,7 @@ import { json } from "@remix-run/node";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { withCorsLoader } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
-import { getAirflowClient } from "../utils/airflow.client";
+import { getAirflowClient } from "../utils/airflow.server";
 
 /**
  * API Route for Checking DAG Run Status
