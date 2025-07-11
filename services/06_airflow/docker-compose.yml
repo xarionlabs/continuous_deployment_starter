@@ -32,7 +32,7 @@ services:
       - airflow_logs:/opt/airflow/logs
       - airflow_plugins:/opt/airflow/plugins
       - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
-      - ~/runtime/airflow.cfg:/opt/airflow/airflow.cfg
+      - /home/{USERNAME}/runtime/airflow.cfg:/opt/airflow/airflow.cfg
     secrets:
       - PSQL_AIRFLOW_PASSWORD
       - PSQL_PXY6_AIRFLOW_PASSWORD
@@ -65,7 +65,7 @@ services:
       - airflow_plugins:/opt/airflow/plugins
       - airflow_packages:/opt/airflow
       - ./scheduler-entrypoint.sh:/opt/airflow/scheduler-entrypoint.sh:ro
-      - ~/runtime/airflow.cfg:/opt/airflow/airflow.cfg
+      - /home/{USERNAME}/runtime/airflow.cfg:/opt/airflow/airflow.cfg
     secrets:
       - PSQL_AIRFLOW_PASSWORD
       - PSQL_PXY6_AIRFLOW_PASSWORD
@@ -99,7 +99,7 @@ services:
       - airflow_logs:/opt/airflow/logs
       - airflow_plugins:/opt/airflow/plugins
       - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
-      - ~/runtime/airflow.cfg:/opt/airflow/airflow.cfg
+      - /home/{USERNAME}/runtime/airflow.cfg:/opt/airflow/airflow.cfg
     secrets:
       - PSQL_AIRFLOW_PASSWORD
       - PSQL_PXY6_AIRFLOW_PASSWORD
