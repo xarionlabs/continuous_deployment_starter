@@ -6,7 +6,7 @@ if [ "$1" = "deploy" ]; then
     echo 'Deploying DAGs and package files to Airflow...'
     
     # Clear to prevent stale files
-    find . -mindepth 1 -type d \( -name "dags" -o -name "plugins" \) -prune -o  -print | xargs rm -rf
+    find /opt/airflow -mindepth 1 -type d \( -name "dags" -o -name "plugins" \) -prune -o  -print | xargs rm -rf
     rm -rf /opt/airflow/dags/*
     rm -rf /opt/airflow/plugins/*
 
