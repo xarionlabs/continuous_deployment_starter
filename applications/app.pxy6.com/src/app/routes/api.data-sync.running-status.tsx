@@ -73,8 +73,8 @@ export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => 
 
     // Check the actual status in Airflow for this runId
     try {
-      const airflowClient = getAirflowClient();
-      const dagRun = await airflowClient.getDagRunStatus(recentSync.runId);
+      const client = getAirflowClient();
+      const dagRun = await client.getDagRunStatus(recentSync.runId);
       
       // If the DAG run is still running or queued, return it
       if (dagRun.state === 'running' || dagRun.state === 'queued') {

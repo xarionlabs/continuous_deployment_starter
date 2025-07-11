@@ -349,8 +349,10 @@ export function getAirflowClient(): AirflowClient {
 }
 
 // Default export for better compatibility
-export default {
+const airflowClientUtils = {
   AirflowClient,
   createAirflowClient,
   getAirflowClient,
 };
+
+export default airflowClientUtils;

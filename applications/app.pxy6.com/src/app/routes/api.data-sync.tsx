@@ -77,8 +77,8 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
     }
 
     // Get Airflow client and test connection
-    const airflowClient = getAirflowClient();
-    const isConnected = await airflowClient.testConnection();
+    const client = getAirflowClient();
+    const isConnected = await client.testConnection();
     if (!isConnected) {
       return json({
         success: false,
@@ -87,7 +87,7 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
     }
 
     // Trigger the DAG with shop-specific data (let Airflow generate the runId)
-    const dagRun = await airflowClient.triggerDataSync({
+    const dagRun = await client.triggerDataSync({
       syncMode,
       enableProducts,
       enableCustomers,
