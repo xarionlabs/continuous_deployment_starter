@@ -28,9 +28,9 @@ export const loader = withCorsLoader(async ({ request, params }: LoaderFunctionA
       }, { status: 400 });
     }
 
-    const client = getAirflowClient();
-    const dagRun = await client.getDagRunStatus(runId);
-    const taskInstances = await client.getTaskInstances(runId);
+    const airflowClient = getAirflowClient();
+    const dagRun = await airflowClient.getDagRunStatus(runId);
+    const taskInstances = await airflowClient.getTaskInstances(runId);
     
     return json({
       success: true,
