@@ -29,15 +29,10 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:localpassword@db:5432/airflow_test
-      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__CORE__FERNET_KEY: ''
       AIRFLOW__WEBSERVER__SECRET_KEY: 'a25c62d375079c43344b91f38ad6fce29d2a9a31456e15e5c5d8ec4f'
-      PYTHONPATH: /opt/airflow/dags
-      SHOPIFY_SHOP_NAME: ${SHOPIFY_SHOP_NAME:-test-shop}
-      SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ACCESS_TOKEN:-test-token}
       DEVELOPMENT: "true"
-      # Ensure DAG dependencies are available
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_NO_CACHE_DIR: "1"
     depends_on:
