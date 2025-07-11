@@ -3,7 +3,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { withCors } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { getAirflowClient } from "../utils/airflow.client";
+import { getAirflowClient } from "../utils/airflow.server";
 
 /**
  * API Routes for Shopify Data Sync
@@ -77,8 +77,8 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
     }
 
     // Get Airflow client and test connection
-    const client = getAirflowClient();
-    const isConnected = await client.testConnection();
+    const airflowClient = getAirflowClient();
+    const isConnected = await airflowClient.testConnection();
     if (!isConnected) {
       return json({
         success: false,
@@ -87,7 +87,7 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
     }
 
     // Trigger the DAG with shop-specific data (let Airflow generate the runId)
-    const dagRun = await client.triggerDataSync({
+    const dagRun = await airflowClient.triggerDataSync({
       syncMode,
       enableProducts,
       enableCustomers,

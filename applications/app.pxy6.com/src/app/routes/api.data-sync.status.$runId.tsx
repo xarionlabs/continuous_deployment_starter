@@ -2,7 +2,7 @@ import { json } from "@remix-run/node";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { withCorsLoader } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
-import { getAirflowClient } from "../utils/airflow.client";
+import { getAirflowClient } from "../utils/airflow.server";
 
 /**
  * API Route for Checking DAG Run Status
@@ -28,9 +28,9 @@ export const loader = withCorsLoader(async ({ request, params }: LoaderFunctionA
       }, { status: 400 });
     }
 
-    const client = getAirflowClient();
-    const dagRun = await client.getDagRunStatus(runId);
-    const taskInstances = await client.getTaskInstances(runId);
+    const airflowClient = getAirflowClient();
+    const dagRun = await airflowClient.getDagRunStatus(runId);
+    const taskInstances = await airflowClient.getTaskInstances(runId);
     
     return json({
       success: true,

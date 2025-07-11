@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs } from "@remix-run/node";
 import { withCorsLoader } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { getAirflowClient } from "../utils/airflow.client";
+import { getAirflowClient } from "../utils/airflow.server";
 
 /**
  * API Route for Checking Running Sync Status
@@ -73,8 +73,8 @@ export const loader = withCorsLoader(async ({ request }: LoaderFunctionArgs) => 
 
     // Check the actual status in Airflow for this runId
     try {
-      const client = getAirflowClient();
-      const dagRun = await client.getDagRunStatus(recentSync.runId);
+      const airflowClient = getAirflowClient();
+      const dagRun = await airflowClient.getDagRunStatus(recentSync.runId);
       
       // If the DAG run is still running or queued, return it
       if (dagRun.state === 'running' || dagRun.state === 'queued') {

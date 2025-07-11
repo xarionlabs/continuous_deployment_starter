@@ -12,6 +12,12 @@ interface AirflowConfig {
   timeout?: number;
 }
 
+interface JwtResponse {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+}
+
 interface DagRun {
   dag_id: string;
   dag_run_id: string;
@@ -36,6 +42,7 @@ interface DagRunsResponse {
 
 interface TriggerDagRequest {
   dag_run_id?: string;
+  logical_date?: string;
   conf?: Record<string, any>;
   execution_date?: string;
   replace_microseconds?: boolean;
@@ -96,6 +103,8 @@ interface SyncHistoryEntry {
 export class AirflowClient {
   private config: AirflowConfig;
   private baseHeaders: Record<string, string>;
+  private accessToken: string | null = null;
+  private tokenExpiry: Date | null = null;
 
   constructor(config: AirflowConfig) {
     this.config = {
@@ -103,16 +112,77 @@ export class AirflowClient {
       ...config,
     };
     
-    // Create headers - only add Authorization if credentials are provided
+    // Create base headers
     this.baseHeaders = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
-    
-    if (config.username && config.password) {
-      const credentials = btoa(`${config.username}:${config.password}`);
-      this.baseHeaders['Authorization'] = `Basic ${credentials}`;
+  }
+
+  /**
+   * Get JWT token from Airflow API
+   */
+  private async getJwtToken(): Promise<string> {
+    if (!this.config.username || !this.config.password) {
+      throw new Error('Username and password are required for JWT authentication');
     }
+
+    // Check if we have a valid token
+    if (this.accessToken && this.tokenExpiry && new Date() < this.tokenExpiry) {
+      return this.accessToken;
+    }
+
+    // Request new JWT token
+    const loginUrl = `${this.config.baseUrl.replace('/api/v2', '')}/auth/token`;
+    const response = await fetch(loginUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        username: this.config.username,
+        password: this.config.password,
+      }),
+      signal: AbortSignal.timeout(this.config.timeout!),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`JWT authentication failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const jwtResponse: JwtResponse = await response.json();
+    this.accessToken = jwtResponse.access_token;
+    
+    // Set token expiry (default to 1 hour if not provided)
+    const expiresInMs = (jwtResponse.expires_in || 3600) * 1000;
+    this.tokenExpiry = new Date(Date.now() + expiresInMs - 60000); // Refresh 1 minute before expiry
+
+    return this.accessToken;
+  }
+
+  /**
+   * Get authorization headers for requests
+   */
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    if (this.config.username && this.config.password) {
+      try {
+        // Try JWT authentication first
+        const token = await this.getJwtToken();
+        return {
+          'Authorization': `Bearer ${token}`,
+        };
+      } catch (error) {
+        // Fall back to Basic authentication if JWT fails
+        console.warn('JWT authentication failed, falling back to Basic auth:', error);
+        const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
+        return {
+          'Authorization': `Basic ${credentials}`,
+        };
+      }
+    }
+    return {};
   }
 
   /**
@@ -123,11 +193,13 @@ export class AirflowClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.config.baseUrl}${endpoint}`;
+    const authHeaders = await this.getAuthHeaders();
     
     const response = await fetch(url, {
       ...options,
       headers: {
         ...this.baseHeaders,
+        ...authHeaders,
         ...options.headers,
       },
       signal: AbortSignal.timeout(this.config.timeout!),
@@ -171,6 +243,7 @@ export class AirflowClient {
     
     const requestBody: TriggerDagRequest = {
       // Let Airflow generate the dag_run_id automatically
+      logical_date: new Date().toISOString(),
       conf: {
         sync_mode: config.syncMode || 'incremental',
         enable_products_sync: config.enableProducts !== false,
@@ -341,6 +414,9 @@ export function createAirflowClient(): AirflowClient {
  */
 let airflowClientInstance: AirflowClient | null = null;
 
+/**
+ * Get or create Airflow client singleton instance
+ */
 export function getAirflowClient(): AirflowClient {
   if (!airflowClientInstance) {
     airflowClientInstance = createAirflowClient();
@@ -348,11 +424,4 @@ export function getAirflowClient(): AirflowClient {
   return airflowClientInstance;
 }
 
-// Default export for better compatibility
-const airflowClientUtils = {
-  AirflowClient,
-  createAirflowClient,
-  getAirflowClient,
-};
-
-export default airflowClientUtils;
+// All exports are available as named exports
