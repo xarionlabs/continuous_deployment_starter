@@ -3,6 +3,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { withCors } from "../utils/cors.injector";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { getAirflowClient } from "../utils/airflow.client";
 
 /**
  * API Routes for Shopify Data Sync
@@ -11,148 +12,6 @@ import prisma from "../db.server";
  * - POST /api/data-sync - Trigger Shopify data sync DAGs
  * - GET /api/data-sync/status/{runId} - Check DAG run status
  */
-
-// Inline Airflow client functions to avoid import issues
-let jwtToken: string | null = null;
-
-const getJwtToken = async (): Promise<string> => {
-  if (jwtToken) return jwtToken;
-  
-  const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
-  const username = process.env.AIRFLOW_USERNAME || 'admin';
-  const password = process.env.AIRFLOW_PASSWORD || 'admin';
-  const nodeEnv = process.env.NODE_ENV || 'development';
-  
-  // For local development with standalone Airflow, get JWT token
-  if (nodeEnv === 'development' || baseUrl.includes('localhost')) {
-    const authUrl = `${baseUrl.replace('/api/v2', '')}/auth/token`;
-    
-    const response = await fetch(authUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username,
-        password,
-      }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Airflow token request failed: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
-    const tokenData = await response.json();
-    jwtToken = `Bearer ${tokenData.access_token}`;
-    return jwtToken;
-  }
-  
-  // For staging/live with Google OAuth, we'll need to implement OAuth flow
-  // For now, throw an error to indicate this needs to be implemented
-  throw new Error('Google OAuth authentication for staging/live environments not yet implemented');
-};
-
-const createAirflowRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const baseUrl = process.env.AIRFLOW_API_URL || 'http://localhost:8080/api/v2';
-  
-  // Get authentication token/cookie
-  const authToken = await getJwtToken();
-  
-  const url = `${baseUrl}${endpoint}`;
-  
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': authToken, // Use Basic auth for local, will be different for OAuth
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-      ...options.headers,
-    },
-    signal: AbortSignal.timeout(30000),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    // If we get 401, try to refresh the auth
-    if (response.status === 401) {
-      jwtToken = null;
-      const newToken = await getJwtToken();
-      const retryResponse = await fetch(url, {
-        ...options,
-        headers: {
-          'Authorization': newToken,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          ...options.headers,
-        },
-        signal: AbortSignal.timeout(30000),
-      });
-      
-      if (!retryResponse.ok) {
-        const retryErrorText = await retryResponse.text();
-        throw new Error(`Airflow API error: ${retryResponse.status} ${retryResponse.statusText} - ${retryErrorText}`);
-      }
-      
-      return retryResponse.json();
-    }
-    
-    throw new Error(`Airflow API error: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  return response.json();
-};
-
-const testAirflowConnection = async (): Promise<boolean> => {
-  try {
-    await createAirflowRequest('/monitor/health');
-    return true;
-  } catch (error) {
-    console.error('Airflow connection test failed:', error);
-    return false;
-  }
-};
-
-const triggerDataSync = async (config: {
-  syncMode?: 'full' | 'incremental';
-  enableProducts?: boolean;
-  enableCustomers?: boolean;
-  enableOrders?: boolean;
-  note?: string;
-  shopDomain?: string;
-  accessToken?: string;
-  shopId?: string;
-}) => {
-  const dagId = 'shopify_sync';
-  
-  const requestBody = {
-    // Let Airflow generate the dag_run_id automatically
-    logical_date: new Date().toISOString(),
-    conf: {
-      sync_mode: config.syncMode || 'incremental',
-      enable_products_sync: config.enableProducts !== false,
-      enable_customers_sync: config.enableCustomers !== false,
-      enable_orders_sync: config.enableOrders !== false,
-      // Shop-specific data for multi-tenant support
-      shop_domain: config.shopDomain,
-      access_token: config.accessToken,
-      shop_id: config.shopId,
-      triggered_by: 'app_pxy6_com',
-      trigger_time: new Date().toISOString(),
-    },
-    note: config.note || 'Triggered from app.pxy6.com data dashboard',
-  };
-
-  return createAirflowRequest(`/dags/${dagId}/dagRuns`, {
-    method: 'POST',
-    body: JSON.stringify(requestBody),
-  });
-};
-
-// getDagRunStatus and getTaskInstances moved to api.data-sync.status.$runId.tsx
 
 // This file only handles POST /api/data-sync (triggering sync)
 // Status checking is handled by api.data-sync.status.$runId.tsx
@@ -217,8 +76,9 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
       }, { status: 400 });
     }
 
-    // Test connection before triggering
-    const isConnected = await testAirflowConnection();
+    // Get Airflow client and test connection
+    const airflowClient = getAirflowClient();
+    const isConnected = await airflowClient.testConnection();
     if (!isConnected) {
       return json({
         success: false,
@@ -227,7 +87,7 @@ export const action = withCors(async ({ request }: ActionFunctionArgs) => {
     }
 
     // Trigger the DAG with shop-specific data (let Airflow generate the runId)
-    const dagRun = await triggerDataSync({
+    const dagRun = await airflowClient.triggerDataSync({
       syncMode,
       enableProducts,
       enableCustomers,
