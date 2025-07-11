@@ -17,6 +17,7 @@ services:
 
   airflow-webserver:
     image: docker.io/apache/airflow:3.0.2
+    container_name: airflow
     entrypoint: ["/opt/airflow/custom-entrypoint.sh"]
     command: api-server
     expose:
