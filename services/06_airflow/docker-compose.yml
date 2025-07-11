@@ -10,6 +10,7 @@ services:
     volumes:
       - airflow_dags:/opt/airflow/dags
       - airflow_plugins:/opt/airflow/plugins
+      - airflow_logs:/opt/airflow/logs
       - airflow_packages:/opt/airflow
     labels:
       - "io.containers.autoupdate=registry"
@@ -30,7 +31,7 @@ services:
       VIRTUAL_HOST: ${AIRFLOW_WEB_VIRTUAL_HOST}
     volumes:
       - airflow_dags:/opt/airflow/dags
-      - airflow_logs:/opt/airflow/logs
+      - airflow_logs:/opt/airflow/logs:ro
       - airflow_plugins:/opt/airflow/plugins
       - ./configure-db-entrypoint.sh:/opt/airflow/custom-entrypoint.sh:ro
       - /home/${USERNAME}/runtime/airflow.cfg:/opt/airflow/airflow.cfg
@@ -83,6 +84,7 @@ services:
       - db
     networks:
       - db_network
+      - airflow_network
 
   airflow-init:
     image: docker.io/apache/airflow:3.0.2
