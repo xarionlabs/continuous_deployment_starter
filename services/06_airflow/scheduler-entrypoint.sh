@@ -24,14 +24,7 @@ else
 fi
 
 export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="postgresql+psycopg2://airflow:${PSQL_AIRFLOW_PASSWORD}@db/airflow"
-export PXY6_DATABASE_URL="postgresql+psycopg2://pxy6_airflow:${PSQL_PXY6_AIRFLOW_PASSWORD}@db/pxy6"
 
-# Read Google OAuth client secret from Docker secret if available
-if [ -f /run/secrets/GOOGLE_OAUTH_CLIENT_SECRET ]; then
-    GOOGLE_OAUTH_CLIENT_SECRET=$(cat /run/secrets/GOOGLE_OAUTH_CLIENT_SECRET)
-    export GOOGLE_OAUTH_CLIENT_SECRET="${GOOGLE_OAUTH_CLIENT_SECRET}"
-    echo "Google OAuth client secret loaded from Docker secret"
-fi
 
 # Scheduler-specific operations
 echo 'Installing pxy6 package before starting scheduler...'
