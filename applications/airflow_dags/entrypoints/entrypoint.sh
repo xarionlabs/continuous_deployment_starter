@@ -6,9 +6,13 @@ if [ "$1" = "deploy" ]; then
     echo 'Deploying DAGs and package files to Airflow...'
     
     # Clear existing DAGs to prevent stale files
+    export GLOBIGNORE="dags:plugins"
+    rm -rf /opt/airflow/*
+    unset GLOBIGNORE
     rm -rf /opt/airflow/dags/*
     rm -rf /opt/airflow/plugins/*
-    
+
+
     # Copy DAGs and package files needed for installation
     cp -r /app/dags/* /opt/airflow/dags/
     cp -r /app/src /opt/airflow/
@@ -16,9 +20,9 @@ if [ "$1" = "deploy" ]; then
     cp /app/setup.py /opt/airflow/
     
     # Set proper permissions
-    chown -R airflow:root /opt/airflow/dags
-    chown -R airflow:root /opt/airflow/plugins
-    chown -R airflow:root /opt/airflow/src
+    chown -R 50000:root /opt/airflow/dags
+    chown -R 50000:root /opt/airflow/plugins
+    chown -R 50000:root /opt/airflow/src
     chmod -R 755 /opt/airflow/dags
     chmod -R 755 /opt/airflow/plugins
     chmod -R 755 /opt/airflow/src
