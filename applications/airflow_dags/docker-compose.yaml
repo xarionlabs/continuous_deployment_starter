@@ -79,10 +79,33 @@ services:
     networks:
       - airflow_shopify_dev_network
 
-  airflow-init:
-    <<: *airflow-common
-    container_name: shopify_airflow_init
-    command: >
+  airflow-standalone:
+    user: airflow
+    image: apache/airflow:3.0.2
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - airflow_plugins:/opt/airflow/plugins
+      - airflow_logs:/opt/airflow/logs
+      - ./src:/opt/airflow/src
+      - ./setup.py:/opt/airflow/setup.py
+      - ./pyproject.toml:/opt/airflow/pyproject.toml
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:localpassword@db:5432/airflow_test
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'a25c62d375079c43344b91f38ad6fce29d2a9a31456e15e5c5d8ec4f'
+      DEVELOPMENT: "true"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+    depends_on:
+      - db
+    networks:
+      - airflow_network
+    ports:
+      - "8080:8080"
+    command: |
       bash -c "
         echo 'Attempting to initialize database...';
         airflow db init;

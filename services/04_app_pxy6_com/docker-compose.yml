@@ -9,7 +9,7 @@ services:
       NODE_ENV: production
       SHOPIFY_APP_URL: https://${APP_PXY6_VIRTUAL_HOST}/
       SHOPIFY_CONFIG: ${SHOPIFY_CONFIG}
-      AIRFLOW_API_URL: https://${AIRFLOW_WEB_VIRTUAL_HOST}/api/v2
+      AIRFLOW_API_URL: airflow-webserver:8080/api/v2
       AIRFLOW_USERNAME: ${AIRFLOW_WWW_USER_USERNAME:-admin}
       AIRFLOW_PASSWORD: ${AIRFLOW_WWW_USER_PASSWORD:-admin}
     labels:
@@ -19,6 +19,7 @@ services:
     networks:
       - db_network
       - proxy_network
+      - airflow_network
     restart: unless-stopped
     secrets:
       - PSQL_PXY6_PASSWORD
@@ -42,4 +43,6 @@ networks:
   db_network:
     driver: bridge
   proxy_network:
+    driver: bridge
+  airflow_network:
     driver: bridge
